@@ -1,19 +1,114 @@
-[gd_scene format=3 uid="uid://cn345mrfhbnpi"]
+[gd_scene load_steps=14 format=3]
 
-[ext_resource type="Script" uid="uid://ctxlp75x3yjxs" path="res://actors/dorothy/player_controller.gd" id="1_abc123"]
+[ext_resource type="Script" path="res://actors/dorothy/player_controller.gd" id="1_script"]
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+[sub_resource type="CapsuleShape3D" id="Shape_body"]
+radius = 0.26
+height = 1.3
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_1"]
+[sub_resource type="StandardMaterial3D" id="Mat_dress"]
+albedo_color = Color(0.72, 0.4, 0.38, 1)
+roughness = 0.72
 
-[node name="Player" type="CharacterBody3D" unique_id=249533494]
-script = ExtResource("1_abc123")
+[sub_resource type="CylinderMesh" id="Mesh_dress"]
+top_radius = 0.34
+bottom_radius = 0.42
+height = 0.62
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=149941779]
-shape = SubResource("CapsuleShape3D_1")
+[sub_resource type="StandardMaterial3D" id="Mat_skin"]
+albedo_color = Color(0.9, 0.72, 0.58, 1)
+roughness = 0.65
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=339138577]
-mesh = SubResource("CylinderMesh_1")
+[sub_resource type="SphereMesh" id="Mesh_head"]
+radius = 0.15
+height = 0.3
 
-[node name="CameraPivot" type="Node3D" parent="." unique_id=333484095]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+[sub_resource type="StandardMaterial3D" id="Mat_hair"]
+albedo_color = Color(0.28, 0.16, 0.12, 1)
+roughness = 0.8
+
+[sub_resource type="SphereMesh" id="Mesh_hair"]
+radius = 0.16
+height = 0.32
+
+[sub_resource type="StandardMaterial3D" id="Mat_basket"]
+albedo_color = Color(0.45, 0.3, 0.16, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="Mesh_basket"]
+size = Vector3(0.2, 0.14, 0.18)
+
+[sub_resource type="StandardMaterial3D" id="Mat_shoe"]
+albedo_color = Color(0.78, 0.82, 0.86, 1)
+metallic = 0.85
+roughness = 0.22
+emission_enabled = true
+emission = Color(0.75, 0.82, 0.9, 1)
+emission_energy_multiplier = 0.35
+
+[sub_resource type="BoxMesh" id="Mesh_shoe"]
+size = Vector3(0.12, 0.07, 0.22)
+
+[node name="Player" type="CharacterBody3D" groups=["player"]]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("Shape_body")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Dress" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("Mesh_dress")
+surface_material_override/0 = SubResource("Mat_dress")
+
+[node name="Head" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+mesh = SubResource("Mesh_head")
+surface_material_override/0 = SubResource("Mat_skin")
+
+[node name="Hair" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.16, -0.02)
+mesh = SubResource("Mesh_hair")
+surface_material_override/0 = SubResource("Mat_hair")
+
+[node name="EyeL" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, -0.05, 1.07, -0.12)
+mesh = SubResource("Mesh_head")
+surface_material_override/0 = SubResource("Mat_hair")
+
+[node name="EyeR" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 0.05, 1.07, -0.12)
+mesh = SubResource("Mesh_head")
+surface_material_override/0 = SubResource("Mat_hair")
+
+[node name="Basket" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.36, 0.62, 0.02)
+mesh = SubResource("Mesh_basket")
+surface_material_override/0 = SubResource("Mat_basket")
+
+[node name="ShoeL" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.05, -0.04)
+mesh = SubResource("Mesh_shoe")
+surface_material_override/0 = SubResource("Mat_shoe")
+
+[node name="ShoeR" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.05, -0.04)
+mesh = SubResource("Mesh_shoe")
+surface_material_override/0 = SubResource("Mat_shoe")
+
+[node name="CameraPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
+spring_length = 4.4
+margin = 0.25
+collision_mask = 1
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot/SpringArm3D"]
+current = true
+fov = 56.0

@@ -34,7 +34,7 @@ func _process(delta: float) -> void:
 	rotation.y = yaw
 
 	# Smoothly follow target position
-	var target_pos = target.global_position + offset.rotated(Basis().rotated(Vector3.UP, yaw))
+	var target_pos = target.global_position + offset.rotated(Vector3.UP, yaw)
 	global_position = global_position.lerp(target_pos, smooth_speed * delta)
 
 	# Always look at target
