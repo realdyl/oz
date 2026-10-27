@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://cn345mrfhbnpi"]
+
+[ext_resource type="Script" uid="uid://ctxlp75x3yjxs" path="res://actors/dorothy/player_controller.gd" id="1_abc123"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_1"]
+
+[node name="Player" type="CharacterBody3D" unique_id=249533494]
+script = ExtResource("1_abc123")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=149941779]
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=339138577]
+mesh = SubResource("CylinderMesh_1")
+
+[node name="CameraPivot" type="Node3D" parent="." unique_id=333484095]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)

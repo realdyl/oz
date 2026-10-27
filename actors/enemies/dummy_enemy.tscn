@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://cphlseyc2h8nm"]
+
+[ext_resource type="Script" uid="uid://dohw88msuxtx7" path="res://actors/enemies/dummy_enemy.gd" id="1_def456"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(1, 2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+size = Vector3(1, 2, 1)
+
+[node name="DummyEnemy" type="CharacterBody3D" unique_id=453240009]
+script = ExtResource("1_def456")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2004120385]
+shape = SubResource("BoxShape3D_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=656174914]
+mesh = SubResource("BoxMesh_1")

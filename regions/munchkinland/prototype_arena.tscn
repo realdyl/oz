@@ -1,0 +1,65 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://actors/dorothy/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://actors/enemies/dummy_enemy.tscn" id="2_enemy"]
+[ext_resource type="Script" path="res://systems/camera_manager.gd" id="3_cam_script"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_1"]
+size = Vector2(100, 100)
+
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_1"]
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 1
+ambient_light_source = 1
+ambient_light_color = Color(0.7, 0.8, 1, 1)
+ambient_light_energy = 1.0
+background_sky_color = Color(0.4, 0.7, 0.9, 1)
+tonemap_mode = 2
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.3, 0.6, 0.9, 1)
+sky_horizon_color = Color(0.6, 0.8, 1, 1)
+ground_bottom_color = Color(0.2, 0.3, 0.4, 1)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_mode = 1
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(1, 1, 1)
+
+[node name="PrototypeArena" type="Node3D"]
+
+[node name="Floor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("WorldBoundaryShape3D_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("PlaneMesh_1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.8, 0.6, 0, -0.6, 0.8, 0, 10, 0)
+light_energy = 2.0
+shadow_enabled = true
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="Enemy1" parent="." instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, -5)
+
+[node name="Enemy2" parent="." instance=ExtResource("2_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1, -5)
+
+[node name="CameraManager" type="Node3D" parent="."]
+script = ExtResource("3_cam_script")
+target = NodePath("Player")
+
+[node name="Camera3D" type="Camera3D" parent="CameraManager"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)

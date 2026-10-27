@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://c0hpv62sd5rge"]
+
+[ext_resource type="Script" uid="uid://8svybgefoyun" path="res://actors/companions/companion_controller.gd" id="1_comp"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_1"]
+
+[node name="Scarecrow" type="CharacterBody3D" unique_id=711339557]
+script = ExtResource("1_comp")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1561313138]
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=586462647]
+mesh = SubResource("CylinderMesh_1")
