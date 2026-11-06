@@ -58,6 +58,9 @@ func _ready() -> void:
 	fade.visible = true
 	phase = Phase.NEED_BASKET
 	_fade_t = -1.0
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("on_level_start"):
+		lt.on_level_start("Kansas · the farmyard")
 
 func _stabilize_lighting() -> void:
 	# Recent pad/barn mesh spam + scaled Ground made shadow maps swim while walking.
@@ -94,6 +97,70 @@ func _build_farm_layout() -> void:
 	_add_cellar_door(player.global_position + Vector3(-3.0, 0, 5.5))
 	_add_clothesline(player.global_position + Vector3(6, 0, -4))
 	_add_windmill_ghost(player.global_position + Vector3(-20, 0, -8))
+	_add_map_border(28.0, 28.0)
+
+func _add_map_border(half_x: float, half_z: float) -> void:
+	# Grey Kansas edge — solid rails + dead trees so the farm doesn't drop into void.
+	var h := 2.8
+	var thick := 2.0
+	var col := Color(0.28, 0.28, 0.3)
+	var specs := [
+		{"pos": Vector3(0, h * 0.5, -half_z), "size": Vector3(half_x * 2.0 + thick * 2.0, h, thick)},
+		{"pos": Vector3(0, h * 0.5, half_z), "size": Vector3(half_x * 2.0 + thick * 2.0, h, thick)},
+		{"pos": Vector3(-half_x, h * 0.5, 0), "size": Vector3(thick, h, half_z * 2.0)},
+		{"pos": Vector3(half_x, h * 0.5, 0), "size": Vector3(thick, h, half_z * 2.0)},
+	]
+	for s in specs:
+		var body := StaticBody3D.new()
+		body.name = "MapBorder"
+		add_child(body)
+		body.global_position = s["pos"]
+		body.collision_layer = 1
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = s["size"]
+		mi.mesh = box
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = col
+		mat.roughness = 0.95
+		mi.material_override = mat
+		body.add_child(mi)
+		var c := CollisionShape3D.new()
+		var sh := BoxShape3D.new()
+		sh.size = s["size"]
+		c.shape = sh
+		body.add_child(c)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 191
+	for i in 36:
+		var t := float(i) / 36.0 * TAU
+		var p := Vector3(
+			cos(t) * (half_x - 1.2 + rng.randf_range(-0.4, 0.4)),
+			0.0,
+			sin(t) * (half_z - 1.2 + rng.randf_range(-0.4, 0.4))
+		)
+		var tree := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		var th := rng.randf_range(1.4, 2.4)
+		cyl.top_radius = 0.08
+		cyl.bottom_radius = 0.14
+		cyl.height = th
+		tree.mesh = cyl
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.32, 0.32, 0.34)
+		tree.material_override = tm
+		add_child(tree)
+		tree.global_position = p + Vector3(0, th * 0.5, 0)
+		var canopy := MeshInstance3D.new()
+		var sph := SphereMesh.new()
+		sph.radius = rng.randf_range(0.7, 1.2)
+		sph.height = sph.radius * 1.5
+		canopy.mesh = sph
+		var cm := StandardMaterial3D.new()
+		cm.albedo_color = Color(0.35, 0.35, 0.38)
+		canopy.material_override = cm
+		add_child(canopy)
+		canopy.global_position = p + Vector3(0, th + 0.5, 0)
 
 func _add_ground_pad(at: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -300,7 +367,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 func _skip_to_munchkin() -> void:
-	get_tree().change_scene_to_file(MUNCHKIN_SCENE)
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(MUNCHKIN_SCENE, "The hourglass turns…", "Munchkinland · the landing")
+	else:
+		get_tree().change_scene_to_file(MUNCHKIN_SCENE)
 
 func _process(delta: float) -> void:
 	_update_compass()
@@ -332,7 +403,12 @@ func _process(delta: float) -> void:
 		_fade_t += delta * 0.55
 		fade.color = Color(1, 1, 1, clampf(_fade_t, 0.0, 1.0))
 		if _fade_t >= 1.05:
-			get_tree().change_scene_to_file(MUNCHKIN_SCENE)
+			phase = Phase.STRIKE # freeze fade loop
+			var lt2 := get_node_or_null("/root/LevelTransition")
+			if lt2 and lt2.has_method("go_to"):
+				lt2.go_to(MUNCHKIN_SCENE, "The house lands — the hourglass turns…", "Munchkinland · color returns")
+			else:
+				get_tree().change_scene_to_file(MUNCHKIN_SCENE)
 
 	if _near_shutter and phase == Phase.NEED_SHUTTER:
 		hud.set_prompt("E  —  Latch the farmhouse shutter")

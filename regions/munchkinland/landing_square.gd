@@ -52,13 +52,15 @@ var _near_lion: bool = false
 var _near_tin: bool = false
 var _near_door: Area3D = null
 var _inside_building: bool = false
-var _outside_return: Vector3 = Vector3.ZERO
+var _door_busy: bool = false
 var _active_interior: Area3D = null
+var _outside_return: Vector3 = Vector3.ZERO
 var _cam_out_len: float = 4.8
 var _cam_out_fov: float = 58.0
 var _cam_out_pitch: float = -18.0
 var compass: Label
 var _sign_sway: Array = []  # MeshInstance3D boards that gently sway
+var _open_road_sting_done: bool = false
 
 func _enter_tree() -> void:
 	var p := get_node_or_null("/root/Party")
@@ -83,6 +85,9 @@ func _ready() -> void:
 	_ensure_compass()
 	_set_beat(Beat.SHOES)
 	_refresh_roster()
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("on_level_start"):
+		lt.on_level_start("Munchkinland · the landing")
 
 func _fix_world_text() -> void:
 	# Label3D with 180 yaw / negative basis reads mirrored from the approach path.
@@ -142,6 +147,87 @@ func _expand_world() -> void:
 	_scatter_grass(Vector3(0, 0, 0), 40.0, 140)
 	_scatter_grass(Vector3(-42, 0.45, 4), 8.0, 50)
 	_scatter_grass(Vector3(44, 0.0, 4), 12.0, 60)
+	# Soft story border — thicket + solid rails so you never fall into the void.
+	_add_map_border(62.0, 58.0)
+
+func _add_map_border(half_x: float, half_z: float) -> void:
+	# Continuous solid rails + shrub/tree dressing. Corners closed so pads can't leak.
+	var h := 3.2
+	var thick := 2.4
+	var col := Color(0.18, 0.32, 0.16)
+	var specs := [
+		{"pos": Vector3(0, h * 0.5, -half_z), "size": Vector3(half_x * 2.0 + thick * 2.0, h, thick)},
+		{"pos": Vector3(0, h * 0.5, half_z), "size": Vector3(half_x * 2.0 + thick * 2.0, h, thick)},
+		{"pos": Vector3(-half_x, h * 0.5, 0), "size": Vector3(thick, h, half_z * 2.0)},
+		{"pos": Vector3(half_x, h * 0.5, 0), "size": Vector3(thick, h, half_z * 2.0)},
+	]
+	for s in specs:
+		var body := StaticBody3D.new()
+		body.name = "MapBorder"
+		add_child(body)
+		body.global_position = s["pos"]
+		body.collision_layer = 1
+		body.collision_mask = 0
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = s["size"]
+		mi.mesh = box
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = col
+		mat.roughness = 0.95
+		mi.material_override = mat
+		body.add_child(mi)
+		var c := CollisionShape3D.new()
+		var sh := BoxShape3D.new()
+		sh.size = s["size"]
+		c.shape = sh
+		body.add_child(c)
+	# Tree/shrub ring just inside the rail for readable “end of the land.”
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 404
+	for i in 56:
+		var t := float(i) / 56.0 * TAU
+		var r := minf(half_x, half_z) - 1.2 + rng.randf_range(-0.6, 0.8)
+		var p := Vector3(cos(t) * (half_x - 1.4 + rng.randf_range(-0.5, 0.5)), 0.0, sin(t) * (half_z - 1.4 + rng.randf_range(-0.5, 0.5)))
+		_add_border_tree(p, rng)
+
+func _add_border_tree(at: Vector3, rng: RandomNumberGenerator) -> void:
+	var root := Node3D.new()
+	add_child(root)
+	root.global_position = at
+	var trunk := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	var th := rng.randf_range(1.6, 2.8)
+	cyl.top_radius = 0.12
+	cyl.bottom_radius = 0.18
+	cyl.height = th
+	trunk.mesh = cyl
+	var tm := StandardMaterial3D.new()
+	tm.albedo_color = Color(0.28, 0.18, 0.1)
+	trunk.material_override = tm
+	root.add_child(trunk)
+	trunk.position = Vector3(0, th * 0.5, 0)
+	var canopy := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	var cr := rng.randf_range(0.9, 1.6)
+	sph.radius = cr
+	sph.height = cr * 1.6
+	canopy.mesh = sph
+	var cm := StandardMaterial3D.new()
+	cm.albedo_color = Color(0.22, 0.48, 0.26).lerp(Color(0.35, 0.55, 0.2), rng.randf())
+	cm.roughness = 0.9
+	canopy.material_override = cm
+	root.add_child(canopy)
+	canopy.position = Vector3(0, th + cr * 0.35, 0)
+	# Low shrub collision bump so bodies don't clip the trunk line.
+	var bump := StaticBody3D.new()
+	root.add_child(bump)
+	var bc := CollisionShape3D.new()
+	var bsh := BoxShape3D.new()
+	bsh.size = Vector3(1.1, 1.4, 1.1)
+	bc.shape = bsh
+	bc.position = Vector3(0, 0.7, 0)
+	bump.add_child(bc)
 
 func _add_ground_pad(at: Vector3, size: Vector3, col: Color = Color(0.45, 0.62, 0.35)) -> void:
 	var body := StaticBody3D.new()
@@ -627,21 +713,10 @@ func _on_interior_exit(door: Area3D, body: Node3D) -> void:
 	if body == _interact_actor() and _inside_building and _active_interior == door:
 		_near_door = door
 
-func _set_building_walls_solid(building: Node, solid: bool) -> void:
-	if building == null:
-		return
-	for n in building.find_children("*", "CollisionShape3D", true, false):
-		var cs := n as CollisionShape3D
-		if cs == null:
-			continue
-		if cs.get_parent() is Area3D:
-			continue
-		# Keep exterior shell solid outside; mute while inside so camera + body can move.
-		var path_s := str(cs.get_path())
-		if "ExteriorShell" in path_s or "InteriorFitout" in path_s:
-			cs.disabled = not solid if "ExteriorShell" in path_s else false
-			continue
-		cs.disabled = not solid
+func _set_building_walls_solid(_building: Node, _solid: bool) -> void:
+	# Walls stay solid always. Only DoorSeal opens for E enter/exit — never soft-walls.
+	# (Older builds disabled ExteriorShell while inside, which let you walk out through walls.)
+	pass
 
 func _set_interior_view(building: Node, inside: bool) -> void:
 	if building == null:
@@ -692,6 +767,8 @@ func _set_indoor_camera(inside: bool) -> void:
 		cam.fov = _cam_out_fov
 
 func _try_use_door() -> void:
+	if _door_busy:
+		return
 	var door := _near_door
 	if door == null and _inside_building:
 		door = _active_interior
@@ -700,45 +777,110 @@ func _try_use_door() -> void:
 	var lead := _interact_actor()
 	if lead == null:
 		return
+	_door_busy = true
 	if _inside_building:
-		var ext: Vector3 = door.get_meta("exterior_pos")
-		_teleport_party_to(ext)
+		await _party_door_procession(door, false)
 		_inside_building = false
 		_active_interior = null
 		_near_door = null
-		var building = door.get_meta("building") if door.has_meta("building") else null
-		_set_building_walls_solid(building, true)
-		_set_door_seal_open(door, false)
-		_set_interior_view(building, false)
 		hud.set_prompt("Left the building.")
 	else:
 		_outside_return = lead.global_position
-		var inn: Vector3 = door.get_meta("interior_pos")
-		_teleport_party_to(inn)
+		await _party_door_procession(door, true)
 		_inside_building = true
 		_active_interior = door
 		_near_door = door
-		var building2 = door.get_meta("building") if door.has_meta("building") else null
-		_set_building_walls_solid(building2, false)
-		_set_door_seal_open(door, true)
-		_set_interior_view(building2, true)
 		var title := str(door.get_meta("title"))
-		hud.set_prompt("Inside %s — look around · E exit" % title)
+		hud.set_prompt("Inside %s — walls hold · E at door to leave" % title)
+	_door_busy = false
 
-func _teleport_party_to(at: Vector3) -> void:
-	# Move Lead + free followers only (never yank pole/brush/rusted companions).
+func _party_bodies_for_door() -> Array:
+	# Lead first, then free followers (skip pole/brush/rusted).
 	var bodies: Array = []
 	var lead := _interact_actor()
 	if lead:
 		bodies.append(lead)
-	if Party:
-		for id in [Party.ID_DOROTHY, Party.ID_SCARECROW, Party.ID_LION, Party.ID_TINMAN]:
-			if not Party.is_unlocked(id) or not Party.is_present(id):
+	if Party == null:
+		return bodies
+	for id in [Party.ID_DOROTHY, Party.ID_SCARECROW, Party.ID_LION, Party.ID_TINMAN]:
+		if not Party.is_unlocked(id) or not Party.is_present(id):
+			continue
+		var m: CharacterBody3D = Party.member(id)
+		if m == null or not is_instance_valid(m) or m in bodies:
+			continue
+		if m.has_method("can_take_lead") and id != Party.ID_DOROTHY and not m.can_take_lead():
+			continue
+		bodies.append(m)
+	return bodies
+
+func _party_door_procession(door: Area3D, entering: bool) -> void:
+	## Staggered walk-through so the party is seen entering/leaving — not a pop teleport.
+	var building = door.get_meta("building") if door.has_meta("building") else null
+	var inn: Vector3 = door.get_meta("interior_pos")
+	var ext: Vector3 = door.get_meta("exterior_pos")
+	var mid: Vector3 = ext.lerp(inn, 0.42)
+	mid.y = maxf(inn.y, ext.y)
+	var bodies := _party_bodies_for_door()
+	_set_door_seal_open(door, true)
+	if entering:
+		if hud:
+			hud.set_prompt("Entering…")
+		for i in bodies.size():
+			var body: Node3D = bodies[i] as Node3D
+			if body == null:
 				continue
-			var m: CharacterBody3D = Party.member(id)
-			if m == null or not is_instance_valid(m) or m in bodies:
+			var slot := Vector3(float(i % 3) * 0.5 - 0.5, 0.0, float(i / 3) * 0.45)
+			var dest := inn + slot
+			if i == 0:
+				# Lead crosses threshold first, then swap to interior view.
+				await _walk_body_door(body, body.global_position, mid, dest, 0.0)
+				_set_interior_view(building, true)
+			else:
+				await _walk_body_door(body, body.global_position, mid, dest, 0.18)
+		# Seal shut while inside — E is the only exit (walls stay solid).
+		_set_door_seal_open(door, false)
+	else:
+		if hud:
+			hud.set_prompt("Leaving…")
+		for i in bodies.size():
+			var body2: Node3D = bodies[i] as Node3D
+			if body2 == null:
 				continue
-			bodies.append(m)
+			var slot2 := Vector3(float(i % 3) * 0.55 - 0.55, 0.0, float(i / 3) * 0.5)
+			var dest2 := ext + slot2
+			if i == 0:
+				await _walk_body_door(body2, body2.global_position, mid, dest2, 0.0)
+				_set_interior_view(building, false)
+			else:
+				await _walk_body_door(body2, body2.global_position, mid, dest2, 0.18)
+		_set_door_seal_open(door, false)
+
+func _walk_body_door(body: Node3D, from: Vector3, mid: Vector3, to: Vector3, delay: float) -> void:
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	if body == null or not is_instance_valid(body):
+		return
+	if body is CharacterBody3D:
+		(body as CharacterBody3D).velocity = Vector3.ZERO
+	# Face travel direction while crossing.
+	var face := to - from
+	face.y = 0.0
+	if face.length() > 0.05 and body.get("visual"):
+		var vis = body.get("visual")
+		if vis is Node3D:
+			(vis as Node3D).rotation.y = atan2(-face.normalized().x, -face.normalized().z)
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	body.global_position = from
+	tw.tween_property(body, "global_position", mid, 0.32)
+	tw.tween_property(body, "global_position", to, 0.38)
+	await tw.finished
+	if body is CharacterBody3D:
+		(body as CharacterBody3D).velocity = Vector3.ZERO
+
+func _teleport_party_to(at: Vector3) -> void:
+	# Instant fallback (sims / rescue). Prefer _party_door_procession for play.
+	var bodies := _party_bodies_for_door()
 	var i := 0
 	for b in bodies:
 		var body := b as Node3D
@@ -795,6 +937,128 @@ func _spawn_party_world() -> void:
 	_add_way_marker(tinman.global_position + Vector3(3.0, 0.0, 0.0), Color(0.7, 0.85, 0.95), "TIN MAN", tinman.global_position)
 	# Tree past Tin so FREE_TIN is reachable first.
 	_spawn_tree_gate(Vector3(-50.0, 0.0, 4.0))
+	_spawn_story_witches()
+
+func _spawn_story_witches() -> void:
+	# Vault/book-true: Locasta (Good North) greets early; East witch is already dead under the house.
+	# Wicked West is a later boss — only a distant omen on L2, not fightable yet.
+	_spawn_locasta(Vector3(6.0, 0.08, 10.0))
+	_spawn_west_omen(Vector3(-55.0, 0.5, -40.0))
+
+func _spawn_locasta(at: Vector3) -> void:
+	var root := CharacterBody3D.new()
+	root.name = "Locasta"
+	root.add_to_group("story_npc")
+	root.collision_layer = 0
+	root.collision_mask = 0
+	add_child(root)
+	root.global_position = at
+	var hip := Node3D.new()
+	root.add_child(hip)
+	hip.position = Vector3(0, 0.95, 0)
+	var robe := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.22
+	cyl.bottom_radius = 0.38
+	cyl.height = 1.5
+	robe.mesh = cyl
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(0.55, 0.72, 0.95)
+	rm.emission_enabled = true
+	rm.emission = Color(0.35, 0.55, 0.9)
+	rm.emission_energy_multiplier = 0.45
+	robe.material_override = rm
+	hip.add_child(robe)
+	robe.position = Vector3(0, -0.15, 0)
+	var head := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 0.18
+	sph.height = 0.36
+	head.mesh = sph
+	var hm := StandardMaterial3D.new()
+	hm.albedo_color = Color(0.92, 0.78, 0.68)
+	head.material_override = hm
+	hip.add_child(head)
+	head.position = Vector3(0, 0.72, 0)
+	var hat := MeshInstance3D.new()
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.02
+	cone.bottom_radius = 0.28
+	cone.height = 0.45
+	hat.mesh = cone
+	var hatm := StandardMaterial3D.new()
+	hatm.albedo_color = Color(0.95, 0.85, 0.35)
+	hatm.emission_enabled = true
+	hatm.emission = Color(0.9, 0.75, 0.2)
+	hatm.emission_energy_multiplier = 0.6
+	hat.material_override = hatm
+	hip.add_child(hat)
+	hat.position = Vector3(0, 1.05, 0)
+	var lab := Label3D.new()
+	lab.text = "LOCASTA\nGood Witch of the North"
+	lab.font_size = 42
+	lab.pixel_size = 0.012
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(0.85, 0.92, 1.0)
+	lab.outline_size = 6
+	lab.outline_modulate = Color(0.05, 0.1, 0.2)
+	root.add_child(lab)
+	lab.position = Vector3(0, 2.6, 0)
+	var area := Area3D.new()
+	area.collision_layer = 0
+	area.collision_mask = 2
+	area.monitoring = true
+	var col := CollisionShape3D.new()
+	var sh := SphereShape3D.new()
+	sh.radius = 3.2
+	col.shape = sh
+	area.add_child(col)
+	root.add_child(area)
+	area.body_entered.connect(func(b):
+		if _is_party_body(b) and hud:
+			hud.set_prompt("Locasta: \"The Shoes chose you. Free the bound, then the West wind will notice.\"")
+	)
+	_add_way_marker(at + Vector3(-3.0, 0, 0), Color(0.7, 0.85, 1.0), "LOCASTA", at)
+
+func _spawn_west_omen(at: Vector3) -> void:
+	# Distant smoke plume + locked sign — boss later (Winkie / after Tin arc).
+	var root := Node3D.new()
+	root.name = "WestWitchOmen"
+	add_child(root)
+	root.global_position = at
+	var plume := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 2.4
+	sph.height = 4.5
+	plume.mesh = sph
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = Color(0.12, 0.08, 0.14, 0.55)
+	pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pm.emission_enabled = true
+	pm.emission = Color(0.35, 0.05, 0.08)
+	pm.emission_energy_multiplier = 1.2
+	plume.material_override = pm
+	root.add_child(plume)
+	plume.position = Vector3(0, 3.2, 0)
+	var lab := Label3D.new()
+	lab.text = "WEST WIND\n(not yet)"
+	lab.font_size = 48
+	lab.pixel_size = 0.014
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(0.85, 0.35, 0.3)
+	lab.outline_size = 8
+	lab.outline_modulate = Color(0.05, 0, 0)
+	root.add_child(lab)
+	lab.position = Vector3(0, 6.0, 0)
+	# Soft push-back so you can't stroll into the unfinished boss.
+	var wall := StaticBody3D.new()
+	root.add_child(wall)
+	var c := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(8, 4, 8)
+	c.shape = box
+	c.position = Vector3(0, 2, 0)
+	wall.add_child(c)
 
 func _add_way_marker(at: Vector3, col: Color, label: String, toward: Vector3 = Vector3.ZERO) -> void:
 	# Signpost post + board + optional 3D arrow that points at the real target (no lying text arrows).
@@ -1612,6 +1876,11 @@ func _set_beat(next: Beat) -> void:
 		Beat.OPEN_ROAD:
 			hud.set_objective("Road open. Party bonded. Tab cycles Lead — whole party follows.")
 			hud.set_prompt("Act 1 spine complete (prototype).")
+			if not _open_road_sting_done:
+				_open_road_sting_done = true
+				var lt3 := get_node_or_null("/root/LevelTransition")
+				if lt3 and lt3.has_method("play_exit"):
+					lt3.play_exit("Road open — the hourglass rests…")
 	_refresh_roster()
 
 func _update_proximity_prompt() -> void:

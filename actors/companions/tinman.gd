@@ -175,30 +175,28 @@ func _try_step(dir: Vector3) -> void:
 
 func _axe() -> void:
 	axe_timer = axe_cooldown
-	kit_lock = 0.32
+	kit_lock = 0.42
 	var forward := -visual.global_transform.basis.z
 	forward.y = 0.0
 	if forward.length() < 0.01:
 		forward = -global_transform.basis.z
 	forward = forward.normalized()
-	# Heavy silver/steel slash
-	CombatFx.slash_box(self, global_position, forward, Color(0.75, 0.85, 0.95), Vector3(1.1, 0.28, 1.5), 0.2)
-	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.9, 0) + forward * 1.1, Color(0.85, 0.9, 1.0), 0.45, 0.15)
-	CombatFx.label(self, global_position, "AXE", Color(0.8, 0.9, 1.0))
-	# Swing lean
-	if visual:
-		var tw := create_tween()
-		tw.tween_property(visual, "rotation:x", -0.45, 0.08)
-		tw.tween_property(visual, "rotation:x", 0.0, 0.18)
+	# Arm/axe chop on the body mesh — primary read.
+	if body and body.has_method("play_axe_swing"):
+		body.play_axe_swing()
+	# Arc slash trail that sweeps with the arm (not a body-centered white pop).
+	var swing_origin := global_position + Vector3(0, 1.05, 0) + forward * 0.35
+	CombatFx.axe_arc(self, swing_origin, forward, Color(0.7, 0.82, 0.95), 0.38)
+	CombatFx.label(self, global_position + Vector3(0, 0.2, 0), "AXE", Color(0.8, 0.9, 1.0))
 
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
-	shape.radius = 0.7
+	shape.radius = 0.75
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = shape
 	params.collision_mask = 4
 	params.exclude = [get_rid()]
-	params.transform = Transform3D(Basis(), global_position + Vector3(0, 0.85, 0) + forward * 1.25)
+	params.transform = Transform3D(Basis(), global_position + Vector3(0, 0.85, 0) + forward * 1.35)
 	var connected := false
 	for hit in space.intersect_shape(params, 6):
 		var collider: Object = hit.collider

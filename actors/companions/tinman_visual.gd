@@ -115,6 +115,24 @@ func _build() -> void:
 	_leg_l = _leg(_hip, true, tin)
 	_leg_r = _leg(_hip, false, tin)
 
+func play_axe_swing() -> void:
+	## Readable overhead chop on the right (axe) arm — not a torso headbutt.
+	if _arm_r == null or rusted:
+		return
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_SINE)
+	# Wind-up: axe back and high.
+	tw.tween_property(_arm_r, "rotation", Vector3(-1.35, 0.15, 0.55), 0.11)
+	# Strike: axe arcs down/forward through the target plane.
+	tw.tween_property(_arm_r, "rotation", Vector3(1.25, -0.35, -0.25), 0.13).set_trans(Tween.TRANS_BACK)
+	# Recover.
+	tw.tween_property(_arm_r, "rotation", Vector3.ZERO, 0.22)
+	if _hip:
+		var tw2 := create_tween()
+		tw2.tween_property(_hip, "rotation:y", -0.18, 0.12)
+		tw2.tween_property(_hip, "rotation:y", 0.12, 0.12)
+		tw2.tween_property(_hip, "rotation:y", 0.0, 0.18)
+
 func _arm(parent: Node3D, left: bool, tin: Material) -> Node3D:
 	var sign := -1.0 if left else 1.0
 	var root := Node3D.new()

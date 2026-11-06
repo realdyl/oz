@@ -89,6 +89,45 @@ func ring(host: Node3D, pos: Vector3, color: Color, radius: float = 2.0, life: f
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, life)
 	tw.tween_callback(mi.queue_free)
 
+func axe_arc(host: Node3D, origin: Vector3, forward: Vector3, color: Color = Color(0.75, 0.85, 0.95), life: float = 0.36) -> void:
+	## Sweeping axe blade trail — reads as a swing, not a body flash.
+	var root := _host_root(host)
+	if root == null:
+		return
+	var f := forward
+	f.y = 0.0
+	if f.length() < 0.01:
+		f = Vector3(0, 0, -1)
+	f = f.normalized()
+	var right := f.cross(Vector3.UP).normalized()
+	# Start raised behind the shoulder, end low in front.
+	var start := origin - f * 0.2 + right * 0.15 + Vector3(0, 0.85, 0)
+	var end := origin + f * 1.45 - right * 0.1 + Vector3(0, -0.15, 0)
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.12, 0.08, 1.35)
+	mi.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.85)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 2.4
+	mi.material_override = mat
+	root.add_child(mi)
+	mi.global_position = start
+	mi.look_at(start + f, Vector3.UP)
+	mi.rotate_object_local(Vector3.RIGHT, -0.9)
+	var tw := host.get_tree().create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "global_position", end, life * 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(mi, "rotation:x", mi.rotation.x + 1.6, life * 0.55)
+	tw.chain().tween_property(mat, "albedo_color:a", 0.0, life * 0.45)
+	tw.chain().tween_callback(mi.queue_free)
+	# Thin secondary edge spark at contact plane.
+	slash_box(host, origin + f * 0.2, f, color, Vector3(1.25, 0.1, 0.35), life * 0.4)
+
 func label(host: Node3D, pos: Vector3, text: String, color: Color = Color.WHITE) -> void:
 	var root := _host_root(host)
 	if root == null:
