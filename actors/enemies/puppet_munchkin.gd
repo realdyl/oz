@@ -1,5 +1,6 @@
 extends CharacterBody3D
 
+
 ## Cursed Munchkin puppet / rogue. Kick staggers. Scarecrow confuses. Lion fears.
 ## Targets current Lead (Bond), not Dorothy only.
 
@@ -183,9 +184,15 @@ func _physics_process(delta: float) -> void:
 						spd = base * 1.65
 					elif dist > 7.0:
 						spd = base * 1.3
-					velocity.x = dir.x * spd
-					velocity.z = dir.z * spd
-					rotation.y = atan2(-dir.x, -dir.z)
+					var steered: Vector3 = Locomotion.steer(self, dir, 1.35)
+					if steered.length() > 0.05:
+						velocity.x = steered.x * spd
+						velocity.z = steered.z * spd
+						rotation.y = atan2(-steered.x, -steered.z)
+						Locomotion.try_step(self, steered, 1.0)
+					else:
+						velocity.x = move_toward(velocity.x, 0.0, 10.0 * delta)
+						velocity.z = move_toward(velocity.z, 0.0, 10.0 * delta)
 			State.TELEGRAPH:
 				velocity.x = 0.0
 				velocity.z = 0.0
@@ -371,9 +378,15 @@ func _run_sneak(delta: float) -> void:
 		spd = maxf(spd, sneak_speed * 1.7)
 	elif dist > 8.0:
 		spd = maxf(spd, sneak_speed * 1.25)
-	velocity.x = dir.x * spd
-	velocity.z = dir.z * spd
-	rotation.y = atan2(-dir.x, -dir.z)
+	var steered: Vector3 = Locomotion.steer(self, dir, 1.25)
+	if steered.length() > 0.05:
+		velocity.x = steered.x * spd
+		velocity.z = steered.z * spd
+		rotation.y = atan2(-steered.x, -steered.z)
+		Locomotion.try_step(self, steered, 1.0)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, 8.0 * delta)
+		velocity.z = move_toward(velocity.z, 0.0, 8.0 * delta)
 	if visual:
 		visual.rotation.x = lerp_angle(visual.rotation.x, 0.08, 4.0 * delta)
 

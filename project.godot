@@ -19,6 +19,8 @@ config/features=PackedStringArray("4.8")
 Party="*res://systems/party_manager.gd"
 CombatFx="*res://systems/combat_fx.gd"
 LevelTransition="*res://systems/level_transition.gd"
+DialogueUI="*res://systems/dialogue_ui.gd"
+Locomotion="*res://systems/locomotion_util.gd"
 
 [display]
 

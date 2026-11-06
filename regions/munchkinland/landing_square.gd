@@ -271,7 +271,7 @@ func _add_ground_pad(at: Vector3, size: Vector3, col: Color = Color(0.45, 0.62, 
 	body.add_child(c)
 
 func _add_block_terrace(at: Vector3, size: Vector3, steps: int, approach: Vector3 = Vector3(0, 0, 1)) -> void:
-	# Minecraft-ish stacked boxes with a solid approach ramp (default +Z; Tin uses +X from square).
+	# Stacked pads + long shallow stair run so any Lead climbs without blink.
 	var h := size.y
 	for s in range(steps):
 		var layer := StaticBody3D.new()
@@ -293,26 +293,27 @@ func _add_block_terrace(at: Vector3, size: Vector3, steps: int, approach: Vector
 		col.shape = sh
 		layer.add_child(col)
 	var dir := approach.normalized()
-	var ramp_steps := 6
 	var top_h := h * float(steps)
+	# Many shallow treads (~0.18–0.22 rise) spanning a longer approach.
+	var ramp_steps := maxi(10, int(ceil(top_h / 0.2)))
 	for i in ramp_steps:
 		var t := float(i + 1) / float(ramp_steps)
 		var ramp := StaticBody3D.new()
 		add_child(ramp)
-		var rh := maxf(top_h * t, 0.12)
-		# March outward from terrace face so you climb toward the pad.
-		var outward := (size.x if absf(dir.x) > absf(dir.z) else size.z) * 0.5 + 0.4 + float(ramp_steps - i) * 0.5
+		var rh := maxf(top_h * t, 0.1)
+		var tread := 0.55
+		var outward := (size.x if absf(dir.x) > absf(dir.z) else size.z) * 0.5 + 0.25 + float(ramp_steps - i) * tread
 		var pos := at + dir * outward + Vector3(0, rh * 0.5, 0)
 		ramp.global_position = pos
 		var mi2 := MeshInstance3D.new()
 		var box2 := BoxMesh.new()
 		if absf(dir.x) > absf(dir.z):
-			box2.size = Vector3(0.5, rh, size.z * 0.55)
+			box2.size = Vector3(tread + 0.08, rh, size.z * 0.7)
 		else:
-			box2.size = Vector3(size.x * 0.55, rh, 0.5)
+			box2.size = Vector3(size.x * 0.7, rh, tread + 0.08)
 		mi2.mesh = box2
 		var mat2 := StandardMaterial3D.new()
-		mat2.albedo_color = Color(0.5, 0.42, 0.28)
+		mat2.albedo_color = Color(0.52, 0.44, 0.3)
 		mi2.material_override = mat2
 		ramp.add_child(mi2)
 		var c2 := CollisionShape3D.new()
@@ -320,21 +321,21 @@ func _add_block_terrace(at: Vector3, size: Vector3, steps: int, approach: Vector
 		sh2.size = box2.size
 		c2.shape = sh2
 		ramp.add_child(c2)
-	# Extra low step lip at terrace edge facing approach (easier auto-step).
+	# Low lip at terrace edge.
 	var lip := StaticBody3D.new()
 	add_child(lip)
-	var lip_h := 0.28
-	var lip_out := (size.x if absf(dir.x) > absf(dir.z) else size.z) * 0.5 + 0.15
+	var lip_h := 0.22
+	var lip_out := (size.x if absf(dir.x) > absf(dir.z) else size.z) * 0.5 + 0.12
 	lip.global_position = at + dir * lip_out + Vector3(0, lip_h * 0.5, 0)
 	var lmi := MeshInstance3D.new()
 	var lbox := BoxMesh.new()
 	if absf(dir.x) > absf(dir.z):
-		lbox.size = Vector3(0.4, lip_h, size.z * 0.7)
+		lbox.size = Vector3(0.4, lip_h, size.z * 0.75)
 	else:
-		lbox.size = Vector3(size.x * 0.7, lip_h, 0.4)
+		lbox.size = Vector3(size.x * 0.75, lip_h, 0.4)
 	lmi.mesh = lbox
 	var lmat := StandardMaterial3D.new()
-	lmat.albedo_color = Color(0.45, 0.38, 0.25)
+	lmat.albedo_color = Color(0.48, 0.4, 0.28)
 	lmi.material_override = lmat
 	lip.add_child(lmi)
 	var lc := CollisionShape3D.new()
@@ -488,26 +489,48 @@ func _build_interior_fitout(parent: Node3D, half_w: float, half_d: float, wall_h
 	_add_decor_box(fit, Vector3(half_w - 0.08, wall_h * 0.5, 0), Vector3(0.08, wall_h - 0.2, half_d * 2.0 - 0.3), inner)
 	_add_decor_box(fit, Vector3(-(half_w * 0.55), wall_h * 0.5, half_d - 0.08), Vector3(half_w * 0.7, wall_h - 0.2, 0.08), inner)
 	_add_decor_box(fit, Vector3((half_w * 0.55), wall_h * 0.5, half_d - 0.08), Vector3(half_w * 0.7, wall_h - 0.2, 0.08), inner)
-	_add_decor_box(fit, Vector3(-2.2, 0.55, -1.4), Vector3(2.2, 1.1, 0.9), Color(0.4, 0.25, 0.16))
-	_add_decor_box(fit, Vector3(-2.2, 1.15, -1.4), Vector3(1.8, 0.08, 0.7), Color(0.85, 0.75, 0.55))
-	_add_decor_box(fit, Vector3(2.4, 0.7, -1.8), Vector3(1.4, 1.4, 0.55), Color(0.45, 0.3, 0.22))
-	_add_decor_box(fit, Vector3(2.0, 0.45, 1.2), Vector3(1.1, 0.9, 1.1), Color(0.5, 0.22, 0.28))
-	_add_decor_box(fit, Vector3(-1.0, 0.35, 1.6), Vector3(0.55, 0.7, 0.55), Color(0.35, 0.45, 0.55))
+	# Story-flavored set dressing by building title (not anonymous junk cubes).
+	var tlow := title.to_lower()
+	if "mayor" in tlow or "hall" in tlow:
+		_add_decor_box(fit, Vector3(0, 0.7, -half_d + 1.0), Vector3(2.4, 1.4, 1.0), Color(0.35, 0.22, 0.12)) # desk
+		_add_decor_box(fit, Vector3(0, 1.5, -half_d + 1.0), Vector3(1.6, 0.12, 0.7), Color(0.55, 0.4, 0.2))
+		_add_decor_box(fit, Vector3(-1.8, 0.55, 0.8), Vector3(0.7, 1.1, 0.7), Color(0.45, 0.2, 0.15)) # chair
+		_add_decor_box(fit, Vector3(1.8, 1.2, -0.4), Vector3(0.9, 1.6, 0.35), Color(0.3, 0.25, 0.2)) # ledger shelf
+		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), "MAYOR'S LEDGER\n(welcome to Munchkinland)")
+	elif "shop" in tlow or "store" in tlow or "market" in tlow:
+		_add_decor_box(fit, Vector3(-1.6, 0.7, -0.6), Vector3(2.0, 1.4, 0.6), Color(0.5, 0.35, 0.2)) # counter
+		_add_decor_box(fit, Vector3(1.5, 0.9, -1.2), Vector3(1.2, 1.8, 0.5), Color(0.4, 0.28, 0.18)) # shelves
+		_add_decor_box(fit, Vector3(1.5, 0.35, 1.0), Vector3(0.8, 0.7, 0.8), Color(0.7, 0.25, 0.3)) # candy crate
+		_add_decor_box(fit, Vector3(-1.2, 0.3, 1.3), Vector3(0.6, 0.6, 0.6), Color(0.9, 0.75, 0.2)) # grain sack
+		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), "MUNCHKIN MARKET\nboots · sweets · oil cans")
+	elif "cottage" in tlow or "house" in tlow or "home" in tlow:
+		_add_decor_box(fit, Vector3(-1.8, 0.45, -1.0), Vector3(2.0, 0.9, 1.4), Color(0.55, 0.3, 0.25)) # bed
+		_add_decor_box(fit, Vector3(-1.8, 0.95, -1.0), Vector3(1.8, 0.25, 1.2), Color(0.85, 0.75, 0.9)) # quilt
+		_add_decor_box(fit, Vector3(1.6, 0.55, -0.8), Vector3(1.0, 1.1, 0.8), Color(0.4, 0.25, 0.15)) # hearth
+		_add_decor_box(fit, Vector3(1.6, 1.3, -0.8), Vector3(0.35, 0.5, 0.35), Color(0.9, 0.4, 0.15)) # fire
+		_add_decor_box(fit, Vector3(0.2, 0.4, 1.2), Vector3(1.0, 0.8, 1.0), Color(0.45, 0.3, 0.2)) # table
+		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), "COTTAGE\nrest · hearth · kindness")
+	else:
+		_add_decor_box(fit, Vector3(-1.8, 0.55, -1.0), Vector3(1.8, 1.1, 0.9), Color(0.4, 0.25, 0.16))
+		_add_decor_box(fit, Vector3(1.8, 0.7, -0.6), Vector3(1.2, 1.4, 0.55), Color(0.45, 0.3, 0.22))
+		_add_decor_box(fit, Vector3(0.0, 0.4, 1.2), Vector3(1.2, 0.8, 1.0), Color(0.5, 0.28, 0.25))
+		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), title.to_upper())
+	# Window light strip
 	_add_decor_box(fit, Vector3(0.0, 1.5, -half_d + 0.2), Vector3(1.6, 1.1, 0.06), Color(0.7, 0.85, 0.95))
 	var lamp := OmniLight3D.new()
 	lamp.light_color = Color(1.0, 0.92, 0.75)
-	lamp.light_energy = 2.4
+	lamp.light_energy = 2.6
 	lamp.omni_range = 12.0
 	lamp.shadow_enabled = false
 	fit.add_child(lamp)
 	lamp.position = Vector3(0, wall_h - 0.6, 0)
 	var lamp2 := OmniLight3D.new()
 	lamp2.light_color = Color(1.0, 0.85, 0.65)
-	lamp2.light_energy = 1.2
+	lamp2.light_energy = 1.3
 	lamp2.omni_range = 8.0
 	lamp2.shadow_enabled = false
 	fit.add_child(lamp2)
-	lamp2.position = Vector3(-2.0, 1.8, -1.2)
+	lamp2.position = Vector3(-1.5, 1.8, -0.8)
 	var plaque := Label3D.new()
 	plaque.text = title
 	plaque.font_size = 64
@@ -517,8 +540,19 @@ func _build_interior_fitout(parent: Node3D, half_w: float, half_d: float, wall_h
 	plaque.outline_size = 8
 	plaque.outline_modulate = Color(0.15, 0.08, 0.1)
 	fit.add_child(plaque)
-	plaque.position = Vector3(0, 2.4, -half_d + 0.35)
+	plaque.position = Vector3(0, 2.55, 0)
 	return fit
+
+func _add_named_plaque(parent: Node3D, pos: Vector3, text: String) -> void:
+	var lab := Label3D.new()
+	lab.text = text
+	lab.font_size = 40
+	lab.pixel_size = 0.01
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(0.95, 0.88, 0.7)
+	lab.outline_size = 6
+	parent.add_child(lab)
+	lab.position = pos
 
 func _add_decor_box(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -984,58 +1018,112 @@ func _spawn_locasta(at: Vector3) -> void:
 	var hip := Node3D.new()
 	root.add_child(hip)
 	hip.position = Vector3(0, 1.05, 0)
-	# Taller, brighter figure — readable from spawn.
+	# Full-ish body: legs, layered skirts, torso, arms, head, pointed hat + wand.
+	_locasta_mesh(hip, Vector3(-0.16, -0.55, 0), Vector3(0.18, 0.7, 0.18), Color(0.75, 0.85, 1.0))
+	_locasta_mesh(hip, Vector3(0.16, -0.55, 0), Vector3(0.18, 0.7, 0.18), Color(0.75, 0.85, 1.0))
+	# Outer robe flare
 	var robe := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.28
-	cyl.bottom_radius = 0.48
-	cyl.height = 1.75
+	cyl.top_radius = 0.32
+	cyl.bottom_radius = 0.72
+	cyl.height = 1.35
 	robe.mesh = cyl
 	var rm := StandardMaterial3D.new()
-	rm.albedo_color = Color(0.55, 0.78, 1.0)
+	rm.albedo_color = Color(0.45, 0.72, 1.0)
 	rm.emission_enabled = true
-	rm.emission = Color(0.4, 0.65, 1.0)
-	rm.emission_energy_multiplier = 1.1
+	rm.emission = Color(0.35, 0.6, 1.0)
+	rm.emission_energy_multiplier = 0.9
 	robe.material_override = rm
 	hip.add_child(robe)
-	robe.position = Vector3(0, -0.1, 0)
+	robe.position = Vector3(0, -0.25, 0)
+	# Inner petticoat
+	_locasta_mesh(hip, Vector3(0, -0.15, 0), Vector3(0.55, 1.05, 0.55), Color(0.85, 0.92, 1.0, 0.0))
+	var pet := MeshInstance3D.new()
+	var pc := CylinderMesh.new()
+	pc.top_radius = 0.22
+	pc.bottom_radius = 0.5
+	pc.height = 1.05
+	pet.mesh = pc
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = Color(0.92, 0.95, 1.0)
+	pet.material_override = pm
+	hip.add_child(pet)
+	pet.position = Vector3(0, -0.2, 0)
+	# Bodice
+	_locasta_mesh(hip, Vector3(0, 0.55, 0), Vector3(0.55, 0.55, 0.32), Color(0.55, 0.35, 0.75))
+	# Arms
+	_locasta_mesh(hip, Vector3(-0.42, 0.45, 0), Vector3(0.14, 0.7, 0.14), Color(0.95, 0.82, 0.72))
+	_locasta_mesh(hip, Vector3(0.42, 0.45, 0), Vector3(0.14, 0.7, 0.14), Color(0.95, 0.82, 0.72))
+	# Head
 	var head := MeshInstance3D.new()
 	var sph := SphereMesh.new()
-	sph.radius = 0.22
-	sph.height = 0.44
+	sph.radius = 0.24
+	sph.height = 0.48
 	head.mesh = sph
 	var hm := StandardMaterial3D.new()
-	hm.albedo_color = Color(0.95, 0.82, 0.72)
+	hm.albedo_color = Color(0.96, 0.84, 0.74)
 	head.material_override = hm
 	hip.add_child(head)
-	head.position = Vector3(0, 0.95, 0)
+	head.position = Vector3(0, 1.0, 0)
+	# Hair bun
+	_locasta_mesh(hip, Vector3(0, 1.18, -0.05), Vector3(0.28, 0.18, 0.28), Color(0.92, 0.88, 0.55))
+	# Pointed hat
 	var hat := MeshInstance3D.new()
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.02
-	cone.bottom_radius = 0.36
-	cone.height = 0.55
+	cone.bottom_radius = 0.42
+	cone.height = 0.7
 	hat.mesh = cone
 	var hatm := StandardMaterial3D.new()
-	hatm.albedo_color = Color(1.0, 0.9, 0.35)
+	hatm.albedo_color = Color(1.0, 0.88, 0.3)
 	hatm.emission_enabled = true
 	hatm.emission = Color(1.0, 0.85, 0.25)
-	hatm.emission_energy_multiplier = 1.4
+	hatm.emission_energy_multiplier = 1.5
 	hat.material_override = hatm
 	hip.add_child(hat)
-	hat.position = Vector3(0, 1.35, 0)
+	hat.position = Vector3(0, 1.48, 0)
+	# Brim
+	var brim := MeshInstance3D.new()
+	var bc := CylinderMesh.new()
+	bc.top_radius = 0.48
+	bc.bottom_radius = 0.48
+	bc.height = 0.05
+	brim.mesh = bc
+	brim.material_override = hatm
+	hip.add_child(brim)
+	brim.position = Vector3(0, 1.18, 0)
+	# Star tip
 	var star := MeshInstance3D.new()
 	var starm := SphereMesh.new()
-	starm.radius = 0.12
-	starm.height = 0.24
+	starm.radius = 0.14
+	starm.height = 0.28
 	star.mesh = starm
 	var sm := StandardMaterial3D.new()
 	sm.albedo_color = Color(1.0, 1.0, 0.7)
 	sm.emission_enabled = true
 	sm.emission = Color(1.0, 0.95, 0.4)
-	sm.emission_energy_multiplier = 2.0
+	sm.emission_energy_multiplier = 2.4
 	star.material_override = sm
 	hip.add_child(star)
-	star.position = Vector3(0, 1.7, 0)
+	star.position = Vector3(0, 1.9, 0)
+	# Wand
+	_locasta_mesh(hip, Vector3(0.55, 0.35, 0.15), Vector3(0.06, 1.1, 0.06), Color(0.85, 0.75, 0.4))
+	_locasta_mesh(hip, Vector3(0.55, 0.95, 0.15), Vector3(0.16, 0.16, 0.16), Color(1.0, 0.95, 0.5))
+	# Soft aura ring at feet
+	var aura := MeshInstance3D.new()
+	var atorus := TorusMesh.new()
+	atorus.inner_radius = 0.55
+	atorus.outer_radius = 0.85
+	aura.mesh = atorus
+	var am := StandardMaterial3D.new()
+	am.albedo_color = Color(0.6, 0.85, 1.0, 0.45)
+	am.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	am.emission_enabled = true
+	am.emission = Color(0.5, 0.8, 1.0)
+	am.emission_energy_multiplier = 1.2
+	aura.material_override = am
+	root.add_child(aura)
+	aura.position = Vector3(0, 0.08, 0)
 	var lab := Label3D.new()
 	lab.text = "LOCASTA\nGood Witch of the North\n(E — speak)"
 	lab.font_size = 56
@@ -1045,16 +1133,28 @@ func _spawn_locasta(at: Vector3) -> void:
 	lab.outline_size = 10
 	lab.outline_modulate = Color(0.05, 0.1, 0.25)
 	root.add_child(lab)
-	lab.position = Vector3(0, 3.4, 0)
+	lab.position = Vector3(0, 3.6, 0)
 	var col_body := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
-	cap.radius = 0.4
-	cap.height = 1.8
+	cap.radius = 0.42
+	cap.height = 1.9
 	col_body.shape = cap
 	col_body.position = Vector3(0, 0.95, 0)
 	root.add_child(col_body)
 	_add_way_marker(at + Vector3(-2.5, 0, 0), Color(0.65, 0.85, 1.0), "LOCASTA", at)
 	_add_way_marker(at + Vector3(2.5, 0, 1.5), Color(0.65, 0.85, 1.0), "NORTH", at)
+
+func _locasta_mesh(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	mi.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(col.r, col.g, col.b)
+	mat.roughness = 0.7
+	mi.material_override = mat
+	parent.add_child(mi)
+	mi.position = pos
 
 func _advance_locasta_talk() -> void:
 	if locasta_done or locasta == null:
@@ -1062,10 +1162,13 @@ func _advance_locasta_talk() -> void:
 	if _locasta_line >= _locasta_lines.size():
 		_finish_locasta_greet()
 		return
-	hud.set_prompt(_locasta_lines[_locasta_line])
+	var line := _locasta_lines[_locasta_line]
+	hud.set_prompt(line)
+	var dui := get_node_or_null("/root/DialogueUI")
+	if dui and dui.has_method("say_line"):
+		dui.say_line(line, true)
 	_locasta_line += 1
 	if _locasta_line >= _locasta_lines.size():
-		# Last line shown — next E finishes.
 		hud.set_objective("Press E again when you are ready — then claim the Silver Shoes.")
 	else:
 		hud.set_objective("Locasta speaks — press E to continue (%d/%d)" % [_locasta_line, _locasta_lines.size()])
@@ -1075,7 +1178,11 @@ func _finish_locasta_greet() -> void:
 		return
 	locasta_done = true
 	_near_locasta = false
-	hud.set_prompt("Locasta: \"The road is yours. I keep the North.\"")
+	var farewell := "Locasta: \"The road is yours. I keep the North.\""
+	hud.set_prompt(farewell)
+	var dui := get_node_or_null("/root/DialogueUI")
+	if dui and dui.has_method("say_line"):
+		dui.say_line(farewell, true)
 	if shoes_done:
 		_set_beat(Beat.CLEAR_LANDING)
 	else:
@@ -1964,13 +2071,10 @@ func _set_beat(next: Beat) -> void:
 			if marshal == null:
 				_spawn_marshal()
 		Beat.OPEN_ROAD:
-			hud.set_objective("Yellow Brick Road opens west — Winkie castle (L3). Walk the south road gate or F10.")
-			hud.set_prompt("E at south road gate · F10 West castle · F11 Emerald City (playtest)")
+			hud.set_objective("FINAL STEP (L2): Walk the glowing south YBR gate and press E — hourglass → West castle.")
+			hud.set_prompt("End-gate: E on yellow brick pad (south) · F10 West · F11 Emerald skip")
 			if not _open_road_sting_done:
 				_open_road_sting_done = true
-				var lt3 := get_node_or_null("/root/LevelTransition")
-				if lt3 and lt3.has_method("play_exit"):
-					lt3.play_exit("Road open — the hourglass turns toward the West…")
 				_ensure_west_road_gate()
 	_refresh_roster()
 

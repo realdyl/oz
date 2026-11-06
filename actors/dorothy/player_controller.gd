@@ -1,5 +1,6 @@
 extends CharacterBody3D
 
+
 ## Dorothy. Feet at the origin. The camera lives on this body so Play
 ## works without wiring a separate rig.
 ##
@@ -21,7 +22,7 @@ extends CharacterBody3D
 
 @export var mouse_sensitivity: float = 0.0028
 @export var follow_distance: float = 2.2
-@export var step_height: float = 0.55
+@export var step_height: float = 1.15
 
 var blink_timer: float = 0.0
 var kick_timer: float = 0.0
@@ -128,9 +129,14 @@ func _ally_fight(delta: float, foe: Node3D) -> void:
 		var dir := to / dist
 		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-dir.x, -dir.z), 12.0 * delta)
 		if dist > hold:
-			velocity.x = dir.x * move_speed * 0.95
-			velocity.z = dir.z * move_speed * 0.95
-			_try_step(dir)
+			var steered: Vector3 = Locomotion.steer(self, dir)
+			if steered.length() > 0.05:
+				velocity.x = steered.x * move_speed * 0.95
+				velocity.z = steered.z * move_speed * 0.95
+				Locomotion.try_step(self, steered, step_height)
+			else:
+				velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+				velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
 		else:
 			velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
 			velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
@@ -151,10 +157,15 @@ func _follow_lead(delta: float) -> void:
 	var dist := to.length()
 	if dist > follow_distance:
 		var dir := to / dist
-		velocity.x = dir.x * move_speed * 0.95
-		velocity.z = dir.z * move_speed * 0.95
-		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-dir.x, -dir.z), 10.0 * delta)
-		_try_step(dir)
+		var steered: Vector3 = Locomotion.steer(self, dir)
+		if steered.length() > 0.05:
+			velocity.x = steered.x * move_speed * 0.95
+			velocity.z = steered.z * move_speed * 0.95
+			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-steered.x, -steered.z), 10.0 * delta)
+			Locomotion.try_step(self, steered, step_height)
+		else:
+			velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+			velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
 		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
@@ -182,31 +193,19 @@ func _move(delta: float) -> void:
 			wish = wish.normalized()
 			var face := atan2(-wish.x, -wish.z)
 			visual.rotation.y = lerp_angle(visual.rotation.y, face, 12.0 * delta)
-	velocity.x = move_toward(velocity.x, wish.x * move_speed, acceleration * delta * move_speed)
-	velocity.z = move_toward(velocity.z, wish.z * move_speed, acceleration * delta * move_speed)
 	if wish.length() > 0.05:
-		_try_step(wish)
+		var steered: Vector3 = Locomotion.steer(self, wish)
+		if steered.length() < 0.05:
+			steered = wish
+		velocity.x = move_toward(velocity.x, steered.x * move_speed, acceleration * delta * move_speed)
+		velocity.z = move_toward(velocity.z, steered.z * move_speed, acceleration * delta * move_speed)
+		Locomotion.try_step(self, steered, step_height)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, acceleration * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, acceleration * delta * move_speed)
 
 func _try_step(dir: Vector3) -> void:
-	if not is_on_floor() or dir.length() < 0.05:
-		return
-	var space := get_world_3d().direct_space_state
-	var feet := global_position + Vector3(0, 0.15, 0)
-	var ahead := feet + dir.normalized() * 0.45
-	var hit_wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(feet, ahead, 1, [get_rid()]))
-	if hit_wall.is_empty():
-		return
-	var hit_top := space.intersect_ray(PhysicsRayQueryParameters3D.create(ahead + Vector3(0, step_height + 0.35, 0), ahead + Vector3(0, 0.05, 0), 1, [get_rid()]))
-	if hit_top.is_empty():
-		return
-	var land_y: float = hit_top.position.y
-	if land_y <= global_position.y + 0.08 or land_y > global_position.y + step_height + 0.15:
-		return
-	var blocked := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(ahead.x, land_y + 0.2, ahead.z), Vector3(ahead.x, land_y + 1.25, ahead.z), 1, [get_rid()]))
-	if not blocked.is_empty():
-		return
-	global_position = Vector3(ahead.x, land_y + 0.02, ahead.z)
-	velocity.y = 0.0
+	Locomotion.try_step(self, dir, step_height)
 
 func _blink() -> void:
 	blink_timer = blink_cooldown
@@ -326,4 +325,3 @@ func empower_shoes() -> void:
 			for c in body.get_children():
 				c.free()
 			body.call("_build")
-

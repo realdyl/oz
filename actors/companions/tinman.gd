@@ -1,5 +1,6 @@
 extends CharacterBody3D
 
+
 ## Tin Man — armor-breaker. F = Hacking Axe (armor_break + heavy hit). No blink.
 
 @export var move_speed: float = 3.9
@@ -100,9 +101,14 @@ func _ally_fight(delta: float, foe: Node3D) -> void:
 		var dir := to / dist
 		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-dir.x, -dir.z), 8.0 * delta)
 		if dist > hold:
-			velocity.x = dir.x * move_speed * 0.9
-			velocity.z = dir.z * move_speed * 0.9
-			_try_step(dir)
+			var steered: Vector3 = Locomotion.steer(self, dir)
+			if steered.length() > 0.05:
+				velocity.x = steered.x * move_speed * 0.9
+				velocity.z = steered.z * move_speed * 0.9
+				_try_step(steered)
+			else:
+				velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+				velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
 		else:
 			velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
 			velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
@@ -127,10 +133,16 @@ func _move_as_lead(delta: float) -> void:
 		if wish.length() > 0.01:
 			wish = wish.normalized()
 			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-wish.x, -wish.z), 8.0 * delta)
-	velocity.x = move_toward(velocity.x, wish.x * move_speed, acceleration * delta * move_speed)
-	velocity.z = move_toward(velocity.z, wish.z * move_speed, acceleration * delta * move_speed)
 	if wish.length() > 0.05:
-		_try_step(wish)
+		var steered: Vector3 = Locomotion.steer(self, wish)
+		if steered.length() < 0.05:
+			steered = wish
+		velocity.x = move_toward(velocity.x, steered.x * move_speed, acceleration * delta * move_speed)
+		velocity.z = move_toward(velocity.z, steered.z * move_speed, acceleration * delta * move_speed)
+		_try_step(steered)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, acceleration * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, acceleration * delta * move_speed)
 
 func _follow(delta: float) -> void:
 	follow_target = Party.follow_body()
@@ -143,35 +155,22 @@ func _follow(delta: float) -> void:
 	var dist := to.length()
 	if dist > follow_distance:
 		var dir := to / dist
-		velocity.x = dir.x * move_speed * 0.85
-		velocity.z = dir.z * move_speed * 0.85
-		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-dir.x, -dir.z), 6.0 * delta)
-		_try_step(dir)
+		var steered: Vector3 = Locomotion.steer(self, dir)
+		if steered.length() > 0.05:
+			velocity.x = steered.x * move_speed * 0.85
+			velocity.z = steered.z * move_speed * 0.85
+			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-steered.x, -steered.z), 6.0 * delta)
+			_try_step(steered)
+		else:
+			velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+			velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
 		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
 
 func _try_step(dir: Vector3) -> void:
-	if not is_on_floor() or dir.length() < 0.05:
-		return
-	var space := get_world_3d().direct_space_state
-	var feet := global_position + Vector3(0, 0.15, 0)
-	var ahead := feet + dir.normalized() * 0.45
-	var hit_wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(feet, ahead, 1, [get_rid()]))
-	if hit_wall.is_empty():
-		return
-	var step_h := 0.55
-	var hit_top := space.intersect_ray(PhysicsRayQueryParameters3D.create(ahead + Vector3(0, step_h + 0.35, 0), ahead + Vector3(0, 0.05, 0), 1, [get_rid()]))
-	if hit_top.is_empty():
-		return
-	var land_y: float = hit_top.position.y
-	if land_y <= global_position.y + 0.08 or land_y > global_position.y + step_h + 0.15:
-		return
-	var blocked := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(ahead.x, land_y + 0.2, ahead.z), Vector3(ahead.x, land_y + 1.2, ahead.z), 1, [get_rid()]))
-	if not blocked.is_empty():
-		return
-	global_position = Vector3(ahead.x, land_y + 0.02, ahead.z)
-	velocity.y = 0.0
+	Locomotion.try_step(self, dir, 1.15)
+
 
 func _axe() -> void:
 	axe_timer = axe_cooldown

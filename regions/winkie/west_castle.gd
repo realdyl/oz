@@ -468,8 +468,8 @@ func _set_beat(next: Beat) -> void:
 		Beat.MELTING:
 			hud.set_objective("The West melts…")
 		Beat.ROAD_OPEN:
-			hud.set_objective("West falls. North gate → Emerald City (walk or E at gate). F9 skip.")
-			hud.set_prompt("Road to the Wizard opens")
+			hud.set_objective("FINAL STEP (L3): North Emerald gate — walk close and E (or F9). Hourglass → Emerald City.")
+			hud.set_prompt("End-gate: E at north road · F9 Emerald City")
 			var lt := get_node_or_null("/root/LevelTransition")
 			if lt and lt.has_method("play_exit"):
 				lt.play_exit("The West melts — the hourglass turns…")
