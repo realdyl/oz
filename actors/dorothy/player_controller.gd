@@ -33,6 +33,9 @@ var shoes_claimed: bool = false
 var looking: bool = false
 var leading: bool = true
 var follow_target: Node3D = null
+## Level scripts park her (asleep / safe south) so she does not trail Lead back into danger.
+var parked: bool = false
+var park_pos: Vector3 = Vector3.ZERO
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
@@ -58,8 +61,21 @@ func set_leading(on: bool) -> void:
 func set_player_controlled(on: bool) -> void:
 	set_leading(on)
 
+func set_parked(on: bool, pos: Vector3 = Vector3.ZERO) -> void:
+	parked = on
+	if on:
+		if pos != Vector3.ZERO:
+			park_pos = pos
+			global_position = pos
+		else:
+			park_pos = global_position
+		velocity = Vector3.ZERO
+		follow_target = null
+	else:
+		park_pos = Vector3.ZERO
+
 func can_take_lead() -> bool:
-	return true
+	return not parked
 
 func _set_arm_pitch(pitch_deg: float) -> void:
 	if spring_arm and is_instance_valid(spring_arm):
@@ -74,6 +90,18 @@ func _physics_process(delta: float) -> void:
 	kick_active = maxf(kick_active - delta, 0.0)
 	iframe_timer = maxf(iframe_timer - delta, 0.0)
 	stun_timer = maxf(stun_timer - delta, 0.0)
+
+	if parked:
+		global_position = Vector3(park_pos.x, global_position.y, park_pos.z)
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= gravity * delta
+		else:
+			velocity.y = -0.5
+		_animate_visual(delta)
+		move_and_slide()
+		return
 
 	if not is_on_floor():
 		velocity.y -= gravity * delta

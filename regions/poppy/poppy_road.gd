@@ -115,11 +115,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			dorothy_safe = true
 			lion_safe = true
 			dorothy_carried = false
+			hauling = false
 			if player:
 				player.visible = true
+				if player.has_method("set_parked"):
+					player.call("set_parked", false)
 				player.global_position = SAFE_SOUTH + Vector3(-1.5, 0, 0)
 			if lion:
+				if lion.has_method("set_parked"):
+					lion.call("set_parked", false)
 				lion.global_position = SAFE_SOUTH + Vector3(1.5, 0, 0)
+			if has_node("SafeDorothyLab"):
+				get_node("SafeDorothyLab").queue_free()
 			_set_beat(Beat.ROAD_OPEN)
 			get_viewport().set_input_as_handled()
 
@@ -136,13 +143,13 @@ func _process(delta: float) -> void:
 	_near_dorothy = dorothy_asleep and not dorothy_carried and not dorothy_safe \
 		and actor != player and actor.global_position.distance_to(player.global_position) < 3.2
 	_near_lion = lion_asleep and not lion_safe and not hauling \
-		and actor.global_position.distance_to(lion.global_position if lion else LION_FALL) < 3.5
+		and actor.global_position.distance_to(lion.global_position if lion else LION_FALL) < 5.5
 	var queen_phase: bool = beat == Beat.LION_DOWN or beat == Beat.SAVE_QUEEN
-	_near_queen = queen_phase and queen_saved and queen and actor.global_position.distance_to(QUEEN_POS) < 3.0
+	_near_queen = queen_phase and queen_saved and queen and actor.global_position.distance_to(QUEEN_POS) < 3.5
 	_near_cat = queen_phase and wildcat and is_instance_valid(wildcat) \
-		and actor.global_position.distance_to(wildcat.global_position) < 3.0
+		and actor.global_position.distance_to(wildcat.global_position) < 3.5
 	_near_cart = (beat == Beat.MICE_CART or beat == Beat.HAUL_LION) and cart \
-		and actor.global_position.distance_to(cart.global_position) < 3.5
+		and actor.global_position.distance_to(cart.global_position) < 4.0
 	_near_gate = beat == Beat.ROAD_OPEN and actor.global_position.distance_to(WEST_GATE) < 4.5
 	if Input.is_action_just_pressed("interact"):
 		if _near_gate:
@@ -153,14 +160,11 @@ func _process(delta: float) -> void:
 			_kill_wildcat()
 		elif _near_queen and queen_saved:
 			_advance_queen()
-		elif _near_cart and beat == Beat.MICE_CART:
+		elif _near_cart and (beat == Beat.MICE_CART or beat == Beat.HAUL_LION) and not cart_ready:
 			_hitch_mice()
-		elif _near_lion and beat == Beat.HAUL_LION and cart_ready and not hauling:
-			_start_haul()
-		elif _near_lion and beat == Beat.MICE_CART and not cart_ready:
-			hud.set_prompt("Cart first — E the MICE CART (brown box east of road), then come back to the Lion")
-		elif _near_lion and (beat == Beat.LION_DOWN or beat == Beat.SAVE_QUEEN):
-			hud.set_prompt("Lion is TOO HEAVY to carry. Follow compass east: E wildcat → E Queen → E cart → E Lion")
+		elif _near_lion and dorothy_safe and not lion_safe and not hauling:
+			# One path: E on Lion always routes through rescue helper
+			_try_start_lion_rescue()
 		else:
 			var w := get_node_or_null("/root/Whimsy")
 			if w and w.has_method("try_collect"):
@@ -231,26 +235,28 @@ func _tick_sleep(delta: float) -> void:
 func _drop_dorothy_asleep() -> void:
 	dorothy_asleep = true
 	sleep_meter = 0.0
+	var drop := player.global_position if player else YBR_SPAWN
+	drop.y = 0.08
+	if player and player.has_method("set_parked"):
+		player.call("set_parked", true, drop)
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
 		d.say("Narrator", "Dorothy falls among the poppies. Toto too. Scarecrow and Tin Man feel nothing — they are not flesh.", true, 4.0)
-	# Force Lead to Scarecrow
 	var party := get_node_or_null("/root/Party")
 	if party and party.has_method("set_leader"):
 		party.call("set_leader", &"scarecrow")
-	if player:
-		# Soft freeze visual — stay where she dropped
-		pass
 	_set_beat(Beat.DOROTHY_DOWN)
 
 func _drop_lion_asleep() -> void:
 	lion_asleep = true
 	sleep_meter = 0.0
 	if lion:
-		lion.global_position = LION_FALL
+		if lion.has_method("set_parked"):
+			lion.call("set_parked", true, LION_FALL)
+		else:
+			lion.global_position = LION_FALL
 	var party := get_node_or_null("/root/Party")
 	if party and party.has_method("set_leader"):
-		# Prefer tin or scarecrow
 		if not party.call("set_leader", &"tinman"):
 			party.call("set_leader", &"scarecrow")
 	var d := get_node_or_null("/root/DialogueUI")
@@ -272,26 +278,33 @@ func _tick_carry() -> void:
 	var actor := _lead()
 	if actor == null or actor == player:
 		return
-	# Dorothy body follows lead (carried)
-	player.global_position = actor.global_position + Vector3(0.0, 0.15, -0.8)
+	var carry_pos := actor.global_position + Vector3(0.0, 0.0, -0.8)
+	carry_pos.y = 0.08
+	if player.has_method("set_parked"):
+		player.call("set_parked", true, carry_pos)
+	else:
+		player.global_position = carry_pos
 	if not _in_poppy(actor.global_position) and actor.global_position.z >= SAFE_SOUTH.z - 6.0:
 		dorothy_carried = false
 		dorothy_asleep = false
 		dorothy_safe = true
-		player.global_position = SAFE_SOUTH + Vector3(-2.0, 0, 0)
+		var safe_pos := SAFE_SOUTH + Vector3(-2.0, 0, 0)
+		# Park south — she must NOT trail Lead back into the field.
+		if player.has_method("set_parked"):
+			player.call("set_parked", true, safe_pos)
+		else:
+			player.global_position = safe_pos
+		_ensure_safe_dorothy_marker(safe_pos)
 		var d := get_node_or_null("/root/DialogueUI")
 		if d and d.has_method("say"):
-			d.say("Narrator", "Clear air. Dorothy breathes again — but the Lion still lies in the flowers.", true, 3.5)
-		# Put lion to sleep if still in field
-		if lion and _in_poppy(lion.global_position):
-			lion_asleep = true
-			lion.global_position = LION_FALL
-			_set_beat(Beat.LION_DOWN)
-		else:
-			lion_asleep = true
-			if lion:
+			d.say("Narrator", "Clear air. Dorothy stays south of the flowers — she will not follow you back in. Go get the Lion.", true, 4.5)
+		lion_asleep = true
+		if lion:
+			if lion.has_method("set_parked"):
+				lion.call("set_parked", true, LION_FALL)
+			else:
 				lion.global_position = LION_FALL
-			_set_beat(Beat.LION_DOWN)
+		_set_beat(Beat.LION_DOWN)
 
 func _kill_wildcat() -> void:
 	if wildcat and is_instance_valid(wildcat):
@@ -303,12 +316,12 @@ func _kill_wildcat() -> void:
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
 		d.say("Tin Man", "No heart — but that was wrong. The little Queen is safe.", true, 3.0)
-	hud.set_objective("Lion rescue 1/4 done. Now E the Mouse Queen (grey sphere + crown label, east of YBR).")
-	hud.set_prompt("E  —  Speak with the Mouse Queen (she will send the cart)")
+	hud.set_objective("E the Mouse Queen (grey, east of YBR). After her lines, walk to the Lion and press E.")
+	hud.set_prompt("E  —  Speak with the Mouse Queen (press E through her lines)")
 
 func _advance_queen() -> void:
 	if _queen_line >= QUEEN_LINES.size():
-		_set_beat(Beat.MICE_CART)
+		_hitch_mice()
 		return
 	var line: String = QUEEN_LINES[_queen_line]
 	_queen_line += 1
@@ -318,58 +331,121 @@ func _advance_queen() -> void:
 	elif hud:
 		hud.set_prompt(line)
 	if _queen_line >= QUEEN_LINES.size():
-		_set_beat(Beat.MICE_CART)
+		_hitch_mice()
 
 func _hitch_mice() -> void:
+	if cart_ready and beat == Beat.HAUL_LION:
+		return
 	cart_ready = true
-	# Cart sticks to Lead so the next step is only: walk to Lion + E
+	if cart:
+		cart.visible = true
+		_ensure_cart_label_loud()
 	_set_beat(Beat.HAUL_LION)
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
-		d.say("Mouse Queen", "The cart is yours. Walk to the sleeping Lion on the road and press E — then walk SOUTH.", true, 4.0)
-	hud.set_objective("Lion rescue 3/4: Walk to the SLEEPING LION (on YBR) and press E to hitch the haul. Then walk SOUTH out of the red field.")
-	hud.set_prompt("Compass → Lion · E starts the haul · then walk SOUTH")
+		d.say("Mouse Queen", "Now walk to the sleeping Lion on the road and press E — then walk SOUTH. Dorothy waits safely south.", true, 4.5)
+	hud.set_objective("Walk to the sleeping LION on the YBR and press E. Then walk SOUTH out of the red field.")
+	hud.set_prompt("Compass → Lion · E starts haul · then hold SOUTH")
+
+func _try_start_lion_rescue() -> void:
+	if not dorothy_safe or lion_safe or hauling:
+		return
+	if not queen_saved:
+		hud.set_prompt("Lion too heavy — E the orange WILDCAT east of the road first, then the Mouse Queen")
+		_set_beat(Beat.LION_DOWN)
+		return
+	if _queen_line < QUEEN_LINES.size():
+		hud.set_prompt("Finish Mouse Queen lines first (E on the grey Queen east of the road)")
+		return
+	if not cart_ready:
+		_hitch_mice()
+	_start_haul()
 
 func _start_haul() -> void:
+	if hauling or lion_safe or not lion_asleep:
+		return
+	if not cart_ready:
+		cart_ready = true
+		if cart:
+			cart.visible = true
 	hauling = true
-	hud.set_objective("Lion rescue 4/4: HAULING — keep walking SOUTH on the Yellow Brick Road until you leave the poppies.")
-	hud.set_prompt("Walk SOUTH — Lion + cart follow. Do not stop in the red field.")
+	# Unpark Lion so the haul can drag him; Dorothy stays parked south.
+	if lion and lion.has_method("set_parked"):
+		lion.call("set_parked", false)
+	hud.set_objective("HAULING Lion — walk SOUTH on the Yellow Brick Road until clear of the poppies. Dorothy stays south.")
+	hud.set_prompt("Hold SOUTH on YBR — Lion + cart follow you out")
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
-		d.say("Narrator", "The field mice pull. Stay on the Yellow Brick Road and walk south until the Lion wakes in clear air.", true, 3.5)
+		d.say("Narrator", "The field mice pull. Walk south on the Yellow Brick Road until the Lion wakes in clear air.", true, 3.5)
 
 func _tick_haul(delta: float) -> void:
 	var actor := _lead()
 	if actor == null:
 		return
-	# After hitch, cart follows Lead even before E on Lion (so you bring it to him).
+	# Pin Dorothy south while Lion still needs rescue (never re-enter follow)
+	if dorothy_safe and not lion_safe and player:
+		var sp := SAFE_SOUTH + Vector3(-2.0, 0, 0)
+		if player.has_method("set_parked"):
+			if bool(player.get("parked")):
+				player.set("park_pos", sp)
+			else:
+				player.call("set_parked", true, sp)
+	# Keep Lion pinned until haul starts
+	if lion_asleep and not hauling and not lion_safe and lion and lion.has_method("set_parked"):
+		if not bool(lion.get("parked")):
+			lion.call("set_parked", true, LION_FALL)
 	if cart_ready and cart and not hauling and beat == Beat.HAUL_LION:
 		cart.global_position = cart.global_position.lerp(
 			actor.global_position + Vector3(1.6, 0, 0.2), 1.0 - exp(-4.0 * delta)
 		)
-		# Auto-start haul when close enough with cart in tow
-		if lion and actor.global_position.distance_to(lion.global_position) < 3.8:
+		if lion and actor.global_position.distance_to(lion.global_position) < 5.0:
 			_start_haul()
 			return
-	if not hauling or cart == null or lion == null:
+	if not hauling or lion == null:
 		return
-	# Cart and lion follow lead — prefer south progress
-	var target := actor.global_position + Vector3(0, 0, -0.4)
-	cart.global_position = cart.global_position.lerp(target + Vector3(1.5, 0, 0), 1.0 - exp(-3.0 * delta))
-	lion.global_position = cart.global_position + Vector3(-1.2, 0.1, 0)
-	# Clear when Lead is south of the poppy band (z past POPPY_END)
+	if cart:
+		var target := actor.global_position + Vector3(0, 0, -0.4)
+		cart.global_position = cart.global_position.lerp(target + Vector3(1.5, 0, 0), 1.0 - exp(-3.0 * delta))
+		lion.global_position = cart.global_position + Vector3(-1.2, 0.1, 0)
+	else:
+		lion.global_position = lion.global_position.lerp(
+			actor.global_position + Vector3(-1.2, 0, -0.5), 1.0 - exp(-2.5 * delta)
+		)
 	if actor.global_position.z >= POPPY_END_Z + 6.0 or (
 		actor.global_position.z >= SAFE_SOUTH.z - 8.0 and not _in_poppy(actor.global_position)
 	):
 		hauling = false
 		lion_asleep = false
 		lion_safe = true
-		lion.global_position = SAFE_SOUTH + Vector3(2.0, 0, 0)
-		cart.global_position = SAFE_SOUTH + Vector3(4.0, 0, 0)
+		var lion_safe_pos := SAFE_SOUTH + Vector3(2.0, 0, 0)
+		if lion and lion.has_method("set_parked"):
+			lion.call("set_parked", false)
+		if lion:
+			lion.global_position = lion_safe_pos
+		if cart:
+			cart.global_position = SAFE_SOUTH + Vector3(4.0, 0, 0)
+		# Release Dorothy — party free again
+		if player and player.has_method("set_parked"):
+			player.call("set_parked", false)
+			player.global_position = SAFE_SOUTH + Vector3(-2.0, 0, 0)
+		if has_node("SafeDorothyLab"):
+			get_node("SafeDorothyLab").queue_free()
 		var d := get_node_or_null("/root/DialogueUI")
 		if d and d.has_method("say"):
-			d.say("Narrator", "The Lion wakes in clean air. The poppies are behind you. The road runs on to the West.", true, 4.0)
+			d.say("Narrator", "The Lion wakes in clear air. The poppies are behind you. The road runs on to the West.", true, 4.0)
 		_set_beat(Beat.ROAD_OPEN)
+
+func _ensure_safe_dorothy_marker(pos: Vector3) -> void:
+	if has_node("SafeDorothyLab"):
+		return
+	var lab := Label3D.new()
+	lab.name = "SafeDorothyLab"
+	lab.text = "DOROTHY — SAFE\n(waits here · will not follow)"
+	lab.font_size = 34
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(0.75, 0.9, 1.0)
+	add_child(lab)
+	lab.global_position = pos + Vector3(0, 2.8, 0)
 
 func _set_beat(next: Beat) -> void:
 	beat = next
@@ -714,10 +790,12 @@ func _update_prompt() -> void:
 		hud.set_prompt("E  —  Speak with the Mouse Queen (keep pressing E through her lines)")
 	elif _near_cart and beat == Beat.MICE_CART:
 		hud.set_prompt("E  —  Hitch field mice to the cart (required before Lion)")
-	elif _near_lion and beat == Beat.HAUL_LION and cart_ready and not hauling:
+	elif _near_lion and dorothy_safe and not cart_ready and not queen_saved:
+		hud.set_prompt("Lion too heavy — compass east: E wildcat → E Queen → then E Lion")
+	elif _near_lion and dorothy_safe and not lion_safe and not hauling:
 		hud.set_prompt("E  —  Start hauling the Lion SOUTH out of the poppies")
 	elif _near_lion and not cart_ready:
-		hud.set_prompt("Lion too heavy — compass east: wildcat → Queen → cart first")
+		hud.set_prompt("Lion too heavy — compass east: wildcat → Queen first")
 	elif hauling:
 		hud.set_prompt("HAULING Lion — walk SOUTH on the Yellow Brick Road until clear air")
 	elif dorothy_carried:

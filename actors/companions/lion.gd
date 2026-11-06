@@ -18,6 +18,9 @@ var follow_target: Node3D = null
 var hiding: bool = true
 var calmed: bool = false
 var kit_lock: float = 0.0
+## Asleep in poppies / safe park — do not trail Lead.
+var parked: bool = false
+var park_pos: Vector3 = Vector3.ZERO
 
 @onready var visual: Node3D = $Visual
 @onready var body: Node3D = $Visual/Body
@@ -32,7 +35,7 @@ func _ready() -> void:
 		body.set_cowering(true)
 
 func can_take_lead() -> bool:
-	return calmed and Party.is_unlocked(Party.ID_LION) and visible
+	return calmed and Party.is_unlocked(Party.ID_LION) and visible and not parked
 
 func set_leading(on: bool) -> void:
 	leading = on
@@ -40,6 +43,20 @@ func set_leading(on: bool) -> void:
 
 func set_player_controlled(on: bool) -> void:
 	set_leading(on)
+
+func set_parked(on: bool, pos: Vector3 = Vector3.ZERO) -> void:
+	parked = on
+	if on:
+		if pos != Vector3.ZERO:
+			park_pos = pos
+			global_position = pos
+		else:
+			park_pos = global_position
+		velocity = Vector3.ZERO
+		follow_target = null
+		leading = false
+	else:
+		park_pos = Vector3.ZERO
 
 func calm_and_join() -> void:
 	if calmed:
@@ -55,6 +72,17 @@ func calm_and_join() -> void:
 func _physics_process(delta: float) -> void:
 	roar_timer = maxf(roar_timer - delta, 0.0)
 	kit_lock = maxf(kit_lock - delta, 0.0)
+	if parked:
+		global_position = Vector3(park_pos.x, global_position.y, park_pos.z)
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= gravity * delta
+		else:
+			velocity.y = -0.5
+		_anim(delta)
+		move_and_slide()
+		return
 	if hiding and not calmed:
 		velocity = Vector3.ZERO
 		if body and body.has_method("set_locomotion"):
