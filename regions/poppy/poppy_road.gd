@@ -607,7 +607,9 @@ func _spawn_party() -> void:
 	lion = LION_SCENE.instantiate()
 	add_child(lion)
 	lion.global_position = YBR_SPAWN + Vector3(2.2, 0, 2.5)
-	if lion.has_method("calm"):
+	if lion.has_method("calm_and_join"):
+		lion.calm_and_join()
+	elif lion.has_method("calm"):
 		lion.calm()
 	tinman = TINMAN_SCENE.instantiate()
 	add_child(tinman)
