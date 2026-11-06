@@ -156,6 +156,7 @@ func _build_farm_layout() -> void:
 	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 30.5), Vector3(5.5, 3.8, 4.5))
 	_make_enterable_simple(Vector3(24.0, 0.0, -20.0), "Chicken coop", Vector3(2.6, 1.4, 2.0), Color(0.4, 0.4, 0.42))
 	_add_map_border(56.0, 54.0)
+	_add_kansas_whimsy()
 
 func _dress_basket() -> void:
 	## Ensure basket reads as a basket even if scene mesh is small.
@@ -753,6 +754,10 @@ func _try_interact() -> void:
 		Phase.STORM_RUN:
 			if _near_door:
 				_enter_house()
+		_:
+			var w := get_node_or_null("/root/Whimsy")
+			if w and w.has_method("try_collect") and player:
+				w.call("try_collect", player)
 
 func _update_prompts() -> void:
 	if _inside_building and _active_build_door:
@@ -769,6 +774,25 @@ func _update_prompts() -> void:
 		hud.set_prompt("E  —  FINAL STEP: Get into the house with Toto!")
 	elif phase == Phase.STORM_RUN:
 		hud.set_prompt("Run to the glowing farmhouse door — E to enter")
+	else:
+		var w := get_node_or_null("/root/Whimsy")
+		if w and w.has_method("prompt_if_near"):
+			var p: String = str(w.call("prompt_if_near"))
+			if p != "":
+				hud.set_prompt(p)
+
+func _add_kansas_whimsy() -> void:
+	var w := get_node_or_null("/root/Whimsy")
+	if w == null or not w.has_method("setup") or hud == null:
+		return
+	# Grey prairie side-fun — same pattern as Oz, monochrome palette.
+	w.call("setup", self, hud, [
+		{"pos": Vector3(14, 0, 14), "kind": "bounce", "name": "Prairie bounce"},
+		{"pos": Vector3(-12, 0, 8), "kind": "giggle", "name": "Dust giggle"},
+		{"pos": Vector3(16, 0, -6), "kind": "chime", "name": "Fence chime"},
+		{"pos": Vector3(-8, 0, 28), "kind": "dance", "name": "Barn dance ring"},
+		{"pos": Vector3(18, 0, 30), "kind": "giggle", "name": "Yard giggle"},
+	], "kansas")
 
 func _wind_props(delta: float) -> void:
 	wind_t += delta

@@ -34,6 +34,12 @@ func _initialize() -> void:
 		push_error("LOAD_FAIL wizard_tower")
 		quit(1)
 		return
+	var g := load("res://regions/quadling/glinda_court.tscn")
+	if g == null:
+		push_error("LOAD_FAIL glinda_court")
+		quit(1)
+		return
 	print("SMOKE_OK")
 	print("SMOKE_L3_L4_OK")
+	print("SMOKE_L5_OK")
 	quit(0)

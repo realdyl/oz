@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Headless load + beat smoke for West castle and Emerald City.
+## Headless load + beat smoke for West castle, Emerald City, and Glinda (L5).
 
 func _initialize() -> void:
 	var ok := true
@@ -31,8 +31,20 @@ func _initialize() -> void:
 				ok = false
 			else:
 				print("WEST_PRESENT")
+			var sealed := node.find_child("Gatehouse", true, false)
+			if sealed != null:
+				push_error("WEST_GATE_STILL_SOLID Gatehouse block present")
+				ok = false
+			else:
+				var arch := node.find_child("GateArch", true, false)
+				var pad := node.find_child("EmeraldGatePad", true, false)
+				var ybrn := node.find_child("YellowBrickRoadN", true, false)
+				if arch == null or pad == null or ybrn == null:
+					push_error("WEST_YBR_GATE_MISSING arch/pad/road")
+					ok = false
+				else:
+					print("WEST_YBR_OPEN")
 			if node.has_method("_set_beat"):
-				# Force water path without full fight.
 				node.set("has_water", true)
 				node.set("west_grounded", true)
 				node.set("west_hp", 30)
@@ -54,7 +66,6 @@ func _initialize() -> void:
 			if ybr:
 				print("YBR_OK")
 			else:
-				# YBR is a mesh body named YellowBrickRoad
 				var road := node.find_child("YellowBrickRoad", true, false)
 				if road:
 					print("YBR_OK")
@@ -64,13 +75,41 @@ func _initialize() -> void:
 			print("EMERALD_OK")
 		node.queue_free()
 		await process_frame
-	# Smoke both still load after unload
+	# L5 Glinda
+	var gpath := "res://regions/quadling/glinda_court.tscn"
+	var gpacked: PackedScene = load(gpath)
+	if gpacked == null:
+		push_error("LOAD_FAIL glinda_court")
+		ok = false
+	else:
+		var gnode := gpacked.instantiate()
+		root.add_child(gnode)
+		await process_frame
+		await process_frame
+		var gp := gnode.find_child("Player", true, false)
+		var gh := gnode.find_child("PlayHUD", true, false)
+		var gl := gnode.find_child("Glinda", true, false)
+		var ybr_g := gnode.find_child("YellowBrickRoad", true, false)
+		if gp == null or gh == null or gl == null:
+			push_error("GLINDA_MISSING player/hud/glinda")
+			ok = false
+		else:
+			print("GLINDA_PRESENT")
+		if ybr_g:
+			print("GLINDA_YBR_OK")
+		else:
+			push_error("GLINDA_YBR_MISSING")
+			ok = false
+		print("GLINDA_OK")
+		gnode.queue_free()
+		await process_frame
 	var m := load("res://regions/munchkinland/landing_square.tscn")
 	if m == null:
 		push_error("LOAD_FAIL munchkinland")
 		ok = false
 	if ok:
 		print("ACT34_OK")
+		print("ACT5_OK")
 		quit(0)
 	else:
 		quit(1)

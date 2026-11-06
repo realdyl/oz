@@ -9,7 +9,7 @@ const HUD_SCENE := preload("res://ui/play_hud.tscn")
 const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
-
+const GLINDA_SCENE := "res://regions/quadling/glinda_court.tscn"
 enum Beat {
 	APPROACH,
 	GATES,
@@ -60,6 +60,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_build_world()
 	_spawn_party()
+	_add_emerald_whimsy()
 	_ensure_compass()
 	if hud and hud.has_method("set_kansas_mode"):
 		hud.set_kansas_mode(false)
@@ -71,9 +72,7 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F9:
-			_set_beat(Beat.DONE)
-			if hud:
-				hud.set_prompt("F9 — Road Home stub (Glinda act later).")
+			_go_glinda("The hourglass turns — Glinda's court…")
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_F8:
 			_enter_hall(true)
@@ -113,6 +112,10 @@ func _process(delta: float) -> void:
 			_set_beat(Beat.CHOICE)
 		elif beat == Beat.CHOICE:
 			_set_beat(Beat.DONE)
+		else:
+			var w := get_node_or_null("/root/Whimsy")
+			if w and w.has_method("try_collect"):
+				w.call("try_collect", actor)
 	_update_prompt()
 
 func _lead() -> CharacterBody3D:
@@ -517,7 +520,7 @@ func _set_beat(next: Beat) -> void:
 	match beat:
 		Beat.APPROACH:
 			hud.set_objective("Yellow Brick Road — walk to the Emerald City gates.")
-			hud.set_prompt("Green glass towers ahead · F8 skip into hall · F9 road-home stub")
+			hud.set_prompt("Green glass towers ahead · F8 skip into hall · F9 → Glinda (L5)")
 		Beat.GATES:
 			hud.set_objective("Emerald City gates — E to pass the arch onto the palace approach.")
 			hud.set_prompt("E  —  Pass the Emerald gates")
@@ -539,8 +542,8 @@ func _set_beat(next: Beat) -> void:
 				var tw := create_tween()
 				tw.tween_property(wizard_head, "scale", Vector3(0.15, 0.15, 0.15), 0.9)
 		Beat.CHOICE:
-			hud.set_objective("The Wizard is only a man. E — claim the road home (prototype).")
-			hud.set_prompt("E  —  \"I want to go home\" (Glinda later) · vault endings branch here")
+			hud.set_objective("The Wizard is only a man. E — take the Yellow Brick Road south to Glinda.")
+			hud.set_prompt("E  —  \"I want to go home\" → Glinda / Road Home (L5)")
 			if wizard_body:
 				wizard_body.visible = true
 			if curtain:
@@ -550,14 +553,12 @@ func _set_beat(next: Beat) -> void:
 				wizard_head.visible = false
 			_say("Wizard: \"I'm a humbug… Please don't tell anyone.\"")
 		Beat.DONE:
-			hud.set_objective("Act 4 complete — next: Glinda / the Road Home (not built).")
-			hud.set_prompt("Curtain falls. The hourglass turns…")
+			hud.set_objective("FINAL STEP (L4): Hourglass turns — Yellow Brick Road to Glinda's court (L5).")
+			hud.set_prompt("Curtain falls. The road continues south…")
 			var dui := get_node_or_null("/root/DialogueUI")
 			if dui and dui.has_method("clear"):
 				dui.clear()
-			var lt := get_node_or_null("/root/LevelTransition")
-			if lt and lt.has_method("play_exit"):
-				lt.play_exit("The curtain falls — the hourglass rests…")
+			_go_glinda("The curtain falls — the hourglass turns toward the South…")
 
 func _ensure_compass() -> void:
 	compass = Label.new()
@@ -594,7 +595,7 @@ func _update_compass() -> void:
 			target = curtain.global_position if curtain else throne_pos
 			label = "Curtain (end-gate)"
 		Beat.DONE:
-			compass.text = "Act 4 spine complete — Glinda next"
+			compass.text = "YBR → Glinda (L5)"
 			return
 	var dist := actor.global_position.distance_to(target)
 	compass.text = "%s  ·  %.0fm" % [label, dist]
@@ -614,4 +615,29 @@ func _update_prompt() -> void:
 	elif beat == Beat.CURTAIN and _near_curtain:
 		hud.set_prompt("E  —  Pull the curtain (level end-gate)")
 	elif beat == Beat.CHOICE:
-		hud.set_prompt("E  —  Choose the road home (hourglass)")
+		hud.set_prompt("E  —  Choose the road home → Glinda (L5)")
+	else:
+		var w := get_node_or_null("/root/Whimsy")
+		if w and w.has_method("prompt_if_near"):
+			var p: String = str(w.call("prompt_if_near"))
+			if p != "":
+				hud.set_prompt(p)
+
+func _go_glinda(msg: String) -> void:
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(GLINDA_SCENE, msg, "Quadling Country · Glinda's court")
+	else:
+		get_tree().change_scene_to_file(GLINDA_SCENE)
+
+func _add_emerald_whimsy() -> void:
+	var w := get_node_or_null("/root/Whimsy")
+	if w == null or not w.has_method("setup") or hud == null:
+		return
+	w.call("setup", self, hud, [
+		{"pos": Vector3(8, 0, 28), "kind": "bounce", "name": "Emerald toadstool"},
+		{"pos": Vector3(-9, 0, 20), "kind": "giggle", "name": "Green giggle"},
+		{"pos": Vector3(10, 0, 8), "kind": "chime", "name": "Glass chime"},
+		{"pos": Vector3(-8, 0, -2), "kind": "dance", "name": "Gate dance"},
+		{"pos": Vector3(9, 0, -22), "kind": "giggle", "name": "Plaza giggle"},
+	], "emerald")

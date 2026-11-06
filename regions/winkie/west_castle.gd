@@ -13,7 +13,9 @@ const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
 
 const PLAY_BOUND_X := 48.0
-const PLAY_BOUND_Z := 44.0
+const PLAY_BOUND_Z := 56.0
+## North Emerald exit sits *outside* the gatehouse arch on the open YBR (never inside a solid block).
+const YBR_EMERALD_GATE := Vector3(0.0, 0.08, -50.0)
 
 enum Beat {
 	ENTER,
@@ -43,7 +45,7 @@ var _near_bucket: bool = false
 var _near_west: bool = false
 var _near_gate: bool = false
 var compass: Label
-var gate_pos: Vector3 = Vector3(0.0, 0.08, -38.0)
+var gate_pos: Vector3 = YBR_EMERALD_GATE
 
 func _enter_tree() -> void:
 	var p := get_node_or_null("/root/Party")
@@ -53,6 +55,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_build_world()
 	_spawn_party()
+	_add_west_whimsy()
 	_spawn_court_guards()
 	_spawn_west()
 	_spawn_cistern()
@@ -106,6 +109,10 @@ func _process(_delta: float) -> void:
 			hud.set_prompt("She reels — take water from the ruptured cistern (E), then douse her.")
 		elif _near_gate:
 			_go_emerald("West falls — the hourglass turns toward the Emerald City…")
+		else:
+			var w := get_node_or_null("/root/Whimsy")
+			if w and w.has_method("try_collect") and w.call("try_collect", actor):
+				pass
 	_update_prompt()
 
 func _lead() -> CharacterBody3D:
@@ -117,30 +124,48 @@ func _lead() -> CharacterBody3D:
 	return player
 
 func _build_world() -> void:
-	# Dark iron ground
+	# Dark iron ground + north pad so the YBR can leave the castle
 	_add_box(Vector3(0, -0.2, 0), Vector3(100, 0.4, 90), Color(0.12, 0.1, 0.11), "Ground")
+	_add_box(Vector3(0, -0.2, -48), Vector3(80, 0.4, 50), Color(0.12, 0.1, 0.11), "GroundNorth")
 	_add_box(Vector3(0, 0.02, 0), Vector3(36, 0.06, 28), Color(0.18, 0.14, 0.13), "Courtyard")
-	# Outer walls — castle silhouette
-	_add_box(Vector3(0, 4, -42), Vector3(52, 10, 3), Color(0.1, 0.08, 0.09), "WallN")
+	# Continuous Yellow Brick Road through the court → open north gate → Emerald (next level).
+	# Never seal this corridor with a solid block building.
+	_add_box(Vector3(0, 0.05, 4), Vector3(5.4, 0.1, 36), Color(0.92, 0.78, 0.2), "YellowBrickRoad")
+	_add_box(Vector3(0, 0.05, -30), Vector3(5.6, 0.1, 28), Color(0.92, 0.78, 0.2), "YellowBrickRoadN")
+	_add_box(Vector3(0, 0.05, -50), Vector3(5.8, 0.12, 16), Color(0.95, 0.82, 0.22), "YellowBrickRoadGate")
+	# Outer walls — north wall has a WALKABLE gate gap on the YBR (x≈0).
+	_add_box(Vector3(-18, 4, -42), Vector3(20, 10, 3), Color(0.1, 0.08, 0.09), "WallN_L")
+	_add_box(Vector3(18, 4, -42), Vector3(20, 10, 3), Color(0.1, 0.08, 0.09), "WallN_R")
 	_add_box(Vector3(0, 4, 42), Vector3(52, 10, 3), Color(0.1, 0.08, 0.09), "WallS")
 	_add_box(Vector3(-48, 4, 0), Vector3(3, 10, 86), Color(0.1, 0.08, 0.09), "WallW")
 	_add_box(Vector3(48, 4, 0), Vector3(3, 10, 86), Color(0.1, 0.08, 0.09), "WallE")
-	# Keep towers
+	# Keep towers (offset off the brick)
 	for xz in [Vector3(-22, 0, -22), Vector3(22, 0, -22), Vector3(-22, 0, 18), Vector3(22, 0, 18)]:
 		_add_box(xz + Vector3(0, 6, 0), Vector3(5, 12, 5), Color(0.14, 0.1, 0.11), "Tower")
 		_add_box(xz + Vector3(0, 12.5, 0), Vector3(6, 1.2, 6), Color(0.08, 0.06, 0.07), "Battlement")
-	# Gatehouse toward Emerald (north)
-	_add_box(Vector3(0, 5, -36), Vector3(10, 10, 4), Color(0.16, 0.11, 0.1), "Gatehouse")
+	# Gatehouse as an OPEN arch on the YBR — pillars + lintel only (no solid fill at walk height).
+	_add_box(Vector3(-6.5, 4.5, -36), Vector3(3.5, 9, 5), Color(0.16, 0.11, 0.1), "GatePillarL")
+	_add_box(Vector3(6.5, 4.5, -36), Vector3(3.5, 9, 5), Color(0.16, 0.11, 0.1), "GatePillarR")
+	_add_box(Vector3(0, 10.5, -36), Vector3(16, 2.5, 5), Color(0.18, 0.12, 0.11), "GateArch")
+	# Glowing end-gate pad past the arch (story-gated E after melt).
+	_add_box(gate_pos + Vector3(0, 0.02, 0), Vector3(6.5, 0.14, 6.5), Color(0.35, 0.9, 0.45), "EmeraldGatePad")
 	var gate_lab := Label3D.new()
-	gate_lab.text = "ROAD TO\nEMERALD CITY"
-	gate_lab.font_size = 48
-	gate_lab.pixel_size = 0.014
+	gate_lab.text = "YELLOW BRICK ROAD\n→ EMERALD CITY\n(E when West falls)"
+	gate_lab.font_size = 42
+	gate_lab.pixel_size = 0.013
 	gate_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	gate_lab.modulate = Color(0.3, 0.85, 0.45)
+	gate_lab.modulate = Color(0.3, 0.95, 0.5)
 	gate_lab.outline_size = 8
 	add_child(gate_lab)
-	gate_lab.global_position = gate_pos + Vector3(0, 4.5, 0)
-	# Ember braziers
+	gate_lab.global_position = gate_pos + Vector3(0, 4.2, 0)
+	var ybr_lab := Label3D.new()
+	ybr_lab.text = "YBR → EMERALD"
+	ybr_lab.font_size = 40
+	ybr_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	ybr_lab.modulate = Color(1.0, 0.9, 0.35)
+	add_child(ybr_lab)
+	ybr_lab.global_position = Vector3(0, 3.2, -20)
+	# Ember braziers off the brick centerline
 	for i in 6:
 		var a := float(i) / 6.0 * TAU
 		_add_box(Vector3(cos(a) * 14.0, 0.6, sin(a) * 10.0), Vector3(0.6, 1.2, 0.6), Color(0.45, 0.12, 0.05), "Brazier")
@@ -171,6 +196,12 @@ func _build_world() -> void:
 	rim.omni_range = 30.0
 	add_child(rim)
 	rim.global_position = Vector3(0, 6, -20)
+	var gate_light := OmniLight3D.new()
+	gate_light.light_color = Color(0.4, 1.0, 0.55)
+	gate_light.light_energy = 3.2
+	gate_light.omni_range = 18.0
+	add_child(gate_light)
+	gate_light.global_position = gate_pos + Vector3(0, 4, 0)
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_COLOR
@@ -187,7 +218,7 @@ func _build_world() -> void:
 	e.adjustment_contrast = 1.05
 	env.environment = e
 	add_child(env)
-	# Map border rails
+	# Map border rails — north edge past the Emerald gate pad
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)
 	# Title
 	var title := Label3D.new()
@@ -534,8 +565,8 @@ func _set_beat(next: Beat) -> void:
 		Beat.MELTING:
 			hud.set_objective("The West melts…")
 		Beat.ROAD_OPEN:
-			hud.set_objective("FINAL STEP (L3): North Emerald gate — walk close and E (or F9). Hourglass → Emerald City.")
-			hud.set_prompt("End-gate: E at north road · F9 Emerald City")
+			hud.set_objective("FINAL STEP (L3): Follow the Yellow Brick Road NORTH through the open gate — E on the green pad → Emerald City.")
+			hud.set_prompt("End-gate: YBR north · open arch · E on green pad · F9 Emerald")
 			var lt := get_node_or_null("/root/LevelTransition")
 			if lt and lt.has_method("play_exit"):
 				lt.play_exit("The West melts — the hourglass turns…")
@@ -575,7 +606,7 @@ func _update_compass() -> void:
 				label = "Cistern water"
 		Beat.ROAD_OPEN:
 			target = gate_pos
-			label = "Emerald gate"
+			label = "YBR → Emerald"
 	if label == "" or target == Vector3.ZERO:
 		compass.text = "F8 force water · F9 Emerald City"
 		return
@@ -600,8 +631,28 @@ func _nearest_enemy(from: Node3D) -> Vector3:
 
 func _update_prompt() -> void:
 	if beat == Beat.ROAD_OPEN and _near_gate:
-		hud.set_prompt("E  —  Take the road to the Emerald City")
+		hud.set_prompt("E  —  Follow the Yellow Brick Road to the Emerald City")
 	elif _near_bucket and not has_water and beat >= Beat.FACE_WEST:
 		hud.set_prompt("E  —  Draw water from the ruptured cistern")
 	elif _near_west and has_water and (west_grounded or west_hp <= 55):
 		hud.set_prompt("E  —  Douse the Witch of the West (WATER melt)")
+	else:
+		var w := get_node_or_null("/root/Whimsy")
+		if w and w.has_method("prompt_if_near"):
+			var p: String = str(w.call("prompt_if_near"))
+			if p != "":
+				hud.set_prompt(p)
+
+func _add_west_whimsy() -> void:
+	var w := get_node_or_null("/root/Whimsy")
+	if w == null or not w.has_method("setup") or hud == null:
+		return
+	# Off the YBR centerline — ember-toned side fun.
+	w.call("setup", self, hud, [
+		{"pos": Vector3(10, 0, 12), "kind": "bounce", "name": "Ember toadstool"},
+		{"pos": Vector3(-11, 0, 8), "kind": "giggle", "name": "Cinder giggle"},
+		{"pos": Vector3(9, 0, -8), "kind": "chime", "name": "Iron chime"},
+		{"pos": Vector3(-10, 0, -18), "kind": "dance", "name": "Winkie dance ring"},
+		{"pos": Vector3(8, 0, -44), "kind": "giggle", "name": "Gate giggle"},
+		{"pos": Vector3(-8, 0, -28), "kind": "chime", "name": "Arch chime"},
+	], "winkie")
