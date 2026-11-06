@@ -1,17 +1,19 @@
 extends Node3D
 
-## Act 5 · Quadling Country — Glinda's court & the Road Home (vault [[Q4 - Glinda & the Road Home]]).
-## Book-true: Glinda = Good Witch of the South. Shoes were always the key home.
-## Enter from Emerald City curtain choice. FINAL STEP = shoes choice → ending sting.
+## Act 5 · Quadling Country — Glinda's court (vault [[Q4 - Glinda & the Road Home]]).
+## Book-true: Glinda = Good Witch of the South. Silver Shoes were always the key home.
+## FINAL STEP = Road Home pad → heel clicks → hourglass → L6 Kansas homecoming.
+## Dorothy does NOT ride the Wizard's balloon (that is his exit in Emerald).
 
 const PLAYER_SCENE := preload("res://actors/dorothy/player.tscn")
 const HUD_SCENE := preload("res://ui/play_hud.tscn")
 const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
+const HOMECOMING_SCENE := "res://regions/kansas/homecoming.tscn"
 
 const PLAY_BOUND_X := 42.0
-const PLAY_BOUND_Z := 48.0
+const PLAY_BOUND_Z := 52.0
 const YBR_SPAWN := Vector3(0.0, 0.08, 36.0)
 const GLINDA_POS := Vector3(0.0, 0.08, -18.0)
 const ROAD_HOME_PAD := Vector3(0.0, 0.08, -40.0)
@@ -21,6 +23,7 @@ enum Beat {
 	MEET_GLINDA,
 	REVEAL,
 	CHOICE,
+	HEELS,
 	DONE,
 }
 
@@ -35,11 +38,13 @@ var compass: Label
 var _near_glinda: bool = false
 var _near_home: bool = false
 var _glinda_line: int = 0
+var _heel_clicks: int = 0
+var _going_home: bool = false
 var _glinda_lines: PackedStringArray = PackedStringArray([
 	"Glinda: \"Welcome, Dorothy. I am Glinda, the Good Witch of the South.\"",
-	"Glinda: \"You have walked the Yellow Brick Road with true friends. The West is gone. The Wizard is only a man.\"",
+	"Glinda: \"You have walked the Yellow Brick Road with true friends. The West is gone. The Wizard is only a man — his balloon is already his own road.\"",
 	"Glinda: \"The Silver Shoes on your feet have always been the way home — you needed to be ready to use them.\"",
-	"Glinda: \"Click your heels with intention, child. Or stay — Oz remembers those who choose her.\"",
+	"Glinda: \"Click your heels three times with intention. Say you want Aunt Em. The shoes will know.\"",
 	"Glinda: \"When you are ready, walk the last stretch of the Yellow Brick Road south — that is your FINAL STEP.\"",
 ])
 
@@ -64,15 +69,16 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F9:
-			_set_beat(Beat.DONE)
+			_go_homecoming("The shoes know the way — Kansas…")
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_F8:
 			_glinda_line = _glinda_lines.size()
+			_heel_clicks = 0
 			_set_beat(Beat.CHOICE)
 			get_viewport().set_input_as_handled()
 
 func _process(_delta: float) -> void:
-	if player == null:
+	if player == null or _going_home:
 		return
 	_update_compass()
 	var actor := _lead()
@@ -80,20 +86,49 @@ func _process(_delta: float) -> void:
 		return
 	if beat == Beat.APPROACH and actor.global_position.distance_to(GLINDA_POS) < 10.0:
 		_set_beat(Beat.MEET_GLINDA)
+	# Pad is live from REVEAL onward (don't require a second Glinda click).
+	var pad_live: bool = beat == Beat.REVEAL or beat == Beat.CHOICE or beat == Beat.HEELS
 	_near_glinda = beat == Beat.MEET_GLINDA and actor.global_position.distance_to(GLINDA_POS) < 3.5
-	_near_home = beat == Beat.CHOICE and actor.global_position.distance_to(ROAD_HOME_PAD) < 4.0
+	_near_home = pad_live and actor.global_position.distance_to(ROAD_HOME_PAD) < 5.5
+	# Auto-open CHOICE when player reaches the pad during REVEAL.
+	if beat == Beat.REVEAL and _near_home:
+		_set_beat(Beat.CHOICE)
 	if Input.is_action_just_pressed("interact"):
 		if _near_glinda and beat == Beat.MEET_GLINDA:
 			_advance_glinda()
 		elif beat == Beat.REVEAL and _near_glinda:
 			_set_beat(Beat.CHOICE)
 		elif _near_home and beat == Beat.CHOICE:
-			_set_beat(Beat.DONE)
+			_set_beat(Beat.HEELS)
+			_heel_click(actor)
+		elif _near_home and beat == Beat.HEELS:
+			_heel_click(actor)
 		else:
 			var w := get_node_or_null("/root/Whimsy")
 			if w and w.has_method("try_collect"):
 				w.call("try_collect", actor)
 	_update_prompt()
+
+func _heel_click(_actor: Node3D) -> void:
+	_heel_clicks += 1
+	var d := get_node_or_null("/root/DialogueUI")
+	var left: int = 3 - _heel_clicks
+	if _heel_clicks == 1:
+		if d and d.has_method("say"):
+			d.say("Dorothy", "Take me home to Aunt Em!", true, 2.0)
+		hud.set_prompt("Heel click 1 of 3 — E again")
+	elif _heel_clicks == 2:
+		if d and d.has_method("say"):
+			d.say("Dorothy", "Home — Kansas — Aunt Em!", true, 1.8)
+		hud.set_prompt("Heel click 2 of 3 — E once more")
+	else:
+		if d and d.has_method("say"):
+			d.say("Narrator", "The Silver Shoes flash. The Yellow Brick Road becomes the road home.", true, 2.5)
+		hud.set_prompt("Heel click 3 of 3 — the shoes take you…")
+		_go_homecoming("The Silver Shoes carry her — the hourglass turns toward Kansas…")
+		return
+	if left > 0:
+		hud.set_objective("FINAL STEP: Click your heels — E on the Road Home pad (%d/3)" % _heel_clicks)
 
 func _lead() -> CharacterBody3D:
 	var party := get_node_or_null("/root/Party")
@@ -103,16 +138,43 @@ func _lead() -> CharacterBody3D:
 			return b
 	return player
 
+func _go_homecoming(msg: String) -> void:
+	if _going_home:
+		return
+	_going_home = true
+	beat = Beat.DONE
+	if hud:
+		hud.set_objective("The Road Home opens — Kansas waits.")
+		hud.set_prompt(msg)
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(HOMECOMING_SCENE, msg, "Kansas · homecoming")
+	else:
+		get_tree().change_scene_to_file(HOMECOMING_SCENE)
+
 func _build_world() -> void:
 	_add_box(Vector3(0, -0.2, 0), Vector3(90, 0.4, 100), Color(0.55, 0.35, 0.48), "Ground")
 	_add_box(Vector3(0, -0.2, -30), Vector3(70, 0.4, 50), Color(0.5, 0.32, 0.45), "GroundS")
-	# Continuous YBR south to Glinda then Road Home pad
 	_add_box(Vector3(0, 0.05, 10), Vector3(5.6, 0.1, 55), Color(0.95, 0.82, 0.25), "YellowBrickRoad")
 	_add_box(Vector3(0, 0.05, -30), Vector3(5.8, 0.12, 30), Color(0.96, 0.84, 0.28), "YellowBrickRoadS")
-	_add_box(ROAD_HOME_PAD + Vector3(0, 0.02, 0), Vector3(7.0, 0.14, 7.0), Color(1.0, 0.75, 0.9), "RoadHomePad")
-	# Soft rose court around Glinda
+	_add_box(ROAD_HOME_PAD + Vector3(0, 0.02, 0), Vector3(7.5, 0.16, 7.5), Color(1.0, 0.75, 0.9), "RoadHomePad")
+	# Tall emissive marker so the pad never reads as “just floor”
+	var post := MeshInstance3D.new()
+	post.name = "RoadHomeMarker"
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.18
+	cyl.bottom_radius = 0.22
+	cyl.height = 5.5
+	post.mesh = cyl
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = Color(1.0, 0.7, 0.9)
+	pm.emission_enabled = true
+	pm.emission = Color(1.0, 0.55, 0.85)
+	pm.emission_energy_multiplier = 1.2
+	post.material_override = pm
+	add_child(post)
+	post.global_position = ROAD_HOME_PAD + Vector3(0, 2.8, 0)
 	_add_box(Vector3(0, 0.03, -18), Vector3(22, 0.08, 16), Color(0.75, 0.45, 0.6), "Court")
-	# Pillars / pavilion
 	for xz in [Vector3(-8, 0, -14), Vector3(8, 0, -14), Vector3(-8, 0, -24), Vector3(8, 0, -24)]:
 		_add_box(xz + Vector3(0, 3, 0), Vector3(1.4, 6, 1.4), Color(0.9, 0.7, 0.85), "Pillar")
 	_add_box(Vector3(0, 6.5, -19), Vector3(20, 0.6, 14), Color(0.85, 0.55, 0.75), "Canopy")
@@ -125,12 +187,12 @@ func _build_world() -> void:
 	add_child(ybr)
 	ybr.global_position = Vector3(0, 3.5, 24)
 	var home_lab := Label3D.new()
-	home_lab.text = "ROAD HOME\n(FINAL STEP · E)"
+	home_lab.text = "ROAD HOME\nFINAL STEP · E ×3 heels"
 	home_lab.font_size = 48
 	home_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	home_lab.modulate = Color(1.0, 0.7, 0.9)
 	add_child(home_lab)
-	home_lab.global_position = ROAD_HOME_PAD + Vector3(0, 4.0, 0)
+	home_lab.global_position = ROAD_HOME_PAD + Vector3(0, 4.2, 0)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.9, 0.95)
 	sun.light_energy = 1.1
@@ -297,25 +359,22 @@ func _set_beat(next: Beat) -> void:
 	match beat:
 		Beat.APPROACH:
 			hud.set_objective("Follow the Yellow Brick Road south to Glinda — Good Witch of the South.")
-			hud.set_prompt("YBR south · pink court ahead · F8 skip counsel · F9 ending")
+			hud.set_prompt("YBR south · pink court · F8 skip counsel · F9 → Kansas home")
 		Beat.MEET_GLINDA:
 			hud.set_objective("Speak with Glinda (E) — she holds the truth of the Shoes.")
 			hud.set_prompt("E advances Glinda's counsel")
 		Beat.REVEAL:
-			hud.set_objective("The Shoes were always home. When ready, follow the YBR south to the Road Home pad.")
-			hud.set_prompt("YBR south · pink FINAL STEP pad")
+			hud.set_objective("The Shoes were always home. Follow the YBR south to the glowing Road Home pad.")
+			hud.set_prompt("YBR south · pink pad + tall marker · FINAL STEP")
 		Beat.CHOICE:
-			hud.set_objective("FINAL STEP (L5): Walk the Yellow Brick Road to the glowing Road Home pad — E to choose.")
-			hud.set_prompt("E on Road Home pad · go home (prototype ending)")
+			hud.set_objective("FINAL STEP (L5): Stand on the Road Home pad — E to click your heels (3×).")
+			hud.set_prompt("E on Road Home pad · heel clicks → Kansas")
+			_heel_clicks = 0
+		Beat.HEELS:
+			hud.set_objective("FINAL STEP: Click your heels — E on the pad (%d/3)" % _heel_clicks)
 		Beat.DONE:
-			hud.set_objective("The Road Home opens. Oz remembers.")
-			hud.set_prompt("Hourglass rests — prototype spine complete.")
-			var d := get_node_or_null("/root/DialogueUI")
-			if d and d.has_method("say"):
-				d.say("Narrator", "Dorothy clicks her heels. The Yellow Brick Road becomes the road home — and the hourglass rests.", true, 5.0)
-			var lt := get_node_or_null("/root/LevelTransition")
-			if lt and lt.has_method("play_exit"):
-				lt.play_exit("There's no place like home…")
+			hud.set_objective("The shoes carry you home…")
+			hud.set_prompt("Hourglass → Kansas homecoming")
 
 func _ensure_compass() -> void:
 	compass = Label.new()
@@ -339,17 +398,16 @@ func _update_compass() -> void:
 	var target := GLINDA_POS
 	var label := "Glinda"
 	match beat:
-		Beat.APPROACH, Beat.MEET_GLINDA, Beat.REVEAL:
+		Beat.APPROACH, Beat.MEET_GLINDA:
 			target = GLINDA_POS
 			label = "Glinda"
-			if beat == Beat.REVEAL:
-				target = ROAD_HOME_PAD
-				label = "YBR → Road Home"
-		Beat.CHOICE:
+		Beat.REVEAL, Beat.CHOICE, Beat.HEELS:
 			target = ROAD_HOME_PAD
-			label = "Road Home (FINAL)"
+			label = "YBR → Road Home"
+			if beat == Beat.HEELS:
+				label = "Heels %d/3" % _heel_clicks
 		Beat.DONE:
-			compass.text = "Spine complete — Road Home"
+			compass.text = "→ Kansas homecoming"
 			return
 	var dist := actor.global_position.distance_to(target)
 	compass.text = "%s  ·  %.0fm" % [label, dist]
@@ -358,7 +416,9 @@ func _update_prompt() -> void:
 	if _near_glinda and beat == Beat.MEET_GLINDA:
 		hud.set_prompt("E  —  Speak with Glinda")
 	elif _near_home and beat == Beat.CHOICE:
-		hud.set_prompt("E  —  FINAL STEP: Take the Road Home")
+		hud.set_prompt("E  —  FINAL STEP: Click heels (1/3)")
+	elif _near_home and beat == Beat.HEELS:
+		hud.set_prompt("E  —  Heel click %d/3" % mini(_heel_clicks + 1, 3))
 	else:
 		var w := get_node_or_null("/root/Whimsy")
 		if w and w.has_method("prompt_if_near"):

@@ -100,8 +100,48 @@ func _initialize() -> void:
 		else:
 			push_error("GLINDA_YBR_MISSING")
 			ok = false
+		# Pad + homecoming path present
+		var pad := gnode.find_child("RoadHomePad", true, false)
+		if pad == null:
+			push_error("GLINDA_PAD_MISSING")
+			ok = false
+		else:
+			print("GLINDA_PAD_OK")
+		if gnode.has_method("_go_homecoming"):
+			print("GLINDA_HOME_WIRED")
+		else:
+			push_error("GLINDA_HOME_NOT_WIRED")
+			ok = false
 		print("GLINDA_OK")
 		gnode.queue_free()
+		await process_frame
+	# L6 Kansas homecoming finale
+	var hpath := "res://regions/kansas/homecoming.tscn"
+	var hpacked: PackedScene = load(hpath)
+	if hpacked == null:
+		push_error("LOAD_FAIL homecoming")
+		ok = false
+	else:
+		var hnode := hpacked.instantiate()
+		root.add_child(hnode)
+		await process_frame
+		await process_frame
+		var hp := hnode.find_child("Player", true, false)
+		var hh := hnode.find_child("PlayHUD", true, false)
+		var ha := hnode.find_child("AuntEm", true, false)
+		var porch := hnode.find_child("PorchPad", true, false)
+		if hp == null or hh == null or ha == null:
+			push_error("HOME_MISSING player/hud/aunt")
+			ok = false
+		else:
+			print("HOME_PRESENT")
+		if porch:
+			print("HOME_PORCH_OK")
+		else:
+			push_error("HOME_PORCH_MISSING")
+			ok = false
+		print("HOME_OK")
+		hnode.queue_free()
 		await process_frame
 	var m := load("res://regions/munchkinland/landing_square.tscn")
 	if m == null:
@@ -110,6 +150,7 @@ func _initialize() -> void:
 	if ok:
 		print("ACT34_OK")
 		print("ACT5_OK")
+		print("ACT6_OK")
 		quit(0)
 	else:
 		quit(1)

@@ -39,7 +39,13 @@ func _initialize() -> void:
 		push_error("LOAD_FAIL glinda_court")
 		quit(1)
 		return
+	var h := load("res://regions/kansas/homecoming.tscn")
+	if h == null:
+		push_error("LOAD_FAIL homecoming")
+		quit(1)
+		return
 	print("SMOKE_OK")
 	print("SMOKE_L3_L4_OK")
 	print("SMOKE_L5_OK")
+	print("SMOKE_L6_OK")
 	quit(0)
