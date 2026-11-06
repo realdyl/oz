@@ -27,8 +27,8 @@ enum Beat {
 }
 
 ## Match MapBorder half extents with a soft inward margin (62/58 rails).
-const PLAY_BOUND_X := 56.0
-const PLAY_BOUND_Z := 52.0
+const PLAY_BOUND_X := 64.0
+const PLAY_BOUND_Z := 62.0
 
 @onready var hud: CanvasLayer = $PlayHUD
 @onready var shoes: Node3D = $SilverShoes
@@ -69,18 +69,22 @@ var compass: Label
 var _sign_sway: Array = []  # MeshInstance3D boards that gently sway
 var _open_road_sting_done: bool = false
 var _west_road_gate: Node3D = null
-var _west_gate_pos: Vector3 = Vector3(0.0, 0.08, 46.0)
+var _west_gate_pos: Vector3 = Vector3(0.0, 0.08, 52.0)
 var _near_west_gate: bool = false
 var locasta: Node3D
 var locasta_done: bool = false
 var _near_locasta: bool = false
 var _locasta_line: int = 0
+var whimsy_points: int = 0
+var _whimsy_label: Label
+var _near_whimsy: Area3D = null
 var _locasta_lines: PackedStringArray = PackedStringArray([
 	"Locasta: \"Welcome to Munchkinland, child. The house has done what armies could not — the Wicked Witch of the East is gone.\"",
 	"Locasta: \"Her Silver Shoes are yours now. Claim them under the grey house — they chose the one who landed.\"",
 	"Locasta: \"The road east holds a Scarecrow bound to a pole. Free him with kindness (E) — killing will not cut his rope.\"",
 	"Locasta: \"North, a Lion hides in fear. West, a Tin Man rusts. Calm and oil them when you find them — any Lead may help.\"",
 	"Locasta: \"Rogue Munchkins will march on the landing. Kick them (F). Each friend you free teaches a counter. I cannot leave the North — walk the road for me.\"",
+	"Locasta: \"When your friends stand with you, follow the Yellow Brick Road south to the West. The glowing pad is your FINAL STEP.\"",
 	"Locasta: \"The Wicked Witch of the West watches later. For now: Shoes, clear the rogues, free the bound. Go.\"",
 ])
 
@@ -155,8 +159,9 @@ func _expand_world() -> void:
 	_add_block_terrace(Vector3(-42, 0, 4), Vector3(14, 0.4, 14), 2, Vector3(1, 0, 0))
 	_add_block_terrace(Vector3(36, 0, 20), Vector3(10, 0.4, 10), 1, Vector3(0, 0, 1))
 	# Roads leave a clear landing plaza around spawn (~0, 14).
-	_add_road_spur(Vector3(0, 0.02, -8), Vector3(4.5, 0.04, 50)) # north spine
-	_add_road_spur(Vector3(0, 0.02, 20), Vector3(4.5, 0.04, 24)) # south
+	# Continuous YBR spine: north past Locasta, through plaza, south all the way to West gate.
+	_add_road_spur(Vector3(0, 0.02, -18), Vector3(5.0, 0.05, 70)) # long north–south spine
+	_add_road_spur(Vector3(0, 0.02, 38), Vector3(5.2, 0.06, 36)) # south extension to West gate
 	_add_road_spur(Vector3(18, 0.02, 22), Vector3(36, 0.04, 3.4)) # SE village
 	_add_road_spur(Vector3(22, 0.02, 4), Vector3(40, 0.04, 3.4)) # east to cornfield Scarecrow
 	_add_road_spur(Vector3(-22, 0.02, 4), Vector3(40, 0.04, 3.4)) # west to Tin
@@ -170,7 +175,9 @@ func _expand_world() -> void:
 	_scatter_grass(Vector3(-42, 0.45, 4), 8.0, 50)
 	_scatter_grass(Vector3(44, 0.0, 4), 12.0, 60)
 	# Soft story border — thicket + solid rails so you never fall into the void.
-	_add_map_border(62.0, 58.0)
+	_add_map_border(68.0, 64.0)
+	_add_whimsy_activities()
+	_ensure_whimsy_hud()
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	# Continuous solid rails + shrub/tree dressing. Corners closed so pads can't leak.
@@ -997,14 +1004,19 @@ func _spawn_party_world() -> void:
 
 func _spawn_story_witches() -> void:
 	# Vault/book-true: Locasta (Good North) greets first — before companions.
-	# East witch is already dead under the house. Wicked West = distant omen only.
-	# Between spawn (z~14) and the grey house / shoes (z~0) so Dorothy cannot miss her.
-	var greet_at := Vector3(0.0, 0.08, 9.0)
+	# Place her UP the yellow brick road north of spawn so the player must walk to her.
+	# Spawn ~ z=14; house/shoes ~ z=0; Locasta farther north on the road.
+	var greet_at := Vector3(0.0, 0.08, -8.0)
 	if player:
-		greet_at = player.global_position + Vector3(0.0, 0.0, -4.5)
+		# ~22m north of spawn along the YBR, not in Dorothy's face.
+		greet_at = player.global_position + Vector3(0.0, 0.0, -22.0)
 		greet_at.y = 0.08
+		greet_at.x = 0.0 # keep on road centerline
 	_spawn_locasta(greet_at)
 	_spawn_west_omen(Vector3(-48.0, 0.5, -36.0))
+	# Road marker toward Locasta
+	_add_way_marker(Vector3(0.0, 0.08, 6.0), Color(0.55, 0.75, 1.0), "LOCASTA →", greet_at)
+	_add_way_marker(Vector3(0.0, 0.08, -2.0), Color(0.55, 0.75, 1.0), "LOCASTA →", greet_at)
 
 func _spawn_locasta(at: Vector3) -> void:
 	var root := CharacterBody3D.new()
@@ -1974,6 +1986,8 @@ func _process(_delta: float) -> void:
 			_try_use_door()
 		elif _near_west_gate:
 			_go_west_castle()
+		elif _near_whimsy != null:
+			_collect_whimsy(_near_whimsy)
 		elif _near_locasta and not locasta_done:
 			_advance_locasta_talk()
 		elif _near_scarecrow:
@@ -2071,11 +2085,17 @@ func _set_beat(next: Beat) -> void:
 			if marshal == null:
 				_spawn_marshal()
 		Beat.OPEN_ROAD:
-			hud.set_objective("FINAL STEP (L2): Walk the glowing south YBR gate and press E — hourglass → West castle.")
-			hud.set_prompt("End-gate: E on yellow brick pad (south) · F10 West · F11 Emerald skip")
+			hud.set_objective("FINAL STEP (L2): Follow the Yellow Brick Road SOUTH to the glowing gate — E travels to West castle.")
+			hud.set_prompt("End-gate: walk YBR south · E on yellow pad · F10 West · F11 Emerald skip")
 			if not _open_road_sting_done:
 				_open_road_sting_done = true
 				_ensure_west_road_gate()
+				# Extra YBR arrows toward the gate
+				_add_way_marker(Vector3(0.0, 0.08, 28.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
+				_add_way_marker(Vector3(0.0, 0.08, 40.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
+				var d := get_node_or_null("/root/DialogueUI")
+				if d and d.has_method("say"):
+					d.say("Narrator", "The Yellow Brick Road opens south. Follow it to the glowing gate — that is how you leave Munchkinland.", true, 5.0)
 	_refresh_roster()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -2096,24 +2116,185 @@ func _ensure_west_road_gate() -> void:
 	_west_road_gate.global_position = _west_gate_pos
 	var pad := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(8.0, 0.12, 6.0)
+	box.size = Vector3(10.0, 0.14, 8.0)
 	pad.mesh = box
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.88, 0.72, 0.18)
 	mat.emission_enabled = true
 	mat.emission = Color(0.7, 0.45, 0.1)
-	mat.emission_energy_multiplier = 0.55
+	mat.emission_energy_multiplier = 0.85
 	pad.material_override = mat
 	_west_road_gate.add_child(pad)
 	var lab := Label3D.new()
-	lab.text = "YELLOW BRICK ROAD\n→ Winkie Country · West castle\n(E — travel)"
-	lab.font_size = 48
+	lab.text = "YELLOW BRICK ROAD\n→ Winkie Country · West castle\nFINAL STEP · E to travel"
+	lab.font_size = 52
 	lab.pixel_size = 0.014
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	lab.modulate = Color(1.0, 0.88, 0.35)
 	lab.outline_size = 10
 	_west_road_gate.add_child(lab)
-	lab.position = Vector3(0, 3.2, 0)
+	lab.position = Vector3(0, 3.6, 0)
+	# Tall emissive post so gate reads from far up the road
+	var post := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.12
+	cyl.bottom_radius = 0.18
+	cyl.height = 6.0
+	post.mesh = cyl
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = Color(0.9, 0.75, 0.2)
+	pm.emission_enabled = true
+	pm.emission = Color(1.0, 0.85, 0.3)
+	pm.emission_energy_multiplier = 1.4
+	post.material_override = pm
+	_west_road_gate.add_child(post)
+	post.position = Vector3(0, 3.0, 0)
+
+## Optional chuckles — not required for story; feed Whimsy score.
+func _ensure_whimsy_hud() -> void:
+	if hud == null:
+		return
+	_whimsy_label = hud.get_node_or_null("WhimsyScore") as Label
+	if _whimsy_label == null:
+		_whimsy_label = Label.new()
+		_whimsy_label.name = "WhimsyScore"
+		_whimsy_label.position = Vector2(16, 128)
+		_whimsy_label.add_theme_font_size_override("font_size", 16)
+		_whimsy_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.9))
+		hud.add_child(_whimsy_label)
+	_refresh_whimsy_hud()
+
+func _refresh_whimsy_hud() -> void:
+	if _whimsy_label:
+		_whimsy_label.text = "Whimsy  %d" % whimsy_points
+
+func _add_whimsy_activities() -> void:
+	# Bounce toadstools, giggle blooms, candy chimes — pure side fun.
+	var spots := [
+		{"pos": Vector3(12, 0, 18), "kind": "bounce", "name": "Bounce toadstool"},
+		{"pos": Vector3(-14, 0, 22), "kind": "bounce", "name": "Bounce toadstool"},
+		{"pos": Vector3(28, 0, 8), "kind": "giggle", "name": "Giggle bloom"},
+		{"pos": Vector3(-26, 0, -8), "kind": "giggle", "name": "Giggle bloom"},
+		{"pos": Vector3(16, 0, -22), "kind": "chime", "name": "Candy chime"},
+		{"pos": Vector3(-10, 0, 30), "kind": "chime", "name": "Candy chime"},
+		{"pos": Vector3(8, 0, 42), "kind": "giggle", "name": "Roadside giggle"},
+		{"pos": Vector3(-30, 0, 16), "kind": "dance", "name": "Dance ring"},
+	]
+	for s in spots:
+		_spawn_whimsy(s["pos"], s["kind"], s["name"])
+
+func _spawn_whimsy(at: Vector3, kind: String, title: String) -> void:
+	var area := Area3D.new()
+	area.name = "Whimsy_%s" % kind
+	area.collision_layer = 0
+	area.collision_mask = 2
+	area.monitoring = true
+	area.set_meta("kind", kind)
+	area.set_meta("title", title)
+	area.set_meta("taken", false)
+	var col := CollisionShape3D.new()
+	var sph := SphereShape3D.new()
+	sph.radius = 1.6
+	col.shape = sph
+	area.add_child(col)
+	add_child(area)
+	area.global_position = at + Vector3(0, 0.2, 0)
+	var mi := MeshInstance3D.new()
+	var mat := StandardMaterial3D.new()
+	mat.emission_enabled = true
+	match kind:
+		"bounce":
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = 0.55
+			cyl.bottom_radius = 0.75
+			cyl.height = 0.55
+			mi.mesh = cyl
+			mat.albedo_color = Color(0.95, 0.35, 0.55)
+			mat.emission = Color(0.9, 0.3, 0.5)
+			mat.emission_energy_multiplier = 0.6
+			mi.position = Vector3(0, 0.3, 0)
+		"giggle":
+			var sphm := SphereMesh.new()
+			sphm.radius = 0.35
+			sphm.height = 0.7
+			mi.mesh = sphm
+			mat.albedo_color = Color(0.95, 0.85, 0.3)
+			mat.emission = Color(1.0, 0.9, 0.4)
+			mat.emission_energy_multiplier = 0.8
+			mi.position = Vector3(0, 0.6, 0)
+		"chime":
+			var box := BoxMesh.new()
+			box.size = Vector3(0.25, 1.4, 0.25)
+			mi.mesh = box
+			mat.albedo_color = Color(0.6, 0.9, 1.0)
+			mat.emission = Color(0.5, 0.85, 1.0)
+			mat.emission_energy_multiplier = 0.7
+			mi.position = Vector3(0, 0.9, 0)
+		_:
+			var tor := TorusMesh.new()
+			tor.inner_radius = 0.9
+			tor.outer_radius = 1.2
+			mi.mesh = tor
+			mat.albedo_color = Color(0.85, 0.55, 0.95)
+			mat.emission = Color(0.7, 0.4, 0.9)
+			mat.emission_energy_multiplier = 0.5
+			mi.position = Vector3(0, 0.15, 0)
+	mi.material_override = mat
+	area.add_child(mi)
+	var lab := Label3D.new()
+	lab.text = title
+	lab.font_size = 36
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(1, 0.9, 0.95)
+	lab.position = Vector3(0, 1.8, 0)
+	area.add_child(lab)
+	area.body_entered.connect(func(b):
+		if b.is_in_group("player") or b.is_in_group("party"):
+			if not area.get_meta("taken"):
+				_near_whimsy = area
+	)
+	area.body_exited.connect(func(b):
+		if (b.is_in_group("player") or b.is_in_group("party")) and _near_whimsy == area:
+			_near_whimsy = null
+	)
+
+func _collect_whimsy(area: Area3D) -> void:
+	if area == null or area.get_meta("taken"):
+		return
+	area.set_meta("taken", true)
+	var kind := str(area.get_meta("kind"))
+	var pts := 5
+	match kind:
+		"bounce":
+			pts = 8
+			var actor := _interact_actor()
+			if actor is CharacterBody3D:
+				(actor as CharacterBody3D).velocity.y = 9.5
+			hud.set_prompt("Boing! +%d whimsy" % pts)
+		"giggle":
+			pts = 6
+			hud.set_prompt("*giggle* +%d whimsy" % pts)
+			var d := get_node_or_null("/root/DialogueUI")
+			if d and d.has_method("say"):
+				d.say("Bloom", "Hee-hee!", true, 1.5)
+		"chime":
+			pts = 7
+			hud.set_prompt("Ting-a-ling! +%d whimsy" % pts)
+		"dance":
+			pts = 10
+			hud.set_prompt("You spin a little. +%d whimsy" % pts)
+		_:
+			pts = 5
+	whimsy_points += pts
+	_refresh_whimsy_hud()
+	area.visible = false
+	area.monitoring = false
+	if _near_whimsy == area:
+		_near_whimsy = null
+	get_tree().create_timer(1.4).timeout.connect(func():
+		if hud and not _near_west_gate:
+			pass
+	)
 
 func _go_west_castle() -> void:
 	var lt := get_node_or_null("/root/LevelTransition")
@@ -2141,6 +2322,8 @@ func _update_proximity_prompt() -> void:
 			hud.set_prompt("E  —  Enter %s" % title)
 	elif _near_west_gate:
 		hud.set_prompt("E  —  Take the Yellow Brick Road to the West castle")
+	elif _near_whimsy != null and not _near_whimsy.get_meta("taken"):
+		hud.set_prompt("E  —  %s (+whimsy)" % str(_near_whimsy.get_meta("title")))
 	elif _near_locasta and not locasta_done:
 		if _locasta_line == 0:
 			hud.set_prompt("E  —  Speak with Locasta, Good Witch of the North")

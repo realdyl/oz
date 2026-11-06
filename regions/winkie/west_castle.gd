@@ -97,8 +97,11 @@ func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("interact"):
 		if _near_bucket and not has_water and beat >= Beat.FACE_WEST:
 			_take_water()
-		elif _near_west and has_water and west_grounded and beat >= Beat.WATER_READY:
+		elif _near_west and has_water and (west_grounded or west_hp <= 55) and beat >= Beat.WATER_READY:
 			_melt_west()
+		elif _near_west and has_water and beat >= Beat.FACE_WEST:
+			# Holding water but she isn't grounded enough yet
+			hud.set_prompt("Water ready — keep hitting her (F/axe) until GROUNDED, then E")
 		elif _near_west and beat >= Beat.FACE_WEST and not has_water:
 			hud.set_prompt("She reels — take water from the ruptured cistern (E), then douse her.")
 		elif _near_gate:
@@ -141,30 +144,47 @@ func _build_world() -> void:
 	for i in 6:
 		var a := float(i) / 6.0 * TAU
 		_add_box(Vector3(cos(a) * 14.0, 0.6, sin(a) * 10.0), Vector3(0.6, 1.2, 0.6), Color(0.45, 0.12, 0.05), "Brazier")
-	# Lighting — eerie
+	# Lighting — readable dusk, not pitch black (still ominous).
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.light_color = Color(0.55, 0.45, 0.55)
-	sun.light_energy = 0.55
+	sun.light_color = Color(0.75, 0.62, 0.7)
+	sun.light_energy = 1.15
 	sun.shadow_enabled = true
-	sun.rotation_degrees = Vector3(-42, 30, 0)
+	sun.shadow_bias = 0.08
+	sun.rotation_degrees = Vector3(-48, 35, 0)
 	add_child(sun)
 	var fill := OmniLight3D.new()
-	fill.light_color = Color(0.7, 0.25, 0.12)
-	fill.light_energy = 2.2
-	fill.omni_range = 28.0
+	fill.light_color = Color(0.85, 0.45, 0.28)
+	fill.light_energy = 4.5
+	fill.omni_range = 42.0
 	add_child(fill)
-	fill.global_position = Vector3(0, 6, 0)
+	fill.global_position = Vector3(0, 8, 0)
+	var fill2 := OmniLight3D.new()
+	fill2.light_color = Color(0.45, 0.55, 0.85)
+	fill2.light_energy = 2.8
+	fill2.omni_range = 36.0
+	add_child(fill2)
+	fill2.global_position = Vector3(-12, 5, 4) # cistern side
+	var rim := OmniLight3D.new()
+	rim.light_color = Color(0.9, 0.7, 0.5)
+	rim.light_energy = 2.0
+	rim.omni_range = 30.0
+	add_child(rim)
+	rim.global_position = Vector3(0, 6, -20)
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(0.04, 0.03, 0.05)
+	e.background_color = Color(0.12, 0.1, 0.14)
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.18, 0.12, 0.16)
-	e.ambient_light_energy = 0.55
+	e.ambient_light_color = Color(0.42, 0.36, 0.4)
+	e.ambient_light_energy = 1.05
 	e.fog_enabled = true
-	e.fog_light_color = Color(0.12, 0.08, 0.1)
-	e.fog_density = 0.012
+	e.fog_light_color = Color(0.22, 0.16, 0.18)
+	e.fog_density = 0.004
+	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	e.adjustment_enabled = true
+	e.adjustment_brightness = 1.12
+	e.adjustment_contrast = 1.05
 	env.environment = e
 	add_child(env)
 	# Map border rails
@@ -344,22 +364,38 @@ func _spawn_cistern() -> void:
 	wm.height = 0.25
 	water.mesh = wm
 	var wmat := StandardMaterial3D.new()
-	wmat.albedo_color = Color(0.25, 0.45, 0.7, 0.85)
+	wmat.albedo_color = Color(0.25, 0.55, 0.9, 0.9)
 	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wmat.emission_enabled = true
-	wmat.emission = Color(0.2, 0.4, 0.7)
-	wmat.emission_energy_multiplier = 0.5
+	wmat.emission = Color(0.3, 0.55, 1.0)
+	wmat.emission_energy_multiplier = 1.2
 	water.material_override = wmat
 	cistern.add_child(water)
 	water.position = Vector3(0, 0.35, 0)
+	# Tall beacon so water is obvious in the courtyard
+	var beacon := MeshInstance3D.new()
+	var bc := CylinderMesh.new()
+	bc.top_radius = 0.12
+	bc.bottom_radius = 0.18
+	bc.height = 5.5
+	beacon.mesh = bc
+	var bm := StandardMaterial3D.new()
+	bm.albedo_color = Color(0.4, 0.7, 1.0)
+	bm.emission_enabled = true
+	bm.emission = Color(0.35, 0.65, 1.0)
+	bm.emission_energy_multiplier = 1.8
+	beacon.material_override = bm
+	cistern.add_child(beacon)
+	beacon.position = Vector3(0, 2.8, 0)
 	var lab := Label3D.new()
-	lab.text = "RUPTURED CISTERN\n(water — her undoing)"
-	lab.font_size = 36
-	lab.pixel_size = 0.012
+	lab.text = "RUPTURED CISTERN\nWATER = her undoing\n(E to draw)"
+	lab.font_size = 44
+	lab.pixel_size = 0.014
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.6, 0.8, 1.0)
+	lab.modulate = Color(0.55, 0.85, 1.0)
+	lab.outline_size = 10
 	cistern.add_child(lab)
-	lab.position = Vector3(0, 2.2, 0)
+	lab.position = Vector3(0, 5.2, 0)
 	bucket = Area3D.new()
 	bucket.name = "WaterBucket"
 	bucket.collision_layer = 0
@@ -367,19 +403,19 @@ func _spawn_cistern() -> void:
 	bucket.monitoring = true
 	var bcol := CollisionShape3D.new()
 	var sph := SphereShape3D.new()
-	sph.radius = 2.0
+	sph.radius = 2.6
 	bcol.shape = sph
 	bucket.add_child(bcol)
 	cistern.add_child(bucket)
 	bucket.position = Vector3(0, 0.5, 0)
 	var blab := Label3D.new()
 	blab.text = "WATER"
-	blab.font_size = 40
-	blab.pixel_size = 0.012
+	blab.font_size = 48
+	blab.pixel_size = 0.014
 	blab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	blab.modulate = Color(0.5, 0.75, 1.0)
+	blab.modulate = Color(0.5, 0.85, 1.0)
 	bucket.add_child(blab)
-	blab.position = Vector3(0, 1.2, 0)
+	blab.position = Vector3(0, 1.4, 0)
 
 func on_enemy_down(who: Node) -> void:
 	if who == null:
@@ -414,22 +450,46 @@ func on_west_damaged(hp_left: int, grounded: bool) -> void:
 		return
 	if beat < Beat.FACE_WEST:
 		_set_beat(Beat.FACE_WEST)
-	if grounded and hp_left <= 45:
+	if grounded or hp_left <= 55:
+		west_grounded = true
 		_set_beat(Beat.WATER_READY)
+		if not has_water:
+			hud.set_objective("WATER BEAT: Cistern west of court (glowing blue) — E draw water, then E on the Witch.")
+			hud.set_prompt("She is down — GET WATER from the ruptured cistern (compass → Cistern)")
+			_pulse_cistern()
+		else:
+			hud.set_objective("WATER BEAT: You hold water — walk to the Witch and press E to douse her.")
+			hud.set_prompt("E on the grounded Witch — melt her (Baum)")
 	else:
-		hud.set_objective("Witch of the West — break her smoke (Tin axe F). HP %d" % hp_left)
+		hud.set_objective("Witch of the West — Tin axe (F) breaks smoke. HP %d · then water melts her" % hp_left)
+		hud.set_prompt("F kits chip her · axe helps · she cannot die by force alone — water finishes")
+
+func _pulse_cistern() -> void:
+	if cistern == null:
+		return
+	for c in cistern.get_children():
+		if c is MeshInstance3D and c.material_override is StandardMaterial3D:
+			var m: StandardMaterial3D = c.material_override
+			if m.emission_enabled:
+				m.emission_energy_multiplier = 1.6
 
 func _take_water() -> void:
 	has_water = true
 	if bucket:
 		bucket.monitoring = false
-	hud.set_prompt("Cistern water in hand — douse the Witch (E) while she is grounded.")
-	hud.set_objective("Douse the grounded Witch with cistern water (E) — Baum's undoing.")
-	if west_grounded:
-		_set_beat(Beat.WATER_READY)
+	hud.set_prompt("Cistern water in hand — walk to the Witch and E to douse her.")
+	hud.set_objective("Douse the Witch with cistern water (E) — this is how you defeat her.")
+	_set_beat(Beat.WATER_READY)
+	var d := get_node_or_null("/root/DialogueUI")
+	if d and d.has_method("say"):
+		d.say("Narrator", "Water from the cistern — her undoing. Press E on the Witch while she is grounded.", true, 4.0)
 
 func _melt_west() -> void:
 	if melt_done or west == null:
+		return
+	# Accept douse if grounded OR already water-ready (player may have water first).
+	if not west_grounded and west_hp > 55:
+		hud.set_prompt("Not yet — weaken her with F (axe helps), then douse.")
 		return
 	melt_done = true
 	_set_beat(Beat.MELTING)
@@ -458,13 +518,19 @@ func _set_beat(next: Beat) -> void:
 			hud.set_objective("Winkie court — clear the guards. %d/%d" % [court_kills, court_need])
 			hud.set_prompt("F kits · Tab Lead · guards march from the walls")
 		Beat.FACE_WEST:
-			hud.set_objective("Witch of the West — Tin axe breaks smoke armor. HP %d" % west_hp)
-			hud.set_prompt("She flies on storm-front · ground her, then water")
+			hud.set_objective("Witch of the West — Tin axe (F) breaks smoke armor. HP %d" % west_hp)
+			hud.set_prompt("Weaken her with F · then cistern WATER (E) melts her — not F alone")
 			if west and west.has_method("begin_fight"):
 				west.call("begin_fight")
+			_pulse_cistern()
 		Beat.WATER_READY:
-			hud.set_objective("She is grounded — take cistern water (E) and douse her (E).")
-			hud.set_prompt("Baum: water is her undoing — not a one-button cutscene alone")
+			if has_water:
+				hud.set_objective("Douse the Witch (E) — water is her undoing.")
+				hud.set_prompt("E on the Witch while she is down")
+			else:
+				hud.set_objective("Draw cistern water (E) west of the court — then E on the Witch.")
+				hud.set_prompt("Compass → Cistern · glowing blue WATER")
+			_pulse_cistern()
 		Beat.MELTING:
 			hud.set_objective("The West melts…")
 		Beat.ROAD_OPEN:
@@ -537,5 +603,5 @@ func _update_prompt() -> void:
 		hud.set_prompt("E  —  Take the road to the Emerald City")
 	elif _near_bucket and not has_water and beat >= Beat.FACE_WEST:
 		hud.set_prompt("E  —  Draw water from the ruptured cistern")
-	elif _near_west and has_water and west_grounded:
-		hud.set_prompt("E  —  Douse the Witch of the West")
+	elif _near_west and has_water and (west_grounded or west_hp <= 55):
+		hud.set_prompt("E  —  Douse the Witch of the West (WATER melt)")

@@ -53,11 +53,17 @@ var _near_door: bool = false
 var _aunt_line: int = 0
 var wind_t: float = 0.0
 var _house_base_y: float = 0.0
+var _near_build_door: Area3D = null
+var _inside_building: bool = false
+var _door_busy: bool = false
+var _active_build_door: Area3D = null
+var whimsy_score: int = 0
 
+# Spoken AFTER Toto is already in the basket — never "go get Toto" again.
 const AUNT_LINES := [
-	"Dorothy! The sky's turning — get Toto and come to the house!",
+	"There you are — and Toto's safe in the basket. Good girl.",
 	"Henry's gone to look after the stock. Latch that shutter before the wind takes it.",
-	"When you're done, check the cellar door. I'll be waiting below.",
+	"When the shutter's done, check the cellar. I'll be waiting below.",
 ]
 
 func _ready() -> void:
@@ -73,13 +79,13 @@ func _ready() -> void:
 	_ensure_compass()
 	_stabilize_lighting()
 	_build_farm_layout()
-	# Spread objectives — not three markers in a 6m cluster.
-	# Player spawn ~ (4, 10); farmhouse ~ (-2, -8).
-	basket.global_position = Vector3(-16.0, 0.05, 16.0) # by barn / west yard
-	toto.global_position = Vector3(18.0, 0.05, -14.0) # east chicken run past house
+	# Spread objectives across an open yard — basket never wedged in a building corner.
+	# Player spawn ~ (4, 10); farmhouse ~ (-2, -8); barn ~ (-18, 22).
+	basket.global_position = Vector3(10.0, 0.05, 24.0) # open south yard, clear of walls
+	toto.global_position = Vector3(22.0, 0.05, -18.0) # east chicken run past house
 	_dress_basket()
 	_spawn_basket_marker()
-	hud.set_objective("Grey Kansas. Walk west to the barn path — pick up Toto's basket (E).")
+	hud.set_objective("Grey Kansas. South open yard — pick up Toto's basket (glowing post · E).")
 	if hud.has_method("set_kansas_mode"):
 		hud.set_kansas_mode(true)
 	basket.taken.connect(_on_basket_taken)
@@ -125,13 +131,15 @@ func _stabilize_lighting() -> void:
 				mi2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _build_farm_layout() -> void:
-	_add_ground_pad(Vector3(0, -0.05, -22), Vector3(70, 0.1, 50))
-	_add_ground_pad(Vector3(18, -0.05, 8), Vector3(45, 0.1, 45))
-	_add_ground_pad(Vector3(-18, -0.05, 12), Vector3(40, 0.1, 40))
-	_add_barn(Vector3(-14.0, 0.0, 18.0))
-	_add_chicken_coop(Vector3(18.0, 0.0, -16.0))
-	_add_fence_ring(Vector3(-14.0, 0.0, 18.0), 7.0, 12)
-	_add_fence_ring(Vector3(18.0, 0.0, -16.0), 5.0, 10)
+	# Expansive prairie pads (Munchkinland-scale) — never scale main Ground.
+	_add_ground_pad(Vector3(0, -0.05, 0), Vector3(100, 0.1, 100))
+	_add_ground_pad(Vector3(0, -0.05, -40), Vector3(90, 0.1, 50))
+	_add_ground_pad(Vector3(0, -0.05, 40), Vector3(90, 0.1, 50))
+	_add_ground_pad(Vector3(-40, -0.05, 0), Vector3(50, 0.1, 90))
+	_add_ground_pad(Vector3(40, -0.05, 0), Vector3(50, 0.1, 90))
+	_add_barn(Vector3(-22.0, 0.0, 26.0))
+	_add_fence_ring(Vector3(-22.0, 0.0, 26.0), 8.0, 14)
+	_add_fence_ring(Vector3(24.0, 0.0, -20.0), 6.0, 12)
 	# Shutter / cellar / door relative to Farmhouse node at (-2,0,-8)
 	var hx := -2.0
 	var hz := -8.0
@@ -139,11 +147,15 @@ func _build_farm_layout() -> void:
 	_add_cellar_door(Vector3(hx - 4.2, 0.0, hz + 1.5))
 	_add_house_door(Vector3(hx, 0.0, hz + 3.6))
 	_add_aunt_em(Vector3(hx + 1.2, 0.0, hz + 4.2))
-	_add_uncle_henry(Vector3(-10.0, 0.0, 14.0))
-	_add_clothesline(Vector3(6.0, 0.0, 2.0))
-	_add_windmill_ghost(Vector3(-22.0, 0.0, -6.0))
-	_add_cyclone_funnel(Vector3(8.0, 0.0, -28.0))
-	_add_map_border(32.0, 32.0)
+	_add_uncle_henry(Vector3(-16.0, 0.0, 18.0))
+	_add_clothesline(Vector3(8.0, 0.0, 4.0))
+	_add_windmill_ghost(Vector3(-32.0, 0.0, -10.0))
+	_add_cyclone_funnel(Vector3(12.0, 0.0, -36.0))
+	# Enterable Kansas buildings (E door enter/exit like Munchkinland).
+	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 5.5), Vector3(5.5, 3.6, 4.2))
+	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 30.5), Vector3(5.5, 3.8, 4.5))
+	_make_enterable_simple(Vector3(24.0, 0.0, -20.0), "Chicken coop", Vector3(2.6, 1.4, 2.0), Color(0.4, 0.4, 0.42))
+	_add_map_border(56.0, 54.0)
 
 func _dress_basket() -> void:
 	## Ensure basket reads as a basket even if scene mesh is small.
@@ -723,6 +735,11 @@ func _process(delta: float) -> void:
 	_update_prompts()
 
 func _try_interact() -> void:
+	# Building enter/exit (any calm phase; storm final door still wins when near it).
+	if _inside_building or _near_build_door != null:
+		if phase != Phase.STORM_RUN or not _near_door:
+			if _try_build_door():
+				return
 	match phase:
 		Phase.NEED_AUNT:
 			if _near_aunt:
@@ -738,7 +755,11 @@ func _try_interact() -> void:
 				_enter_house()
 
 func _update_prompts() -> void:
-	if phase == Phase.NEED_AUNT and _near_aunt:
+	if _inside_building and _active_build_door:
+		hud.set_prompt("E  —  Exit %s" % str(_active_build_door.get_meta("title")))
+	elif _near_build_door != null and (phase != Phase.STORM_RUN or not _near_door):
+		hud.set_prompt("E  —  Enter %s" % str(_near_build_door.get_meta("title")))
+	elif phase == Phase.NEED_AUNT and _near_aunt:
 		hud.set_prompt("E  —  Talk to Aunt Em")
 	elif phase == Phase.NEED_SHUTTER and _near_shutter:
 		hud.set_prompt("E  —  Latch the farmhouse shutter")
@@ -773,7 +794,7 @@ func _update_compass() -> void:
 		Phase.NEED_BASKET:
 			if basket and not basket.claimed:
 				target = basket
-				label = "Basket (barn path)"
+				label = "Basket (open yard)"
 		Phase.NEED_TOTO:
 			if toto and not toto.joined_basket:
 				target = toto
@@ -956,6 +977,174 @@ func _close_shutter_debug() -> void:
 
 func _touch_cellar_debug() -> void:
 	_touch_cellar()
+
+## --- Enterable buildings (E teleport; walls stay solid) ---
+func _make_enterable_box(host: Node3D, title: String, interior: Vector3, exterior: Vector3, _half_size: Vector3) -> void:
+	if host == null:
+		return
+	var door := Area3D.new()
+	door.name = "BuildDoor_%s" % title.replace(" ", "")
+	door.collision_layer = 0
+	door.collision_mask = 2
+	door.monitoring = true
+	var col := CollisionShape3D.new()
+	var sph := SphereShape3D.new()
+	sph.radius = 1.7
+	col.shape = sph
+	door.add_child(col)
+	add_child(door)
+	door.global_position = exterior
+	door.set_meta("title", title)
+	door.set_meta("interior_pos", interior)
+	door.set_meta("exterior_pos", exterior)
+	door.set_meta("host", host)
+	var fit := Node3D.new()
+	fit.name = "InteriorFitout"
+	fit.visible = false
+	host.add_child(fit)
+	_add_kansas_interior(fit, title)
+	door.set_meta("fitout", fit)
+	door.body_entered.connect(func(b):
+		if b.is_in_group("player") and not _inside_building:
+			_near_build_door = door
+	)
+	door.body_exited.connect(func(b):
+		if b.is_in_group("player") and _near_build_door == door and not _inside_building:
+			_near_build_door = null
+	)
+
+func _make_enterable_simple(at: Vector3, title: String, size: Vector3, col: Color) -> void:
+	var body := StaticBody3D.new()
+	body.name = title.replace(" ", "")
+	add_child(body)
+	body.global_position = at
+	var mi := MeshInstance3D.new()
+	mi.name = "Shell"
+	var box := BoxMesh.new()
+	box.size = size
+	mi.mesh = box
+	mi.material_override = _grey_mat(col)
+	mi.position = Vector3(0, size.y * 0.5, 0)
+	body.add_child(mi)
+	var c := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = size
+	c.shape = sh
+	c.position = Vector3(0, size.y * 0.5, 0)
+	body.add_child(c)
+	var lab := Label3D.new()
+	lab.text = title
+	lab.font_size = 40
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.position = Vector3(0, size.y + 0.6, 0)
+	lab.modulate = Color(0.9, 0.9, 0.92)
+	body.add_child(lab)
+	_make_enterable_box(body, title, at + Vector3(0, 0.12, 0), at + Vector3(0, 0.12, size.z * 0.5 + 1.6), size)
+
+func _add_kansas_interior(fit: Node3D, title: String) -> void:
+	var floor := MeshInstance3D.new()
+	var fb := BoxMesh.new()
+	fb.size = Vector3(4.5, 0.08, 4.0)
+	floor.mesh = fb
+	floor.material_override = _grey_mat(Color(0.35, 0.35, 0.38))
+	floor.position = Vector3(0, 0.04, 0)
+	fit.add_child(floor)
+	var t := title.to_lower()
+	if "farm" in t:
+		_ks_prop(fit, Vector3(0, 0.45, -0.8), Vector3(1.4, 0.7, 0.7), Color(0.28, 0.28, 0.3))
+		_ks_prop(fit, Vector3(1.4, 0.5, 0.6), Vector3(0.7, 1.0, 0.5), Color(0.22, 0.22, 0.24))
+		_ks_prop(fit, Vector3(-1.3, 0.35, 0.5), Vector3(0.6, 0.7, 0.6), Color(0.32, 0.32, 0.34))
+		var pl := Label3D.new()
+		pl.text = "Gale kitchen"
+		pl.font_size = 36
+		pl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pl.position = Vector3(0, 2.0, 0)
+		fit.add_child(pl)
+	elif "barn" in t:
+		_ks_prop(fit, Vector3(-1.2, 0.6, 0), Vector3(0.8, 1.2, 2.5), Color(0.3, 0.3, 0.32))
+		_ks_prop(fit, Vector3(1.2, 0.4, -0.5), Vector3(1.0, 0.8, 1.0), Color(0.4, 0.38, 0.3))
+		var pl2 := Label3D.new()
+		pl2.text = "Hay loft"
+		pl2.font_size = 36
+		pl2.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pl2.position = Vector3(0, 2.0, 0)
+		fit.add_child(pl2)
+	else:
+		_ks_prop(fit, Vector3(0, 0.25, 0), Vector3(0.8, 0.5, 0.8), Color(0.45, 0.45, 0.4))
+		var pl3 := Label3D.new()
+		pl3.text = "Coop"
+		pl3.font_size = 32
+		pl3.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pl3.position = Vector3(0, 1.4, 0)
+		fit.add_child(pl3)
+
+func _ks_prop(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
+	var mi := MeshInstance3D.new()
+	var b := BoxMesh.new()
+	b.size = size
+	mi.mesh = b
+	mi.material_override = _grey_mat(col)
+	mi.position = pos
+	parent.add_child(mi)
+
+func _try_build_door() -> bool:
+	if _door_busy:
+		return false
+	if _inside_building and _active_build_door:
+		_exit_building()
+		return true
+	if _near_build_door != null:
+		_enter_building(_near_build_door)
+		return true
+	return false
+
+func _enter_building(door: Area3D) -> void:
+	if door == null or player == null:
+		return
+	_door_busy = true
+	_inside_building = true
+	_active_build_door = door
+	_near_build_door = door
+	var ip: Vector3 = door.get_meta("interior_pos")
+	player.global_position = ip + Vector3(0, 0.05, 0)
+	var fit = door.get_meta("fitout") if door.has_meta("fitout") else null
+	if fit:
+		fit.visible = true
+	var host = door.get_meta("host") if door.has_meta("host") else null
+	if host:
+		for n in host.find_children("*", "MeshInstance3D", true, false):
+			if fit and (n == fit or fit.is_ancestor_of(n)):
+				continue
+			if n is MeshInstance3D:
+				(n as MeshInstance3D).visible = false
+	hud.set_prompt("E  —  Exit %s" % str(door.get_meta("title")))
+	_dlg("Narrator", "Inside the %s." % str(door.get_meta("title")))
+	get_tree().create_timer(0.25).timeout.connect(func(): _door_busy = false)
+
+func _exit_building() -> void:
+	if _active_build_door == null or player == null:
+		_inside_building = false
+		_door_busy = false
+		return
+	_door_busy = true
+	var door := _active_build_door
+	var ep: Vector3 = door.get_meta("exterior_pos")
+	player.global_position = ep + Vector3(0, 0.05, 0.4)
+	var fit = door.get_meta("fitout") if door.has_meta("fitout") else null
+	if fit:
+		fit.visible = false
+	var host = door.get_meta("host") if door.has_meta("host") else null
+	if host:
+		for n in host.find_children("*", "MeshInstance3D", true, false):
+			if n is MeshInstance3D:
+				(n as MeshInstance3D).visible = true
+		if fit:
+			fit.visible = false
+	_inside_building = false
+	_active_build_door = null
+	_near_build_door = null
+	hud.set_prompt("")
+	get_tree().create_timer(0.25).timeout.connect(func(): _door_busy = false)
 
 func force_house_enter() -> void:
 	if phase < Phase.STORM_RUN:

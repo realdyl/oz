@@ -61,9 +61,11 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 	if CombatFx and CombatFx.has_method("flash_sphere"):
 		CombatFx.flash_sphere(self, global_position + Vector3(0, 1.4, 0), Color(0.7, 0.2, 0.25), 0.5, 0.15)
 	# Ground her after enough pressure or axe hits while low.
-	if health <= 50 or (armor_break and health <= 90):
+	if health <= 70 or (armor_break and health <= 100):
 		grounded = true
 		_hover_y = 0.08
+		if CombatFx and CombatFx.has_method("label"):
+			CombatFx.label(self, global_position + Vector3(0, 2.4, 0), "GROUNDED — WATER!", Color(0.4, 0.75, 1.0))
 	if level and level.has_method("on_west_damaged"):
 		level.on_west_damaged(health, grounded)
 	var away := global_position - source_position
