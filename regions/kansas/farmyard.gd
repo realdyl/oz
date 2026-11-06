@@ -49,6 +49,7 @@ var aunt_talked: bool = false
 var _near_shutter: bool = false
 var _near_cellar: bool = false
 var _near_aunt: bool = false
+var _near_uncle: bool = false
 var _near_door: bool = false
 var _aunt_line: int = 0
 var wind_t: float = 0.0
@@ -64,6 +65,11 @@ const AUNT_LINES := [
 	"There you are — and Toto's safe in the basket. Good girl.",
 	"Henry's gone to look after the stock. Latch that shutter before the wind takes it.",
 	"When the shutter's done, check the cellar. I'll be waiting below.",
+]
+const AUNT_IDLE := "Keep Toto close, Dorothy. This prairie wind is mean today."
+const UNCLE_LINES := [
+	"Stock's restless. If the sky goes green, you run for the house — not the cellar.",
+	"Em's on the porch. Don't keep her waiting.",
 ]
 
 func _ready() -> void:
@@ -146,14 +152,15 @@ func _build_farm_layout() -> void:
 	_add_house_shutter(Vector3(hx + 3.6, 0.0, hz + 0.5))
 	_add_cellar_door(Vector3(hx - 4.2, 0.0, hz + 1.5))
 	_add_house_door(Vector3(hx, 0.0, hz + 3.6))
-	_add_aunt_em(Vector3(hx + 1.2, 0.0, hz + 4.2))
+	# Aunt on porch east — keep clear of the enterable farmhouse door (south face).
+	_add_aunt_em(Vector3(hx + 3.0, 0.0, hz + 4.8))
 	_add_uncle_henry(Vector3(-16.0, 0.0, 18.0))
 	_add_clothesline(Vector3(8.0, 0.0, 4.0))
 	_add_windmill_ghost(Vector3(-32.0, 0.0, -10.0))
 	_add_cyclone_funnel(Vector3(12.0, 0.0, -36.0))
-	# Enterable Kansas buildings (E door enter/exit like Munchkinland).
-	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 5.5), Vector3(5.5, 3.6, 4.2))
-	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 30.5), Vector3(5.5, 3.8, 4.5))
+	# Enterable Kansas buildings (E door enter/exit). Exterior door farther south than porch NPCs.
+	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 8.2), Vector3(5.5, 3.6, 4.2))
+	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 31.2), Vector3(5.5, 3.8, 4.5))
 	_make_enterable_simple(Vector3(24.0, 0.0, -20.0), "Chicken coop", Vector3(2.6, 1.4, 2.0), Color(0.4, 0.4, 0.42))
 	_add_map_border(56.0, 54.0)
 	_add_kansas_whimsy()
@@ -449,6 +456,19 @@ func _add_uncle_henry(at: Vector3) -> void:
 	brim.material_override = _grey_mat(Color(0.25, 0.25, 0.27))
 	brim.position = Vector3(0, 1.95, 0)
 	uncle_henry.add_child(brim)
+	var area := Area3D.new()
+	area.name = "UncleArea"
+	area.collision_layer = 0
+	area.collision_mask = 2
+	area.monitoring = true
+	var col := CollisionShape3D.new()
+	var sph := SphereShape3D.new()
+	sph.radius = 1.8
+	col.shape = sph
+	area.add_child(col)
+	uncle_henry.add_child(area)
+	area.body_entered.connect(func(b): if b.is_in_group("player"): _near_uncle = true)
+	area.body_exited.connect(func(b): if b.is_in_group("player"): _near_uncle = false)
 
 func _add_house_shutter(at: Vector3) -> void:
 	shutter = Area3D.new()
@@ -736,44 +756,56 @@ func _process(delta: float) -> void:
 	_update_prompts()
 
 func _try_interact() -> void:
-	# Building enter/exit (any calm phase; storm final door still wins when near it).
-	if _inside_building or _near_build_door != null:
-		if phase != Phase.STORM_RUN or not _near_door:
-			if _try_build_door():
-				return
-	match phase:
-		Phase.NEED_AUNT:
-			if _near_aunt:
-				_talk_aunt()
-		Phase.NEED_SHUTTER:
-			if _near_shutter and not shutter_done:
-				_close_shutter()
-		Phase.NEED_CELLAR:
-			if _near_cellar and not cellar_touched:
-				_touch_cellar()
-		Phase.STORM_RUN:
-			if _near_door:
-				_enter_house()
-		_:
-			var w := get_node_or_null("/root/Whimsy")
-			if w and w.has_method("try_collect") and player:
-				w.call("try_collect", player)
+	# Exit always works while inside.
+	if _inside_building:
+		_try_build_door()
+		return
+	# Storm FINAL STEP house door beats everything when near it.
+	if phase == Phase.STORM_RUN and _near_door:
+		_enter_house()
+		return
+	# NPCs and story props ALWAYS beat optional building enter (porch/Aunt overlap).
+	if _near_aunt:
+		_talk_aunt()
+		return
+	if _near_uncle:
+		_talk_uncle()
+		return
+	if _near_shutter and not shutter_done and phase == Phase.NEED_SHUTTER:
+		_close_shutter()
+		return
+	if _near_cellar and not cellar_touched and phase == Phase.NEED_CELLAR:
+		_touch_cellar()
+		return
+	# Optional enterable shells only when not doing story talk.
+	if _near_build_door != null:
+		if _try_build_door():
+			return
+	var w := get_node_or_null("/root/Whimsy")
+	if w and w.has_method("try_collect") and player:
+		w.call("try_collect", player)
+
+func _talk_uncle() -> void:
+	var line: String = UNCLE_LINES[0] if phase <= Phase.NEED_AUNT else UNCLE_LINES[mini(1, UNCLE_LINES.size() - 1)]
+	_dlg("Uncle Henry", line)
 
 func _update_prompts() -> void:
 	if _inside_building and _active_build_door:
 		hud.set_prompt("E  —  Exit %s" % str(_active_build_door.get_meta("title")))
-	elif _near_build_door != null and (phase != Phase.STORM_RUN or not _near_door):
-		hud.set_prompt("E  —  Enter %s" % str(_near_build_door.get_meta("title")))
-	elif phase == Phase.NEED_AUNT and _near_aunt:
+	elif phase == Phase.STORM_RUN and _near_door:
+		hud.set_prompt("E  —  FINAL STEP: Get into the house with Toto!")
+	elif _near_aunt:
 		hud.set_prompt("E  —  Talk to Aunt Em")
+	elif _near_uncle:
+		hud.set_prompt("E  —  Talk to Uncle Henry")
 	elif phase == Phase.NEED_SHUTTER and _near_shutter:
 		hud.set_prompt("E  —  Latch the farmhouse shutter")
 	elif phase == Phase.NEED_CELLAR and _near_cellar:
 		hud.set_prompt("E  —  Check the cellar (Aunt Em is below)")
-	elif phase == Phase.STORM_RUN and _near_door:
-		hud.set_prompt("E  —  FINAL STEP: Get into the house with Toto!")
 	elif phase == Phase.STORM_RUN:
 		hud.set_prompt("Run to the glowing farmhouse door — E to enter")
+	elif _near_build_door != null:
+		hud.set_prompt("E  —  Enter %s" % str(_near_build_door.get_meta("title")))
 	else:
 		var w := get_node_or_null("/root/Whimsy")
 		if w and w.has_method("prompt_if_near"):
@@ -879,12 +911,16 @@ func _on_toto_joined() -> void:
 	_dlg("Toto", "*yip*")
 
 func _talk_aunt() -> void:
-	if _aunt_line >= AUNT_LINES.size():
-		aunt_talked = true
-		phase = Phase.NEED_SHUTTER
-		hud.set_objective("Latch the glowing shutter on the farmhouse wall (E).")
-		if shutter:
-			_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
+	# After her quest lines, idle chat only — never teleport / never re-enter building.
+	if aunt_talked or _aunt_line >= AUNT_LINES.size():
+		_dlg("Aunt Em", AUNT_IDLE)
+		if not aunt_talked:
+			aunt_talked = true
+			if phase == Phase.NEED_AUNT:
+				phase = Phase.NEED_SHUTTER
+				hud.set_objective("Latch the glowing shutter on the farmhouse wall (E).")
+				if shutter:
+					_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
 		return
 	_dlg("Aunt Em", AUNT_LINES[_aunt_line])
 	_aunt_line += 1
@@ -1013,9 +1049,29 @@ func _make_enterable_box(host: Node3D, title: String, interior: Vector3, exterio
 	door.monitoring = true
 	var col := CollisionShape3D.new()
 	var sph := SphereShape3D.new()
-	sph.radius = 1.7
+	# Tight radius so porch NPCs are not inside the enter volume.
+	sph.radius = 1.15
 	col.shape = sph
 	door.add_child(col)
+	# Visible door plate so enter is intentional, not porch-wide.
+	var plate := MeshInstance3D.new()
+	var pb := BoxMesh.new()
+	pb.size = Vector3(1.0, 2.0, 0.1)
+	plate.mesh = pb
+	var pm := _grey_mat(Color(0.28, 0.28, 0.3))
+	pm.emission_enabled = true
+	pm.emission = Color(0.55, 0.55, 0.6)
+	pm.emission_energy_multiplier = 0.35
+	plate.material_override = pm
+	plate.position = Vector3(0, 1.0, 0)
+	door.add_child(plate)
+	var dlab := Label3D.new()
+	dlab.text = "Enter %s (E)" % title
+	dlab.font_size = 28
+	dlab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	dlab.position = Vector3(0, 2.35, 0)
+	dlab.modulate = Color(0.85, 0.85, 0.9)
+	door.add_child(dlab)
 	add_child(door)
 	door.global_position = exterior
 	door.set_meta("title", title)
