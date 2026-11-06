@@ -90,6 +90,33 @@ func _initialize() -> void:
 		_fail("player not on floor y=%.3f" % _player.global_position.y)
 	print("FLOOR_OK y=", _player.global_position.y)
 
+	# Locasta greets before companions / swarm beat.
+	var locasta_n := _landing.find_child("Locasta", true, false)
+	if locasta_n == null:
+		_fail("missing Locasta greeter")
+	else:
+		print("LOCASTA_PRESENT at ", (locasta_n as Node3D).global_position)
+	if _landing.has_method("debug_skip_locasta"):
+		_landing.call("debug_skip_locasta")
+		for _i in 8:
+			await process_frame
+		var ld = _landing.get("locasta_done")
+		if ld != true:
+			_fail("Locasta greet did not complete")
+		else:
+			print("LOCASTA_OK")
+
+	# All live puppets must stay inside Munchkinland play bounds.
+	for n in get_nodes_in_group("enemies"):
+		if not is_instance_valid(n) or not (n is Node3D):
+			continue
+		if n.is_in_group("enemies_dead"):
+			continue
+		var p := (n as Node3D).global_position
+		if absf(p.x) > 57.0 or absf(p.z) > 53.0:
+			_fail("puppet outside map bounds pos=%s" % p)
+	print("BOUNDS_OK")
+
 	# Sticky threat compass + hunt-the-Lead (no chase-the-map).
 	var threat := hud.get_node_or_null("ThreatCompass") as Label
 	if threat == null:
@@ -104,6 +131,8 @@ func _initialize() -> void:
 	var seeker: CharacterBody3D = puppets[0]
 	var lead_pos := _player.global_position
 	seeker.global_position = lead_pos + Vector3(18.0, 0.08, 0.0)
+	if seeker.has_method("set_play_bounds"):
+		seeker.set_play_bounds(56.0, 52.0)
 	if seeker.has_method("arm_delayed"):
 		seeker.arm_delayed(0.0, 2.0)
 	if "combat_ready" in seeker:
@@ -122,6 +151,11 @@ func _initialize() -> void:
 		_fail("rogue did not hunt Lead d0=%.1f d1=%.1f" % [d0, d1])
 	else:
 		print("HUNT_OK")
+	# Still in bounds after hunt.
+	if absf(seeker.global_position.x) > 57.0 or absf(seeker.global_position.z) > 53.0:
+		_fail("hunter left map bounds %s" % seeker.global_position)
+	else:
+		print("HUNT_BOUNDS_OK")
 
 	var pivot: Node3D = _party.call("camera_basis_node") as Node3D if _party.has_method("camera_basis_node") else null
 	if pivot:
@@ -172,8 +206,12 @@ func _initialize() -> void:
 		print("SHOES_OK")
 
 	# Free Scarecrow (after shoes) — level free path auto-Leads Scarecrow
-	if not bool(_landing.get("shoes_done")):
+	var shoes_flag = _landing.get("shoes_done")
+	if shoes_flag != true:
 		_landing.set("shoes_done", true)
+	var locasta_flag = _landing.get("locasta_done")
+	if locasta_flag != true and _landing.has_method("debug_skip_locasta"):
+		_landing.call("debug_skip_locasta")
 	if _landing.has_method("_free_scarecrow"):
 		_landing.call("_free_scarecrow")
 	else:

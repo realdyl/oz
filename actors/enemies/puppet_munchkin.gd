@@ -10,13 +10,16 @@ enum State { WANDER, APPROACH, TELEGRAPH, LUNGE, RECOVER, STAGGER, CONFUSED, FEA
 @export var notice_range: float = 9.0
 @export var lunge_range: float = 1.75
 ## Once armed, always chase the Lead out to this range (map-scale hunt — no freeze-wander).
-@export var hunt_range: float = 120.0
-@export var approach_speed: float = 3.35
+@export var hunt_range: float = 200.0
+@export var approach_speed: float = 3.55
 @export var armored: bool = false
 @export var is_marshal: bool = false
 ## Seconds before full combat (sneak/creep first). 0 = fight-ready immediately.
 @export var activation_delay: float = 0.0
-@export var sneak_speed: float = 1.55
+@export var sneak_speed: float = 1.85
+## Keep combat inside the playable map (set by the level to match MapBorder).
+@export var bound_half_x: float = 56.0
+@export var bound_half_z: float = 52.0
 
 var state: State = State.WANDER
 var state_time: float = 0.0
@@ -60,10 +63,15 @@ func _ready() -> void:
 		if part and body_mat:
 			part.set_surface_override_material(0, body_mat)
 
+func set_play_bounds(half_x: float, half_z: float) -> void:
+	bound_half_x = maxf(half_x, 8.0)
+	bound_half_z = maxf(half_z, 8.0)
+	_clamp_in_bounds()
+
 ## Call after spawn to delay full aggression (landing sneak-up).
 func arm_delayed(delay: float, slow: float = 0.85) -> void:
 	activation_delay = maxf(delay, 0.0)
-	sneak_speed = slow
+	sneak_speed = maxf(slow, 1.2)
 	_activate_t = 0.0
 	if activation_delay > 0.0:
 		combat_ready = false
@@ -71,17 +79,50 @@ func arm_delayed(delay: float, slow: float = 0.85) -> void:
 		_set_state(State.WANDER)
 
 ## Place this rogue far off-camera and march toward `toward` so they don't pop in.
-func march_from_afar(toward: Vector3, bearing_rad: float, distance: float = 34.0, delay: float = 11.0, walk_spd: float = 1.55) -> void:
+## Spawn is always clamped inside play bounds so the compass never points past the map edge.
+func march_from_afar(toward: Vector3, bearing_rad: float, distance: float = 24.0, delay: float = 11.0, walk_spd: float = 1.85) -> void:
 	var dir := Vector3(sin(bearing_rad), 0.0, cos(bearing_rad))
 	if dir.length() < 0.01:
 		dir = Vector3(0, 0, 1)
 	dir = dir.normalized()
-	global_position = toward + dir * distance + Vector3(0, 0.08, 0)
-	# Face the approach path
-	rotation.y = atan2(-(-dir).x, -(-dir).z)
-	arm_delayed(delay, walk_spd)
-	# Stay in sneak until near the fight — finish arming only when close or timer done
+	# Cap march length so the spawn stays on the playable side of MapBorder.
+	var max_d := distance
+	if absf(dir.x) > 0.05:
+		var room_x: float = (bound_half_x - 1.5 - absf(toward.x)) / absf(dir.x)
+		max_d = minf(max_d, maxf(room_x, 6.0))
+	if absf(dir.z) > 0.05:
+		var room_z: float = (bound_half_z - 1.5 - absf(toward.z)) / absf(dir.z)
+		max_d = minf(max_d, maxf(room_z, 6.0))
+	max_d = clampf(max_d, 8.0, distance)
+	var spawn := toward + dir * max_d + Vector3(0, 0.08, 0)
+	spawn.x = clampf(spawn.x, -bound_half_x + 1.2, bound_half_x - 1.2)
+	spawn.z = clampf(spawn.z, -bound_half_z + 1.2, bound_half_z - 1.2)
+	# If clamp collapsed onto the player, push to the nearest rim inside bounds.
+	if spawn.distance_to(toward) < 6.0:
+		spawn = toward + dir * 10.0
+		spawn.x = clampf(spawn.x, -bound_half_x + 1.2, bound_half_x - 1.2)
+		spawn.z = clampf(spawn.z, -bound_half_z + 1.2, bound_half_z - 1.2)
+	global_position = spawn
+	# Face the approach path (toward the rally).
+	var in_dir := toward - global_position
+	in_dir.y = 0.0
+	if in_dir.length() > 0.01:
+		in_dir = in_dir.normalized()
+		rotation.y = atan2(-in_dir.x, -in_dir.z)
+	arm_delayed(delay, maxf(walk_spd, 1.6))
 	notice_range = 4.0
+
+func _clamp_in_bounds() -> void:
+	var p := global_position
+	var nx := clampf(p.x, -bound_half_x, bound_half_x)
+	var nz := clampf(p.z, -bound_half_z, bound_half_z)
+	if nx != p.x or nz != p.z:
+		global_position = Vector3(nx, p.y, nz)
+		# Kill outward velocity so fear/knockback cannot pin them outside rails.
+		if signf(velocity.x) == signf(p.x) and absf(p.x) >= bound_half_x - 0.05:
+			velocity.x = -signf(p.x) * absf(velocity.x) * 0.35
+		if signf(velocity.z) == signf(p.z) and absf(p.z) >= bound_half_z - 0.05:
+			velocity.z = -signf(p.z) * absf(velocity.z) * 0.35
 
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
@@ -97,7 +138,7 @@ func _physics_process(delta: float) -> void:
 
 	state_time += delta
 
-	# Sneak phase: creep gradually toward the Lead, no lunges until armed.
+	# Sneak phase: always walk toward the Lead — never idle on the rim.
 	if not combat_ready and confuse_t <= 0.0 and fear_t <= 0.0 and state != State.STAGGER:
 		_activate_t += delta
 		_run_sneak(delta)
@@ -105,6 +146,7 @@ func _physics_process(delta: float) -> void:
 			_finish_arming()
 		_pulse()
 		move_and_slide()
+		_clamp_in_bounds()
 		return
 
 	if confuse_t > 0.0 and state != State.DEAD and state != State.STAGGER:
@@ -114,34 +156,33 @@ func _physics_process(delta: float) -> void:
 	else:
 		match state:
 			State.WANDER:
-				# Prefer hunt — only idle if no Lead in the whole hunt radius.
-				if target != null and _target_dist() < hunt_range:
+				# Any live target → hunt. Never freeze waiting for short notice_range.
+				if target != null:
 					_set_state(State.APPROACH)
 				else:
 					velocity.x = move_toward(velocity.x, 0.0, 8.0 * delta)
 					velocity.z = move_toward(velocity.z, 0.0, 8.0 * delta)
-					if _target_dist() < notice_range:
-						_set_state(State.APPROACH)
 			State.APPROACH:
 				var to := _flat_to_target()
 				var dist := to.length()
 				if dist < lunge_range and dist > 0.01:
 					lunge_dir = to / dist
 					_set_state(State.TELEGRAPH)
-				elif dist < 0.01 or target == null:
-					_set_state(State.WANDER)
-				elif dist > hunt_range:
-					# Lost the Lead off the map edge — soft idle, resume when they return.
+				elif target == null or dist < 0.01:
 					_set_state(State.WANDER)
 				else:
 					var dir := to / dist
-					# Close faster when far so the player does not have to chase the map.
-					var base := approach_speed * (1.2 if is_marshal else 1.0)
+					# Far = sprint in so the player never chases the map edge.
+					var base := approach_speed * (1.25 if is_marshal else 1.0)
 					var spd: float = base
-					if dist > 18.0:
-						spd = base * 1.55
-					elif dist > 8.0:
-						spd = base * 1.25
+					if dist > 40.0:
+						spd = base * 2.4
+					elif dist > 24.0:
+						spd = base * 2.0
+					elif dist > 14.0:
+						spd = base * 1.65
+					elif dist > 7.0:
+						spd = base * 1.3
 					velocity.x = dir.x * spd
 					velocity.z = dir.z * spd
 					rotation.y = atan2(-dir.x, -dir.z)
@@ -175,6 +216,7 @@ func _physics_process(delta: float) -> void:
 
 	_pulse()
 	move_and_slide()
+	_clamp_in_bounds()
 
 func _resolve_target() -> void:
 	var party := get_node_or_null("/root/Party")
@@ -308,7 +350,7 @@ func _set_state(next: State) -> void:
 	state_time = 0.0
 
 func _run_sneak(delta: float) -> void:
-	# Always creep toward the current Lead — never stand still on the rim waiting to be found.
+	# Always walk toward the current Lead — never stand still on the rim waiting to be found.
 	var to := _flat_to_target()
 	var dist := to.length()
 	if dist < 0.05 or target == null:
@@ -316,19 +358,19 @@ func _run_sneak(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, 6.0 * delta)
 		return
 	var dir := to / dist
-	# Ease in: start slower, ramp toward sneak_speed over the delay.
-	var t_frac: float = 0.45
+	var t_frac: float = 0.7
 	if activation_delay > 0.01:
-		t_frac = clampf(_activate_t / activation_delay, 0.35, 1.0)
+		t_frac = clampf(_activate_t / activation_delay, 0.55, 1.0)
 	var spd: float = sneak_speed * t_frac
-	# Soft stand-off only when almost on top of the player mid-march.
 	if dist < 2.6 and _activate_t < activation_delay * 0.85:
-		spd *= 0.5
-	# Far march: keep a solid walk-in so they arrive without a player chase.
-	if dist > 20.0:
-		spd = maxf(spd, sneak_speed * 1.15)
-	elif dist > 10.0:
-		spd = maxf(spd, sneak_speed * 0.95)
+		spd *= 0.55
+	# Far march = purposeful approach so the fight comes to you.
+	if dist > 28.0:
+		spd = maxf(spd, sneak_speed * 2.1)
+	elif dist > 16.0:
+		spd = maxf(spd, sneak_speed * 1.7)
+	elif dist > 8.0:
+		spd = maxf(spd, sneak_speed * 1.25)
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 	rotation.y = atan2(-dir.x, -dir.z)
@@ -340,10 +382,8 @@ func _finish_arming() -> void:
 	notice_range = _base_notice if _base_notice > 0.1 else 9.0
 	if is_marshal:
 		notice_range = maxf(notice_range, 12.0)
-	# Always hunt the Lead after arming — do not idle at mid-map waiting for notice_range.
-	if target != null and _target_dist() < hunt_range:
-		_set_state(State.APPROACH)
-	elif _target_dist() < notice_range:
+	# Armed = always hunt. No mid-map idle.
+	if target != null:
 		_set_state(State.APPROACH)
 	else:
 		_set_state(State.WANDER)

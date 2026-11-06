@@ -11,6 +11,7 @@ const PUPPET_SCENE := preload("res://actors/enemies/puppet_munchkin.tscn")
 const TREE_SCRIPT := preload("res://actors/enemies/living_tree.gd")
 
 enum Beat {
+	MEET_LOCASTA,
 	SHOES,
 	CLEAR_LANDING,
 	FREE_SCARECROW,
@@ -23,6 +24,10 @@ enum Beat {
 	OPEN_ROAD,
 }
 
+## Match MapBorder half extents with a soft inward margin (62/58 rails).
+const PLAY_BOUND_X := 56.0
+const PLAY_BOUND_Z := 52.0
+
 @onready var hud: CanvasLayer = $PlayHUD
 @onready var shoes: Node3D = $SilverShoes
 @onready var player: CharacterBody3D = $Player
@@ -34,7 +39,7 @@ var pole: MeshInstance3D
 var oil_can: Area3D
 var has_oil: bool = false
 var shoes_done: bool = false
-var beat: Beat = Beat.SHOES
+var beat: Beat = Beat.MEET_LOCASTA
 var landing_kills: int = 0
 var crow_kills: int = 0
 var lion_pack_kills: int = 0
@@ -61,6 +66,18 @@ var _cam_out_pitch: float = -18.0
 var compass: Label
 var _sign_sway: Array = []  # MeshInstance3D boards that gently sway
 var _open_road_sting_done: bool = false
+var locasta: Node3D
+var locasta_done: bool = false
+var _near_locasta: bool = false
+var _locasta_line: int = 0
+var _locasta_lines: PackedStringArray = PackedStringArray([
+	"Locasta: \"Welcome to Munchkinland, child. The house has done what armies could not — the Wicked Witch of the East is gone.\"",
+	"Locasta: \"Her Silver Shoes are yours now. Claim them under the grey house — they chose the one who landed.\"",
+	"Locasta: \"The road east holds a Scarecrow bound to a pole. Free him with kindness (E) — killing will not cut his rope.\"",
+	"Locasta: \"North, a Lion hides in fear. West, a Tin Man rusts. Calm and oil them when you find them — any Lead may help.\"",
+	"Locasta: \"Rogue Munchkins will march on the landing. Kick them (F). Each friend you free teaches a counter. I cannot leave the North — walk the road for me.\"",
+	"Locasta: \"The Wicked Witch of the West watches later. For now: Shoes, clear the rogues, free the bound. Go.\"",
+])
 
 func _enter_tree() -> void:
 	var p := get_node_or_null("/root/Party")
@@ -83,7 +100,7 @@ func _ready() -> void:
 		Party.swap_failed.connect(_on_swap_failed)
 		Party.unlock_changed.connect(func(_id, _u): _refresh_roster())
 	_ensure_compass()
-	_set_beat(Beat.SHOES)
+	_set_beat(Beat.MEET_LOCASTA)
 	_refresh_roster()
 	var lt := get_node_or_null("/root/LevelTransition")
 	if lt and lt.has_method("on_level_start"):
@@ -940,85 +957,129 @@ func _spawn_party_world() -> void:
 	_spawn_story_witches()
 
 func _spawn_story_witches() -> void:
-	# Vault/book-true: Locasta (Good North) greets early; East witch is already dead under the house.
-	# Wicked West is a later boss — only a distant omen on L2, not fightable yet.
-	_spawn_locasta(Vector3(6.0, 0.08, 10.0))
-	_spawn_west_omen(Vector3(-55.0, 0.5, -40.0))
+	# Vault/book-true: Locasta (Good North) greets first — before companions.
+	# East witch is already dead under the house. Wicked West = distant omen only.
+	# Between spawn (z~14) and the grey house / shoes (z~0) so Dorothy cannot miss her.
+	var greet_at := Vector3(0.0, 0.08, 9.0)
+	if player:
+		greet_at = player.global_position + Vector3(0.0, 0.0, -4.5)
+		greet_at.y = 0.08
+	_spawn_locasta(greet_at)
+	_spawn_west_omen(Vector3(-48.0, 0.5, -36.0))
 
 func _spawn_locasta(at: Vector3) -> void:
 	var root := CharacterBody3D.new()
 	root.name = "Locasta"
 	root.add_to_group("story_npc")
-	root.collision_layer = 0
-	root.collision_mask = 0
+	root.collision_layer = 1
+	root.collision_mask = 1
 	add_child(root)
 	root.global_position = at
+	locasta = root
 	var hip := Node3D.new()
 	root.add_child(hip)
-	hip.position = Vector3(0, 0.95, 0)
+	hip.position = Vector3(0, 1.05, 0)
+	# Taller, brighter figure — readable from spawn.
 	var robe := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.22
-	cyl.bottom_radius = 0.38
-	cyl.height = 1.5
+	cyl.top_radius = 0.28
+	cyl.bottom_radius = 0.48
+	cyl.height = 1.75
 	robe.mesh = cyl
 	var rm := StandardMaterial3D.new()
-	rm.albedo_color = Color(0.55, 0.72, 0.95)
+	rm.albedo_color = Color(0.55, 0.78, 1.0)
 	rm.emission_enabled = true
-	rm.emission = Color(0.35, 0.55, 0.9)
-	rm.emission_energy_multiplier = 0.45
+	rm.emission = Color(0.4, 0.65, 1.0)
+	rm.emission_energy_multiplier = 1.1
 	robe.material_override = rm
 	hip.add_child(robe)
-	robe.position = Vector3(0, -0.15, 0)
+	robe.position = Vector3(0, -0.1, 0)
 	var head := MeshInstance3D.new()
 	var sph := SphereMesh.new()
-	sph.radius = 0.18
-	sph.height = 0.36
+	sph.radius = 0.22
+	sph.height = 0.44
 	head.mesh = sph
 	var hm := StandardMaterial3D.new()
-	hm.albedo_color = Color(0.92, 0.78, 0.68)
+	hm.albedo_color = Color(0.95, 0.82, 0.72)
 	head.material_override = hm
 	hip.add_child(head)
-	head.position = Vector3(0, 0.72, 0)
+	head.position = Vector3(0, 0.95, 0)
 	var hat := MeshInstance3D.new()
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.02
-	cone.bottom_radius = 0.28
-	cone.height = 0.45
+	cone.bottom_radius = 0.36
+	cone.height = 0.55
 	hat.mesh = cone
 	var hatm := StandardMaterial3D.new()
-	hatm.albedo_color = Color(0.95, 0.85, 0.35)
+	hatm.albedo_color = Color(1.0, 0.9, 0.35)
 	hatm.emission_enabled = true
-	hatm.emission = Color(0.9, 0.75, 0.2)
-	hatm.emission_energy_multiplier = 0.6
+	hatm.emission = Color(1.0, 0.85, 0.25)
+	hatm.emission_energy_multiplier = 1.4
 	hat.material_override = hatm
 	hip.add_child(hat)
-	hat.position = Vector3(0, 1.05, 0)
+	hat.position = Vector3(0, 1.35, 0)
+	var star := MeshInstance3D.new()
+	var starm := SphereMesh.new()
+	starm.radius = 0.12
+	starm.height = 0.24
+	star.mesh = starm
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(1.0, 1.0, 0.7)
+	sm.emission_enabled = true
+	sm.emission = Color(1.0, 0.95, 0.4)
+	sm.emission_energy_multiplier = 2.0
+	star.material_override = sm
+	hip.add_child(star)
+	star.position = Vector3(0, 1.7, 0)
 	var lab := Label3D.new()
-	lab.text = "LOCASTA\nGood Witch of the North"
-	lab.font_size = 42
-	lab.pixel_size = 0.012
+	lab.text = "LOCASTA\nGood Witch of the North\n(E — speak)"
+	lab.font_size = 56
+	lab.pixel_size = 0.014
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.85, 0.92, 1.0)
-	lab.outline_size = 6
-	lab.outline_modulate = Color(0.05, 0.1, 0.2)
+	lab.modulate = Color(0.9, 0.95, 1.0)
+	lab.outline_size = 10
+	lab.outline_modulate = Color(0.05, 0.1, 0.25)
 	root.add_child(lab)
-	lab.position = Vector3(0, 2.6, 0)
-	var area := Area3D.new()
-	area.collision_layer = 0
-	area.collision_mask = 2
-	area.monitoring = true
-	var col := CollisionShape3D.new()
-	var sh := SphereShape3D.new()
-	sh.radius = 3.2
-	col.shape = sh
-	area.add_child(col)
-	root.add_child(area)
-	area.body_entered.connect(func(b):
-		if _is_party_body(b) and hud:
-			hud.set_prompt("Locasta: \"The Shoes chose you. Free the bound, then the West wind will notice.\"")
-	)
-	_add_way_marker(at + Vector3(-3.0, 0, 0), Color(0.7, 0.85, 1.0), "LOCASTA", at)
+	lab.position = Vector3(0, 3.4, 0)
+	var col_body := CollisionShape3D.new()
+	var cap := CapsuleShape3D.new()
+	cap.radius = 0.4
+	cap.height = 1.8
+	col_body.shape = cap
+	col_body.position = Vector3(0, 0.95, 0)
+	root.add_child(col_body)
+	_add_way_marker(at + Vector3(-2.5, 0, 0), Color(0.65, 0.85, 1.0), "LOCASTA", at)
+	_add_way_marker(at + Vector3(2.5, 0, 1.5), Color(0.65, 0.85, 1.0), "NORTH", at)
+
+func _advance_locasta_talk() -> void:
+	if locasta_done or locasta == null:
+		return
+	if _locasta_line >= _locasta_lines.size():
+		_finish_locasta_greet()
+		return
+	hud.set_prompt(_locasta_lines[_locasta_line])
+	_locasta_line += 1
+	if _locasta_line >= _locasta_lines.size():
+		# Last line shown — next E finishes.
+		hud.set_objective("Press E again when you are ready — then claim the Silver Shoes.")
+	else:
+		hud.set_objective("Locasta speaks — press E to continue (%d/%d)" % [_locasta_line, _locasta_lines.size()])
+
+func _finish_locasta_greet() -> void:
+	if locasta_done:
+		return
+	locasta_done = true
+	_near_locasta = false
+	hud.set_prompt("Locasta: \"The road is yours. I keep the North.\"")
+	if shoes_done:
+		_set_beat(Beat.CLEAR_LANDING)
+	else:
+		_set_beat(Beat.SHOES)
+
+## Headless / playtest: skip greeting so sims can claim shoes.
+func debug_skip_locasta() -> void:
+	_locasta_line = _locasta_lines.size()
+	_finish_locasta_greet()
 
 func _spawn_west_omen(at: Vector3) -> void:
 	# Distant smoke plume + locked sign — boss later (Winkie / after Tin arc).
@@ -1278,6 +1339,10 @@ func _update_compass() -> void:
 	var target_pos := Vector3.ZERO
 	var label := ""
 	match beat:
+		Beat.MEET_LOCASTA:
+			if locasta and not locasta_done:
+				target_pos = locasta.global_position
+				label = "Locasta"
 		Beat.SHOES:
 			if shoes and not shoes_done:
 				target_pos = shoes.global_position
@@ -1385,27 +1450,28 @@ func _tag_baked_landing_puppets() -> void:
 	for n in get_children():
 		if n is CharacterBody3D and n.is_in_group("enemies") and not n.has_meta("wave"):
 			n.set_meta("wave", "landing")
+			if n.has_method("set_play_bounds"):
+				n.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
 			var bearing: float = float(i) * TAU / 5.0 + 0.4
 			if n.has_method("march_from_afar"):
-				n.march_from_afar(rally, bearing, 36.0 + float(i) * 2.5, 10.0 + float(i) * 1.5, 1.45)
+				n.march_from_afar(rally, bearing, 22.0 + float(i) * 1.5, 8.0 + float(i) * 1.2, 1.75)
 			elif n.has_method("arm_delayed"):
-				n.arm_delayed(8.0 + float(i) * 1.4, 0.9)
+				n.arm_delayed(6.0 + float(i) * 1.2, 1.4)
 			i += 1
 
 func _spawn_landing_puppets() -> void:
-	# March in from beyond camera — never spawn in the player's face.
+	# March in from beyond camera — never spawn in the player's face; always inside map rails.
 	var rally := Vector3(0.0, 0.08, 10.0)
 	if player:
 		rally = player.global_position
-	# Bearings around the expanded square rim.
 	var bearings := [0.55, 2.2, 3.7, 5.1]
 	var i := 0
 	for bearing in bearings:
 		var pup := _spawn_puppet(rally, Color(0.93, 0.62, 0.72), "landing")
 		if pup and pup.has_method("march_from_afar"):
-			pup.march_from_afar(rally, float(bearing), 38.0 + float(i) * 3.0, 9.5 + float(i) * 1.8, 1.4)
+			pup.march_from_afar(rally, float(bearing), 22.0 + float(i) * 1.8, 7.5 + float(i) * 1.4, 1.8)
 		elif pup and pup.has_method("arm_delayed"):
-			pup.arm_delayed(8.0 + float(i) * 1.5, 0.7)
+			pup.arm_delayed(6.0 + float(i) * 1.2, 1.3)
 		i += 1
 	# Need = live landing count so baked + spawned both gate the free beat.
 	landing_need = maxi(3, _count_live_landing())
@@ -1439,9 +1505,9 @@ func _spawn_crow_field() -> void:
 		var bearing: float = float(i) / float(crow_need) * TAU + 0.25
 		var pup := _spawn_puppet(rally, Color(0.7, 0.45, 0.55), "crow")
 		if pup and pup.has_method("march_from_afar"):
-			pup.march_from_afar(rally, bearing, 26.0 + float(i) * 2.0, 4.5 + float(i) * 0.7, 1.7)
+			pup.march_from_afar(rally, bearing, 18.0 + float(i) * 1.2, 3.5 + float(i) * 0.55, 2.0)
 		elif pup and pup.has_method("arm_delayed"):
-			pup.arm_delayed(1.2 + float(i) * 0.45, 1.0)
+			pup.arm_delayed(1.0 + float(i) * 0.4, 1.5)
 
 func _spawn_lion_pack() -> void:
 	# Post-Lion unlock teach wave — ROAR (F) while Leading Lion. March from the rim.
@@ -1453,9 +1519,9 @@ func _spawn_lion_pack() -> void:
 		var bearing: float = float(i) / float(lion_pack_need) * TAU + 0.15
 		var pup := _spawn_puppet(rally, Color(0.85, 0.4, 0.5), "lion_pack")
 		if pup and pup.has_method("march_from_afar"):
-			pup.march_from_afar(rally, bearing, 28.0 + float(i) * 1.5, 3.8 + float(i) * 0.55, 1.75)
+			pup.march_from_afar(rally, bearing, 18.0 + float(i) * 1.0, 3.0 + float(i) * 0.45, 2.05)
 		elif pup and pup.has_method("arm_delayed"):
-			pup.arm_delayed(0.8 + float(i) * 0.35, 1.05)
+			pup.arm_delayed(0.7 + float(i) * 0.3, 1.55)
 
 func _spawn_tin_wave() -> void:
 	# Post-Tin unlock: rogues advance from the west rim toward the terrace/tree.
@@ -1466,9 +1532,9 @@ func _spawn_tin_wave() -> void:
 		var bearing: float = PI + float(i) * 0.7 # mostly from further west / flanks
 		var pup := _spawn_puppet(rally, Color(0.55, 0.65, 0.75), "tin_wave")
 		if pup and pup.has_method("march_from_afar"):
-			pup.march_from_afar(rally, bearing, 24.0 + float(i) * 2.0, 3.2 + float(i) * 0.4, 1.65)
+			pup.march_from_afar(rally, bearing, 16.0 + float(i) * 1.2, 2.5 + float(i) * 0.35, 1.95)
 		elif pup and pup.has_method("arm_delayed"):
-			pup.arm_delayed(0.6 + float(i) * 0.3, 1.1)
+			pup.arm_delayed(0.5 + float(i) * 0.25, 1.5)
 
 func _auto_lead(id: StringName) -> void:
 	if Party == null:
@@ -1497,6 +1563,8 @@ func _spawn_puppet(at: Vector3, tint: Color, tag: String) -> CharacterBody3D:
 	p.global_position = at
 	p.tint = tint
 	p.set_meta("wave", tag)
+	if p.has_method("set_play_bounds"):
+		p.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
 	return p
 
 func _build_pole(at: Vector3) -> void:
@@ -1778,6 +1846,11 @@ func _process(_delta: float) -> void:
 		and actor.global_position.distance_to(lion.global_position) < 2.8
 	_near_tin = beat == Beat.FREE_TIN and tinman and tinman.rusted and has_oil \
 		and actor.global_position.distance_to(tinman.global_position) < 2.4
+	_near_locasta = (not locasta_done) and locasta != null \
+		and actor.global_position.distance_to(locasta.global_position) < 5.5
+	# Auto-open first line when Dorothy walks into Locasta (cannot miss the greeter).
+	if _near_locasta and not locasta_done and _locasta_line == 0 and beat == Beat.MEET_LOCASTA:
+		_advance_locasta_talk()
 
 	if Input.is_action_just_pressed("interact"):
 		# Exit always wins while flagged inside (stuck-in-building fix).
@@ -1785,10 +1858,14 @@ func _process(_delta: float) -> void:
 			_try_use_door()
 		elif _near_door != null:
 			_try_use_door()
+		elif _near_locasta and not locasta_done:
+			_advance_locasta_talk()
 		elif _near_scarecrow:
 			_free_scarecrow()
 		elif near_sc_body and beat < Beat.FREE_SCARECROW:
-			if beat == Beat.SHOES:
+			if beat == Beat.MEET_LOCASTA:
+				hud.set_prompt("Speak with Locasta first (E) — then the Shoes, then free Scarecrow.")
+			elif beat == Beat.SHOES:
 				hud.set_prompt("Claim the Silver Shoes first, then free the Scarecrow (E).")
 			else:
 				hud.set_prompt("Clear the landing swarm first (%d/%d), then E at the pole." % [landing_kills, landing_need])
@@ -1847,8 +1924,12 @@ func on_enemy_down(enemy: Node) -> void:
 func _set_beat(next: Beat) -> void:
 	beat = next
 	match beat:
+		Beat.MEET_LOCASTA:
+			hud.set_objective("Speak with Locasta — Good Witch of the North (glowing figure ahead · E).")
+			hud.set_prompt("Walk to Locasta · E advances her counsel")
 		Beat.SHOES:
 			hud.set_objective("Claim the Silver Shoes under the grey house.")
+			hud.set_prompt("Locasta has spoken — Shoes under the house")
 		Beat.CLEAR_LANDING:
 			hud.set_objective("Rogue Munchkins sneak in — wait, then kick them down (F). %d/%d" % [landing_kills, landing_need])
 			# Kills before shoes already counted → don't soft-lock waiting for more deaths.
@@ -1893,10 +1974,19 @@ func _update_proximity_prompt() -> void:
 			hud.set_prompt("E  —  Exit %s" % title)
 		else:
 			hud.set_prompt("E  —  Enter %s" % title)
+	elif _near_locasta and not locasta_done:
+		if _locasta_line == 0:
+			hud.set_prompt("E  —  Speak with Locasta, Good Witch of the North")
+		elif _locasta_line < _locasta_lines.size():
+			hud.set_prompt("E  —  Continue Locasta's counsel (%d/%d)" % [_locasta_line + 1, _locasta_lines.size()])
+		else:
+			hud.set_prompt("E  —  Thank Locasta and take the road")
 	elif _near_scarecrow:
 		hud.set_prompt("E  —  Free Scarecrow from the pole (any Lead)")
 	elif scarecrow and not scarecrow.freed and _interact_actor().global_position.distance_to(scarecrow.global_position) < 2.8:
-		if beat == Beat.SHOES:
+		if beat == Beat.MEET_LOCASTA:
+			hud.set_prompt("Locasta first (E) — then Shoes — then free Scarecrow")
+		elif beat == Beat.SHOES:
 			hud.set_prompt("Shoes first — then E frees Scarecrow")
 		elif beat == Beat.CLEAR_LANDING:
 			hud.set_prompt("Clear swarm %d/%d — then E frees Scarecrow" % [landing_kills, landing_need])
@@ -1908,6 +1998,8 @@ func _update_proximity_prompt() -> void:
 		hud.set_prompt("E  —  Take the oil can (any Lead)")
 	elif _near_tin:
 		hud.set_prompt("E  —  Oil the Tin Man (any Lead)")
+	elif beat == Beat.MEET_LOCASTA:
+		hud.set_prompt("Find the glowing North witch ahead · E to speak")
 	elif beat == Beat.CLEAR_LANDING:
 		hud.set_prompt("F  —  Kick   ·   Space blink   ·   swarm sneaks in")
 	elif beat == Beat.FREE_SCARECROW:
@@ -1931,6 +2023,12 @@ func _on_shoes_claimed() -> void:
 	shoes_done = true
 	if player.has_method("empower_shoes"):
 		player.empower_shoes()
+	if not locasta_done:
+		# Can claim early; still need Locasta counsel before the swarm beat.
+		hud.set_prompt("Shoes claimed — finish speaking with Locasta (E).")
+		if beat != Beat.MEET_LOCASTA:
+			_set_beat(Beat.MEET_LOCASTA)
+		return
 	_set_beat(Beat.CLEAR_LANDING)
 	# _set_beat may auto-skip to FREE_SCARECROW if swarm already dead.
 	if beat == Beat.CLEAR_LANDING:

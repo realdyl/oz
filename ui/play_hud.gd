@@ -112,6 +112,10 @@ func _update_threat_compass() -> void:
 	var best: Node3D = null
 	var best_d := 1.0e9
 	var live := 0
+	# Prefer enemies inside playable map; out-of-bounds rogues are clamped by AI,
+	# but never let the compass send the player past the thicket rails.
+	const BOUND_X := 56.0
+	const BOUND_Z := 52.0
 	for n in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(n) or not (n is Node3D):
 			continue
@@ -124,8 +128,18 @@ func _update_threat_compass() -> void:
 		var hp = n.get("health")
 		if hp != null and int(hp) <= 0:
 			continue
+		var np := (n as Node3D).global_position
+		# Soft filter: if past map rim, force clamp if the puppet supports it.
+		if absf(np.x) > BOUND_X + 0.5 or absf(np.z) > BOUND_Z + 0.5:
+			if n.has_method("_clamp_in_bounds"):
+				n.call("_clamp_in_bounds")
+			elif n.has_method("set_play_bounds"):
+				n.call("set_play_bounds", BOUND_X, BOUND_Z)
+			np = (n as Node3D).global_position
+			if absf(np.x) > BOUND_X + 2.0 or absf(np.z) > BOUND_Z + 2.0:
+				continue
 		live += 1
-		var d: float = actor.global_position.distance_to((n as Node3D).global_position)
+		var d: float = actor.global_position.distance_to(np)
 		if d < best_d:
 			best_d = d
 			best = n as Node3D
