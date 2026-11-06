@@ -9,6 +9,8 @@ const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const PUPPET_SCENE := preload("res://actors/enemies/puppet_munchkin.tscn")
 const TREE_SCRIPT := preload("res://actors/enemies/living_tree.gd")
+const WEST_SCENE := "res://regions/winkie/west_castle.tscn"
+const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
 
 enum Beat {
 	MEET_LOCASTA,
@@ -66,6 +68,9 @@ var _cam_out_pitch: float = -18.0
 var compass: Label
 var _sign_sway: Array = []  # MeshInstance3D boards that gently sway
 var _open_road_sting_done: bool = false
+var _west_road_gate: Node3D = null
+var _west_gate_pos: Vector3 = Vector3(0.0, 0.08, 46.0)
+var _near_west_gate: bool = false
 var locasta: Node3D
 var locasta_done: bool = false
 var _near_locasta: bool = false
@@ -1848,6 +1853,8 @@ func _process(_delta: float) -> void:
 		and actor.global_position.distance_to(tinman.global_position) < 2.4
 	_near_locasta = (not locasta_done) and locasta != null \
 		and actor.global_position.distance_to(locasta.global_position) < 5.5
+	_near_west_gate = beat == Beat.OPEN_ROAD and _west_road_gate != null \
+		and actor.global_position.distance_to(_west_gate_pos) < 4.5
 	# Auto-open first line when Dorothy walks into Locasta (cannot miss the greeter).
 	if _near_locasta and not locasta_done and _locasta_line == 0 and beat == Beat.MEET_LOCASTA:
 		_advance_locasta_talk()
@@ -1858,6 +1865,8 @@ func _process(_delta: float) -> void:
 			_try_use_door()
 		elif _near_door != null:
 			_try_use_door()
+		elif _near_west_gate:
+			_go_west_castle()
 		elif _near_locasta and not locasta_done:
 			_advance_locasta_talk()
 		elif _near_scarecrow:
@@ -1955,14 +1964,66 @@ func _set_beat(next: Beat) -> void:
 			if marshal == null:
 				_spawn_marshal()
 		Beat.OPEN_ROAD:
-			hud.set_objective("Road open. Party bonded. Tab cycles Lead — whole party follows.")
-			hud.set_prompt("Act 1 spine complete (prototype).")
+			hud.set_objective("Yellow Brick Road opens west — Winkie castle (L3). Walk the south road gate or F10.")
+			hud.set_prompt("E at south road gate · F10 West castle · F11 Emerald City (playtest)")
 			if not _open_road_sting_done:
 				_open_road_sting_done = true
 				var lt3 := get_node_or_null("/root/LevelTransition")
 				if lt3 and lt3.has_method("play_exit"):
-					lt3.play_exit("Road open — the hourglass rests…")
+					lt3.play_exit("Road open — the hourglass turns toward the West…")
+				_ensure_west_road_gate()
 	_refresh_roster()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F10:
+			_go_west_castle()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F11:
+			_go_emerald_city()
+			get_viewport().set_input_as_handled()
+
+func _ensure_west_road_gate() -> void:
+	if _west_road_gate != null and is_instance_valid(_west_road_gate):
+		return
+	_west_road_gate = Node3D.new()
+	_west_road_gate.name = "WestRoadGate"
+	add_child(_west_road_gate)
+	_west_road_gate.global_position = _west_gate_pos
+	var pad := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(8.0, 0.12, 6.0)
+	pad.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.88, 0.72, 0.18)
+	mat.emission_enabled = true
+	mat.emission = Color(0.7, 0.45, 0.1)
+	mat.emission_energy_multiplier = 0.55
+	pad.material_override = mat
+	_west_road_gate.add_child(pad)
+	var lab := Label3D.new()
+	lab.text = "YELLOW BRICK ROAD\n→ Winkie Country · West castle\n(E — travel)"
+	lab.font_size = 48
+	lab.pixel_size = 0.014
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(1.0, 0.88, 0.35)
+	lab.outline_size = 10
+	_west_road_gate.add_child(lab)
+	lab.position = Vector3(0, 3.2, 0)
+
+func _go_west_castle() -> void:
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(WEST_SCENE, "The hourglass turns — Winkie Country…", "Winkie Country · the West castle")
+	else:
+		get_tree().change_scene_to_file(WEST_SCENE)
+
+func _go_emerald_city() -> void:
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(EMERALD_SCENE, "The hourglass turns — Emerald City…", "Emerald City · the Wizard's tower")
+	else:
+		get_tree().change_scene_to_file(EMERALD_SCENE)
 
 func _update_proximity_prompt() -> void:
 	if _inside_building and _active_interior != null:
@@ -1974,6 +2035,8 @@ func _update_proximity_prompt() -> void:
 			hud.set_prompt("E  —  Exit %s" % title)
 		else:
 			hud.set_prompt("E  —  Enter %s" % title)
+	elif _near_west_gate:
+		hud.set_prompt("E  —  Take the Yellow Brick Road to the West castle")
 	elif _near_locasta and not locasta_done:
 		if _locasta_line == 0:
 			hud.set_prompt("E  —  Speak with Locasta, Good Witch of the North")
