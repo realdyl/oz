@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Kansas prologue playability: walk, basket, Toto, final debris → fade start.
+## Kansas prologue: walk, basket, Toto, Aunt Em, shutter, cellar, house door → lift/fade.
 
 var _failures: PackedStringArray = []
 var _farm: Node3D
@@ -16,7 +16,7 @@ func _initialize() -> void:
 		return
 	_farm = packed.instantiate()
 	root.add_child(_farm)
-	for _i in 35:
+	for _i in 40:
 		await process_frame
 
 	_player = _farm.find_child("Player", true, false) as CharacterBody3D
@@ -25,6 +25,9 @@ func _initialize() -> void:
 	var hud := _farm.find_child("PlayHUD", true, false)
 	var house := _farm.find_child("Farmhouse", true, false)
 	var cam := _farm.find_child("Camera3D", true, false) as Camera3D
+	var aunt := _farm.find_child("Aunt Em", true, false)
+	var henry := _farm.find_child("Uncle Henry", true, false)
+	var door := _farm.find_child("HouseDoor", true, false)
 
 	if _player == null:
 		_fail("missing Player")
@@ -38,6 +41,12 @@ func _initialize() -> void:
 		_fail("missing Farmhouse")
 	if cam == null or not cam.current:
 		_fail("missing current Camera3D")
+	if aunt == null:
+		_fail("missing Aunt Em")
+	if henry == null:
+		_fail("missing Uncle Henry")
+	if door == null:
+		_fail("missing HouseDoor")
 	if not InputMap.has_action("move_forward") or not InputMap.has_action("interact"):
 		_fail("input incomplete")
 
@@ -50,6 +59,17 @@ func _initialize() -> void:
 	if not _player.is_on_floor():
 		_fail("player not on floor y=%.3f" % _player.global_position.y)
 	print("FLOOR_OK y=", _player.global_position.y)
+
+	# Objectives should be spread (not all <8m from spawn)
+	var bdist: float = _player.global_position.distance_to(_basket.global_position)
+	var tdist: float = _player.global_position.distance_to(_toto.global_position)
+	print("SPREAD basket=%.1fm toto=%.1fm" % [bdist, tdist])
+	if bdist < 10.0:
+		_fail("basket too close to spawn dist=%.1f" % bdist)
+	if tdist < 10.0:
+		_fail("toto too close to spawn dist=%.1f" % tdist)
+	if _basket.global_position.distance_to(_toto.global_position) < 12.0:
+		_fail("basket and toto too close to each other")
 
 	var start := _player.global_position
 	var pivot: Node3D = _player.get_node_or_null("CameraPivot")
@@ -90,7 +110,14 @@ func _initialize() -> void:
 		_fail("toto did not join basket")
 	else:
 		print("TOTO_OK")
-	# Shutter + cellar beats (vault farmyard)
+
+	# Aunt Em multi-line → shutter phase
+	if _farm.phase == _farm.Phase.NEED_AUNT:
+		_farm._aunt_line = 99
+		_farm._talk_aunt()
+		for _i in 6:
+			await process_frame
+		print("AUNT_OK")
 	if _farm.phase == _farm.Phase.NEED_SHUTTER:
 		_farm._close_shutter()
 		for _i in 6:
@@ -101,28 +128,38 @@ func _initialize() -> void:
 		for _i in 6:
 			await process_frame
 		print("CELLAR_OK")
-	if _farm.phase != _farm.Phase.STORM:
-		_fail("storm phase not started after cellar")
+	if _farm.phase != _farm.Phase.STORM_RUN:
+		_fail("storm_run not started after cellar phase=%s" % str(_farm.phase))
 	else:
-		print("STORM_OK")
+		print("STORM_RUN_OK")
 	if _farm.find_child("Barn", true, false) == null:
 		_fail("missing Barn landmark")
 	else:
 		print("BARN_OK")
+	if not door.visible:
+		_fail("house door not revealed in storm")
+	else:
+		print("DOOR_REVEAL_OK")
 
-	# Force final strike path
-	_farm._storm_time = 13.0
-	_farm._begin_final_strike()
+	# FINAL STEP: enter house → lift → fade
+	_farm.force_house_enter()
 	for _i in 20:
 		await process_frame
-	# Simulate final hit
-	_farm._on_final_debris()
-	for _i in 10:
-		await process_frame
-	if _farm.phase != _farm.Phase.FADE:
-		_fail("fade phase not entered after final hit")
+	if _farm.phase != _farm.Phase.HOUSE_LIFT and _farm.phase != _farm.Phase.FADE and _farm.phase != _farm.Phase.STRIKE:
+		_fail("house lift/fade not entered phase=%s" % str(_farm.phase))
 	else:
-		print("FADE_OK")
+		print("HOUSE_LIFT_OK phase=", _farm.phase)
+
+	# Advance lift to fade
+	if _farm.phase == _farm.Phase.HOUSE_LIFT:
+		_farm._lift_t = 3.5
+		_farm._process(0.05)
+		for _i in 8:
+			await process_frame
+	if _farm.phase == _farm.Phase.FADE or _farm.phase == _farm.Phase.STRIKE or _farm.phase == _farm.Phase.HOUSE_LIFT:
+		print("FADE_PATH_OK")
+	else:
+		_fail("fade path missing phase=%s" % str(_farm.phase))
 
 	_finish()
 

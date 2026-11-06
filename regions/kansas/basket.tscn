@@ -1,28 +1,60 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://regions/kansas/basket.gd" id="1_script"]
 
 [sub_resource type="SphereShape3D" id="Shape"]
-radius = 0.7
+radius = 1.2
 
 [sub_resource type="StandardMaterial3D" id="Mat_wicker"]
-albedo_color = Color(0.4, 0.4, 0.42, 1)
-roughness = 0.9
+albedo_color = Color(0.52, 0.48, 0.4, 1)
+roughness = 0.92
 metallic = 0.0
 
-[sub_resource type="BoxMesh" id="Mesh_basket"]
-size = Vector3(0.35, 0.22, 0.3)
+[sub_resource type="StandardMaterial3D" id="Mat_rim"]
+albedo_color = Color(0.38, 0.35, 0.3, 1)
+roughness = 0.88
 
+[sub_resource type="CylinderMesh" id="Mesh_body"]
+top_radius = 0.34
+bottom_radius = 0.4
+height = 0.42
+
+[sub_resource type="TorusMesh" id="Mesh_rim"]
+inner_radius = 0.26
+outer_radius = 0.36
+
+[sub_resource type="TorusMesh" id="Mesh_handle"]
+inner_radius = 0.03
+outer_radius = 0.32
+
+[sub_resource type="BoxMesh" id="Mesh_weave"]
+size = Vector3(0.72, 0.06, 0.08)
 
 [node name="Basket" type="Area3D"]
 collision_layer = 0
 collision_mask = 2
 script = ExtResource("1_script")
+prompt = "E  —  Pick up Toto's basket"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("Shape")
 
-[node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
-mesh = SubResource("Mesh_basket")
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22, 0)
+mesh = SubResource("Mesh_body")
 surface_material_override/0 = SubResource("Mat_wicker")
+
+[node name="Rim" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.44, 0)
+mesh = SubResource("Mesh_rim")
+surface_material_override/0 = SubResource("Mat_rim")
+
+[node name="Handle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.62, 0)
+mesh = SubResource("Mesh_handle")
+surface_material_override/0 = SubResource("Mat_rim")
+
+[node name="WeaveBand" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0.36)
+mesh = SubResource("Mesh_weave")
+surface_material_override/0 = SubResource("Mat_rim")
