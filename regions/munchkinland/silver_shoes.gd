@@ -21,13 +21,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _on_body_entered(body: Node) -> void:
-	if taken or not body.is_in_group("player"):
+	if taken:
+		return
+	# Any Lead (Dorothy or bonded friend) can claim shoes for the party.
+	if not (body.is_in_group("player") or body.is_in_group("party")):
 		return
 	player_near = true
 	prompt_changed.emit("E  —  Take the Shoes")
 
 func _on_body_exited(body: Node) -> void:
-	if not body.is_in_group("player"):
+	if not (body.is_in_group("player") or body.is_in_group("party")):
 		return
 	player_near = false
 	if not taken:

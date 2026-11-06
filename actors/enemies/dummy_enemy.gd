@@ -13,7 +13,7 @@ func _physics_process(delta: float) -> void:
 	velocity = knockback_velocity
 	move_and_slide()
 
-func take_damage(amount: int, source_position: Vector3) -> void:
+func take_damage(amount: int, source_position: Vector3, _tags: Dictionary = {}) -> void:
 	health -= amount
 	print("Enemy took damage: ", amount, " Health remaining: ", health)
 

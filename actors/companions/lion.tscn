@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://actors/companions/lion.gd" id="1_script"]
+[ext_resource type="Script" path="res://actors/companions/lion_visual.gd" id="2_visual"]
+
+[sub_resource type="CapsuleShape3D" id="Shape_body"]
+radius = 0.4
+height = 1.1
+
+[node name="Lion" type="CharacterBody3D" groups=["party", "companions"]]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("Shape_body")
+
+[node name="CameraAnchor" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Body" type="Node3D" parent="Visual"]
+script = ExtResource("2_visual")

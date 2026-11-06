@@ -1,30 +1,37 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://actors/enemies/puppet_munchkin.gd" id="1_script"]
 
 [sub_resource type="CapsuleShape3D" id="Shape_body"]
-radius = 0.32
-height = 1.15
+radius = 0.28
+height = 1.25
 
 [sub_resource type="StandardMaterial3D" id="Mat_body"]
 albedo_color = Color(0.93, 0.62, 0.72, 1)
 roughness = 0.55
 
-[sub_resource type="SphereMesh" id="Mesh_body"]
-radius = 0.34
-height = 0.68
+[sub_resource type="CapsuleMesh" id="Mesh_torso"]
+radius = 0.22
+height = 0.55
+
+[sub_resource type="SphereMesh" id="Mesh_head"]
+radius = 0.18
+height = 0.36
 
 [sub_resource type="StandardMaterial3D" id="Mat_licorice"]
 albedo_color = Color(0.08, 0.05, 0.07, 1)
 roughness = 0.4
 
 [sub_resource type="CylinderMesh" id="Mesh_hat"]
-top_radius = 0.16
-bottom_radius = 0.2
-height = 0.28
+top_radius = 0.1
+bottom_radius = 0.14
+height = 0.22
+
+[sub_resource type="BoxMesh" id="Mesh_limb"]
+size = Vector3(0.1, 0.38, 0.1)
 
 [sub_resource type="BoxMesh" id="Mesh_stitch"]
-size = Vector3(0.04, 0.42, 0.04)
+size = Vector3(0.04, 0.28, 0.04)
 
 [sub_resource type="StandardMaterial3D" id="Mat_stitch"]
 albedo_color = Color(0.35, 0.12, 0.22, 1)
@@ -33,8 +40,8 @@ emission = Color(0.45, 0.1, 0.22, 1)
 emission_energy_multiplier = 0.4
 
 [sub_resource type="SphereMesh" id="Mesh_eye"]
-radius = 0.06
-height = 0.12
+radius = 0.04
+height = 0.08
 
 [node name="PuppetMunchkin" type="CharacterBody3D" groups=["enemies"]]
 collision_layer = 4
@@ -42,37 +49,62 @@ collision_mask = 3
 script = ExtResource("1_script")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.58, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.62, 0)
 shape = SubResource("Shape_body")
 
 [node name="Visual" type="Node3D" parent="."]
 
 [node name="Body" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1.15, 0, 0, 0, 1, 0, 0.62, 0)
-mesh = SubResource("Mesh_body")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, 0)
+mesh = SubResource("Mesh_torso")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="Head" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.12, 0)
+mesh = SubResource("Mesh_head")
 surface_material_override/0 = SubResource("Mat_body")
 
 [node name="Hat" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.12, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.38, 0)
 mesh = SubResource("Mesh_hat")
 surface_material_override/0 = SubResource("Mat_licorice")
 
 [node name="Brim" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1.6, 0, 0, 0, 0.15, 0, 0, 0, 1.6, 0, 0.98, 0)
+transform = Transform3D(1.5, 0, 0, 0, 0.12, 0, 0, 0, 1.5, 0, 1.28, 0)
 mesh = SubResource("Mesh_hat")
 surface_material_override/0 = SubResource("Mat_licorice")
 
+[node name="ArmL" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0.78, 0)
+mesh = SubResource("Mesh_limb")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="ArmR" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.78, 0)
+mesh = SubResource("Mesh_limb")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="LegL" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.28, 0)
+mesh = SubResource("Mesh_limb")
+surface_material_override/0 = SubResource("Mat_licorice")
+
+[node name="LegR" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.28, 0)
+mesh = SubResource("Mesh_limb")
+surface_material_override/0 = SubResource("Mat_licorice")
+
 [node name="Stitch" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.64, -0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.78, -0.22)
 mesh = SubResource("Mesh_stitch")
 surface_material_override/0 = SubResource("Mat_stitch")
 
 [node name="EyeL" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.78, -0.28)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.07, 1.14, -0.15)
 mesh = SubResource("Mesh_eye")
 surface_material_override/0 = SubResource("Mat_licorice")
 
 [node name="EyeR" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.74, -0.26)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.07, 1.12, -0.15)
 mesh = SubResource("Mesh_eye")
 surface_material_override/0 = SubResource("Mat_licorice")

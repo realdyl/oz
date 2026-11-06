@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://regions/kansas/debris.gd" id="1_script"]
+
+[sub_resource type="BoxShape3D" id="Shape"]
+size = Vector3(0.9, 0.5, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_wood"]
+albedo_color = Color(0.35, 0.35, 0.36, 1)
+roughness = 0.9
+metallic = 0.0
+
+[sub_resource type="BoxMesh" id="Mesh_plank"]
+size = Vector3(0.9, 0.5, 1.4)
+
+
+[node name="Debris" type="Area3D"]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_plank")
+surface_material_override/0 = SubResource("Mat_wood")

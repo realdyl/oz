@@ -1,0 +1,274 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://regions/kansas/farmyard.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://actors/dorothy/kansas_player.tscn" id="pack_player"]
+[ext_resource type="PackedScene" path="res://regions/kansas/basket.tscn" id="pack_basket"]
+[ext_resource type="PackedScene" path="res://regions/kansas/toto.tscn" id="pack_toto"]
+[ext_resource type="PackedScene" path="res://ui/play_hud.tscn" id="pack_hud"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.38, 0.38, 0.4, 1)
+roughness = 0.95
+metallic = 0.0
+[sub_resource type="StandardMaterial3D" id="Mat_dirt"]
+albedo_color = Color(0.28, 0.28, 0.3, 1)
+roughness = 0.95
+metallic = 0.0
+[sub_resource type="StandardMaterial3D" id="Mat_wood"]
+albedo_color = Color(0.32, 0.32, 0.34, 1)
+roughness = 0.9
+metallic = 0.0
+[sub_resource type="StandardMaterial3D" id="Mat_roof"]
+albedo_color = Color(0.22, 0.22, 0.24, 1)
+roughness = 0.85
+metallic = 0.0
+[sub_resource type="StandardMaterial3D" id="Mat_fence"]
+albedo_color = Color(0.4, 0.4, 0.42, 1)
+roughness = 0.9
+metallic = 0.0
+[sub_resource type="StandardMaterial3D" id="Mat_dead"]
+albedo_color = Color(0.3, 0.3, 0.31, 1)
+roughness = 0.92
+metallic = 0.0
+
+[sub_resource type="BoxMesh" id="Mesh_unit"]
+size = Vector3(1, 1, 1)
+[sub_resource type="CylinderMesh" id="Mesh_post"]
+top_radius = 0.08
+bottom_radius = 0.1
+height = 1.2
+
+[sub_resource type="BoxShape3D" id="Shape_box"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 1
+background_color = Color(0.55, 0.55, 0.58, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.7, 0.7, 0.72, 1)
+ambient_light_energy = 0.85
+tonemap_mode = 2
+adjustment_enabled = true
+adjustment_saturation = 0.0
+adjustment_contrast = 1.15
+fog_enabled = true
+fog_light_color = Color(0.6, 0.6, 0.62, 1)
+fog_density = 0.012
+
+
+[node name="Farmyard" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8, -0.4, 0.4, 0, 0.7, 0.7, -0.5, -0.55, 0.65, 0, 12, 0)
+light_color = Color(0.85, 0.85, 0.88, 1)
+light_energy = 0.9
+shadow_enabled = true
+shadow_bias = 0.08
+shadow_normal_bias = 2.5
+shadow_blur = 1.5
+directional_shadow_mode = 0
+directional_shadow_max_distance = 48.0
+directional_shadow_pancake_size = 4.0
+light_angular_distance = 1.2
+
+[node name="Ground" type="StaticBody3D" parent="."]
+transform = Transform3D(48, 0, 0, 0, 0.2, 0, 0, 0, 48, 0, -0.1, 0)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="Col" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("Shape_box")
+
+[node name="DirtPatch" type="MeshInstance3D" parent="."]
+transform = Transform3D(12, 0, 0, 0, 0.05, 0, 0, 0, 10, 2, 0.02, 2)
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_dirt")
+
+[node name="Farmhouse" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -8)
+
+[node name="Body" type="StaticBody3D" parent="Farmhouse"]
+transform = Transform3D(7, 0, 0, 0, 4.2, 0, 0, 0, 5.5, 0, 2.1, 0)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Farmhouse/Body"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="Col" type="CollisionShape3D" parent="Farmhouse/Body"]
+shape = SubResource("Shape_box")
+
+[node name="Roof" type="StaticBody3D" parent="Farmhouse"]
+transform = Transform3D(8, 0, 0, 0, 1.2, 0, 0, 0, 6.5, 0, 4.6, 0)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Farmhouse/Roof"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_roof")
+
+[node name="Col" type="CollisionShape3D" parent="Farmhouse/Roof"]
+shape = SubResource("Shape_box")
+
+[node name="Porch" type="StaticBody3D" parent="Farmhouse"]
+transform = Transform3D(3.5, 0, 0, 0, 0.25, 0, 0, 0, 2, 0, 0.12, 3.2)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="Farmhouse/Porch"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="Col" type="CollisionShape3D" parent="Farmhouse/Porch"]
+shape = SubResource("Shape_box")
+
+
+[node name="FenceN1" type="StaticBody3D" parent="."]
+transform = Transform3D(6, 0, 0, 0, 0.9, 0, 0, 0, 0.12, -8, 0.45, -14)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceN1"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceN1"]
+shape = SubResource("Shape_box")
+
+[node name="FenceN2" type="StaticBody3D" parent="."]
+transform = Transform3D(4, 0, 0, 0, 0.7, 0, 0, 0, 0.12, 4, 0.35, -13.5)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceN2"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceN2"]
+shape = SubResource("Shape_box")
+
+[node name="FenceE1" type="StaticBody3D" parent="."]
+transform = Transform3D(0.12, 0, 0, 0, 0.8, 0, 0, 0, 8, 16, 0.4, -4)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceE1"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceE1"]
+shape = SubResource("Shape_box")
+
+[node name="FenceE2" type="StaticBody3D" parent="."]
+transform = Transform3D(0.12, 0, 0, 0, 0.5, 0, 0, 0, 5, 15.5, 0.25, 8)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceE2"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceE2"]
+shape = SubResource("Shape_box")
+
+[node name="FenceW1" type="StaticBody3D" parent="."]
+transform = Transform3D(0.12, 0, 0, 0, 0.85, 0, 0, 0, 10, -16, 0.4, 0)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceW1"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceW1"]
+shape = SubResource("Shape_box")
+
+[node name="FenceS1" type="StaticBody3D" parent="."]
+transform = Transform3D(7, 0, 0, 0, 0.6, 0, 0, 0, 0.12, -4, 0.3, 16)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceS1"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceS1"]
+shape = SubResource("Shape_box")
+
+[node name="FenceBroken" type="StaticBody3D" parent="."]
+transform = Transform3D(2.5, 0, 0, 0, 0.4, 0, 0, 0, 0.15, 2, 0.2, 6)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceBroken"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceBroken"]
+shape = SubResource("Shape_box")
+
+[node name="FenceLean" type="StaticBody3D" parent="."]
+transform = Transform3D(0.15, 0, 0, 0, 0.7, 0, 0, 0, 3, -6, 0.35, 4)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FenceLean"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_fence")
+
+[node name="Col" type="CollisionShape3D" parent="FenceLean"]
+shape = SubResource("Shape_box")
+
+
+[node name="DeadTree0" type="StaticBody3D" parent="."]
+transform = Transform3D(0.35, 0, 0, 0, 2.8, 0, 0, 0, 0.35, -12, 1.4, -6)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="DeadTree0"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_dead")
+
+[node name="Col" type="CollisionShape3D" parent="DeadTree0"]
+shape = SubResource("Shape_box")
+
+[node name="DeadTree1" type="StaticBody3D" parent="."]
+transform = Transform3D(0.35, 0, 0, 0, 2.8, 0, 0, 0, 0.35, 10, 1.4, -10)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="DeadTree1"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_dead")
+
+[node name="Col" type="CollisionShape3D" parent="DeadTree1"]
+shape = SubResource("Shape_box")
+
+[node name="DeadTree2" type="StaticBody3D" parent="."]
+transform = Transform3D(0.35, 0, 0, 0, 2.8, 0, 0, 0, 0.35, 12, 1.4, 4)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="DeadTree2"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_dead")
+
+[node name="Col" type="CollisionShape3D" parent="DeadTree2"]
+shape = SubResource("Shape_box")
+
+[node name="DeadTree3" type="StaticBody3D" parent="."]
+transform = Transform3D(0.35, 0, 0, 0, 2.8, 0, 0, 0, 0.35, -14, 1.4, 10)
+collision_layer = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="DeadTree3"]
+mesh = SubResource("Mesh_unit")
+surface_material_override/0 = SubResource("Mat_dead")
+
+[node name="Col" type="CollisionShape3D" parent="DeadTree3"]
+shape = SubResource("Shape_box")
+
+
+[node name="Player" parent="." instance=ExtResource("pack_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.05, 10)
+
+[node name="Basket" parent="." instance=ExtResource("pack_basket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 0.05, 7.0)
+
+[node name="Toto" parent="." instance=ExtResource("pack_toto")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.05, 4)
+
+[node name="PlayHUD" parent="." instance=ExtResource("pack_hud")]

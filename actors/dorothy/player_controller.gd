@@ -20,6 +20,8 @@ extends CharacterBody3D
 @export var kick_range: float = 1.15
 
 @export var mouse_sensitivity: float = 0.0028
+@export var follow_distance: float = 2.2
+@export var step_height: float = 0.55
 
 var blink_timer: float = 0.0
 var kick_timer: float = 0.0
@@ -28,44 +30,42 @@ var iframe_timer: float = 0.0
 var stun_timer: float = 0.0
 var shoes_claimed: bool = false
 var looking: bool = false
+var leading: bool = true
+var follow_target: Node3D = null
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
-@onready var shoe_l: MeshInstance3D = $Visual/ShoeL
-@onready var shoe_r: MeshInstance3D = $Visual/ShoeR
+@onready var body: Node3D = $Visual/Body
 
 func _ready() -> void:
 	add_to_group("player")
+	add_to_group("party")
 	floor_snap_length = 0.3
-	spring_arm.rotation.x = deg_to_rad(-14)
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	for shoe in [shoe_l, shoe_r]:
-		var existing: Material = shoe.get_surface_override_material(0)
-		if existing is StandardMaterial3D:
-			shoe.set_surface_override_material(0, existing.duplicate())
+	# Godot 4 SpringArm places children along local +Z. Pitch down a little.
+	spring_arm.collision_mask = 0
+	_set_arm_pitch(-18.0)
+	looking = true
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Party.register(Party.ID_DOROTHY, self, true)
+	set_leading(true)
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
-		looking = false
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		get_viewport().set_input_as_handled()
-		return
+func set_leading(on: bool) -> void:
+	leading = on
+	follow_target = null if on else Party.follow_body()
 
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
-			looking = true
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			get_viewport().set_input_as_handled()
-			return
+func set_player_controlled(on: bool) -> void:
+	set_leading(on)
 
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		camera_pivot.rotate_y(-event.relative.x * mouse_sensitivity)
-		spring_arm.rotation.x = clampf(
-			spring_arm.rotation.x - event.relative.y * mouse_sensitivity,
-			deg_to_rad(-55),
-			deg_to_rad(18)
-		)
+func can_take_lead() -> bool:
+	return true
+
+func _set_arm_pitch(pitch_deg: float) -> void:
+	if spring_arm and is_instance_valid(spring_arm):
+		spring_arm.rotation_degrees = Vector3(pitch_deg, 0.0, 0.0)
+
+func wants_look_hint() -> bool:
+	return not Party.looking
 
 func _physics_process(delta: float) -> void:
 	blink_timer = maxf(blink_timer - delta, 0.0)
@@ -78,6 +78,13 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= gravity * delta
 	else:
 		velocity.y = -0.5
+
+	# When a companion leads, Dorothy trails — and still fights on her own.
+	if not leading:
+		_ally_or_follow(delta)
+		_animate_visual(delta)
+		move_and_slide()
+		return
 
 	var locked := kick_active > 0.0 or stun_timer > 0.0
 	if not locked:
@@ -95,16 +102,111 @@ func _physics_process(delta: float) -> void:
 	_animate_visual(delta)
 	move_and_slide()
 
+func _ally_or_follow(delta: float) -> void:
+	var foe: Node3D = Party.nearest_enemy(self, 16.0) if Party else null
+	var lead := Party.follow_body() if Party else null
+	var leash_ok := true
+	if lead and is_instance_valid(lead) and lead != self and foe:
+		if global_position.distance_to(lead.global_position) > 26.0 \
+				and foe.global_position.distance_to(lead.global_position) > 20.0:
+			leash_ok = false
+	if foe and leash_ok and stun_timer <= 0.0:
+		_ally_fight(delta, foe)
+	else:
+		_follow_lead(delta)
+
+func _ally_fight(delta: float, foe: Node3D) -> void:
+	var to := foe.global_position - global_position
+	to.y = 0.0
+	var dist := to.length()
+	var hold := kick_range + 0.15
+	if kick_active > 0.0:
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
+		return
+	if dist > 0.05:
+		var dir := to / dist
+		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-dir.x, -dir.z), 12.0 * delta)
+		if dist > hold:
+			velocity.x = dir.x * move_speed * 0.95
+			velocity.z = dir.z * move_speed * 0.95
+			_try_step(dir)
+		else:
+			velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+			velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
+			if kick_timer <= 0.0:
+				_kick()
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
+
+func _follow_lead(delta: float) -> void:
+	follow_target = Party.follow_body()
+	if follow_target == null or follow_target == self:
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
+		return
+	var to := follow_target.global_position - global_position
+	to.y = 0.0
+	var dist := to.length()
+	if dist > follow_distance:
+		var dir := to / dist
+		velocity.x = dir.x * move_speed * 0.95
+		velocity.z = dir.z * move_speed * 0.95
+		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-dir.x, -dir.z), 10.0 * delta)
+		_try_step(dir)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
+
+func _camera_basis() -> Basis:
+	var node := Party.camera_basis_node()
+	if node:
+		return node.global_transform.basis
+	if camera_pivot and is_instance_valid(camera_pivot):
+		return camera_pivot.global_transform.basis
+	return global_transform.basis
+
 func _move(delta: float) -> void:
+	# RMB steals WASD/arrows for camera orbit (Party)
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
+		velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)
+		return
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var wish := Vector3.ZERO
 	if input.length() > 0.05:
-		var basis := camera_pivot.global_transform.basis
-		wish = (basis * Vector3(input.x, 0.0, input.y)).normalized()
-		var face := atan2(-wish.x, -wish.z)
-		visual.rotation.y = lerp_angle(visual.rotation.y, face, 12.0 * delta)
+		wish = (_camera_basis() * Vector3(input.x, 0.0, input.y))
+		wish.y = 0.0
+		if wish.length() > 0.01:
+			wish = wish.normalized()
+			var face := atan2(-wish.x, -wish.z)
+			visual.rotation.y = lerp_angle(visual.rotation.y, face, 12.0 * delta)
 	velocity.x = move_toward(velocity.x, wish.x * move_speed, acceleration * delta * move_speed)
 	velocity.z = move_toward(velocity.z, wish.z * move_speed, acceleration * delta * move_speed)
+	if wish.length() > 0.05:
+		_try_step(wish)
+
+func _try_step(dir: Vector3) -> void:
+	if not is_on_floor() or dir.length() < 0.05:
+		return
+	var space := get_world_3d().direct_space_state
+	var feet := global_position + Vector3(0, 0.15, 0)
+	var ahead := feet + dir.normalized() * 0.45
+	var hit_wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(feet, ahead, 1, [get_rid()]))
+	if hit_wall.is_empty():
+		return
+	var hit_top := space.intersect_ray(PhysicsRayQueryParameters3D.create(ahead + Vector3(0, step_height + 0.35, 0), ahead + Vector3(0, 0.05, 0), 1, [get_rid()]))
+	if hit_top.is_empty():
+		return
+	var land_y: float = hit_top.position.y
+	if land_y <= global_position.y + 0.08 or land_y > global_position.y + step_height + 0.15:
+		return
+	var blocked := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(ahead.x, land_y + 0.2, ahead.z), Vector3(ahead.x, land_y + 1.25, ahead.z), 1, [get_rid()]))
+	if not blocked.is_empty():
+		return
+	global_position = Vector3(ahead.x, land_y + 0.02, ahead.z)
+	velocity.y = 0.0
 
 func _blink() -> void:
 	blink_timer = blink_cooldown
@@ -112,8 +214,10 @@ func _blink() -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var dir := Vector3.ZERO
 	if input.length() > 0.05:
-		var basis := camera_pivot.global_transform.basis
-		dir = (basis * Vector3(input.x, 0.0, input.y)).normalized()
+		dir = _camera_basis() * Vector3(input.x, 0.0, input.y)
+		dir.y = 0.0
+		if dir.length() > 0.01:
+			dir = dir.normalized()
 	else:
 		dir = -visual.global_transform.basis.z
 		dir.y = 0.0
@@ -152,41 +256,35 @@ func _blink_destination(dir: Vector3) -> Vector3:
 
 func _kick() -> void:
 	kick_timer = kick_cooldown
-	kick_active = 0.16
-	_show_kick_arc()
+	kick_active = 0.22
+	var forward := -visual.global_transform.basis.z
+	forward.y = 0.0
+	if forward.length() < 0.01:
+		forward = -global_transform.basis.z
+	forward = forward.normalized()
+	# Heel plant + silver arc (always visible even with no target)
+	CombatFx.slash_box(self, global_position, forward, Color(0.85, 0.9, 1.0), Vector3(0.95, 0.22, 1.2), 0.16)
+	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.5, 0) + forward * 0.9, Color(0.9, 0.95, 1.0), 0.4, 0.12)
+	CombatFx.label(self, global_position, "KICK", Color(0.95, 0.95, 1.0))
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
-	shape.radius = 0.48
+	shape.radius = 0.55
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = shape
 	params.collision_mask = 4
 	params.exclude = [get_rid()]
-	var forward := -visual.global_transform.basis.z
 	params.transform = Transform3D(Basis(), global_position + Vector3(0, 0.55, 0) + forward * kick_range)
-	var hits := space.intersect_shape(params, 4)
+	var hits := space.intersect_shape(params, 6)
 	var connected := false
 	for hit in hits:
 		var collider: Object = hit.collider
 		if collider and collider.has_method("take_damage"):
-			collider.take_damage(kick_damage, global_position)
+			collider.take_damage(kick_damage, global_position, {"knockback": 8.5, "launch": true})
 			connected = true
 	if connected:
 		_hitstop()
-
-func _show_kick_arc() -> void:
-	var arc := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.72, 0.16, 0.85)
-	arc.mesh = box
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.9, 0.93, 0.96, 0.55)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	arc.material_override = mat
-	visual.add_child(arc)
-	arc.position = Vector3(0, 0.42, -0.72)
-	var timer := get_tree().create_timer(0.1)
-	timer.timeout.connect(arc.queue_free)
+		# Small lunge into the kick
+		velocity += forward * 3.2
 
 func _hitstop() -> void:
 	Engine.time_scale = 0.08
@@ -197,11 +295,9 @@ func _animate_visual(delta: float) -> void:
 	var target_x := -0.55 if kick_active > 0.0 else 0.0
 	visual.rotation.x = lerp_angle(visual.rotation.x, target_x, 16.0 * delta)
 	visual.scale = visual.scale.lerp(Vector3.ONE, 10.0 * delta)
-	var energy := 1.7 if iframe_timer > 0.0 or shoes_claimed else 0.35
-	for shoe in [shoe_l, shoe_r]:
-		var mat := shoe.get_surface_override_material(0) as StandardMaterial3D
-		if mat:
-			mat.emission_energy_multiplier = energy
+	var hs := Vector2(velocity.x, velocity.z).length()
+	if body and body.has_method("set_locomotion"):
+		body.set_locomotion(hs, delta)
 
 func stumble(from: Vector3) -> void:
 	if iframe_timer > 0.0 or stun_timer > 0.0:
@@ -223,12 +319,11 @@ func empower_shoes() -> void:
 	shoes_claimed = true
 	blink_distance = 5.0
 	blink_cooldown = 0.32
-	for shoe in [shoe_l, shoe_r]:
-		var mat := shoe.get_surface_override_material(0) as StandardMaterial3D
-		if mat:
-			mat.emission_enabled = true
-			mat.emission = Color(0.85, 0.9, 1.0)
-			mat.emission_energy_multiplier = 1.8
+	if body:
+		body.set("show_silver_shoes", true)
+		# Rebuild visual so silver shoes show
+		if body.has_method("_ready"):
+			for c in body.get_children():
+				c.free()
+			body.call("_build")
 
-func wants_look_hint() -> bool:
-	return not looking

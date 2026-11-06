@@ -141,7 +141,7 @@ size = Vector3(120, 0.6, 140)
 [sub_resource type="BoxMesh" id="BoxMesh_28"]
 size = Vector3(120, 0.6, 140)
 [sub_resource type="BoxMesh" id="BoxMesh_29"]
-size = Vector3(4.6, 0.06, 58)
+size = Vector3(5.4, 0.1, 58)
 [sub_resource type="BoxMesh" id="BoxMesh_30"]
 size = Vector3(2.4, 0.04, 22)
 [sub_resource type="BoxMesh" id="BoxMesh_31"]
@@ -376,7 +376,7 @@ shape = SubResource("BoxShape3D_27")
 mesh = SubResource("BoxMesh_28")
 surface_material_override/0 = SubResource("StandardMaterial3D_1")
 [node name="YellowBrickRoad" type="MeshInstance3D" parent="."]
-transform = Transform3D(1.00000, 0.00000, 0.00000, 0.00000, 1.00000, -0.00000, 0.00000, 0.00000, 1.00000, 0.000, 0.045, -6.000)
+transform = Transform3D(1.00000, 0.00000, 0.00000, 0.00000, 1.00000, -0.00000, 0.00000, 0.00000, 1.00000, 0.000, 0.08, -6.000)
 mesh = SubResource("BoxMesh_29")
 surface_material_override/0 = SubResource("StandardMaterial3D_2")
 [node name="LeftLane" type="MeshInstance3D" parent="."]
