@@ -34,6 +34,13 @@ func _initialize() -> void:
 		else:
 			push_error("POPPY_WEST_NOT_WIRED")
 			ok = false
+		var clear_air := pnode.find_child("ClearAir", true, false)
+		var mice_cart := pnode.find_child("MiceCart", true, false)
+		if clear_air == null or mice_cart == null:
+			push_error("POPPY_RESCUE_ITEMS_MISSING clear=%s cart=%s" % [clear_air, mice_cart])
+			ok = false
+		else:
+			print("POPPY_CLEAR_AIR_CART_OK")
 		var sc := pnode.find_child("Scarecrow", true, false)
 		var tm := pnode.find_child("TinMan", true, false)
 		if sc == null and tm == null:

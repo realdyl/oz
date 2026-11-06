@@ -24,11 +24,18 @@ func _initialize() -> void:
 			await process_frame
 			var ybr := node.find_child("YellowBrickRoad", true, false)
 			var pad := node.find_child("WestGatePad", true, false)
+			var clear_air := node.find_child("ClearAir", true, false)
+			var mice_cart := node.find_child("MiceCart", true, false)
 			if ybr == null or pad == null:
 				push_error("SMOKE_POPPY_MISSING ybr/pad")
 				ok = false
 			else:
 				print("SMOKE_POPPY_OK")
+			if clear_air == null or mice_cart == null:
+				push_error("SMOKE_POPPY_ITEMS clear=%s cart=%s" % [clear_air, mice_cart])
+				ok = false
+			else:
+				print("SMOKE_POPPY_ITEMS_OK")
 			if not node.has_method("_go_west"):
 				push_error("SMOKE_POPPY_NO_GO_WEST")
 				ok = false
