@@ -60,22 +60,42 @@ func _initialize() -> void:
 		_fail("party switch actions missing")
 	if _party == null:
 		_fail("Party autoload missing")
-	# Placement: Scarecrow in open cornfield, not wedged on PinkCottage.
+	# Placement: linear YBR spine (south = +Z). Locasta before house; companions along the road.
+	var house_n := _landing.find_child("CrashedHouse", true, false) as Node3D
+	var house_z := -5.2
+	if house_n:
+		house_z = house_n.global_position.z
+	var locasta_n0 := _landing.find_child("Locasta", true, false) as Node3D
+	if locasta_n0:
+		if locasta_n0.global_position.z > house_z - 8.0:
+			_fail("Locasta not before house (z=%.1f house=%.1f)" % [locasta_n0.global_position.z, house_z])
+		if absf(locasta_n0.global_position.x) > 4.0:
+			_fail("Locasta off YBR x=%.1f" % locasta_n0.global_position.x)
+		if locasta_n0.global_position.distance_to(house_n.global_position if house_n else Vector3(0, 0, house_z)) < 6.0:
+			_fail("Locasta still wedged on house d=%.1f" % locasta_n0.global_position.distance_to(house_n.global_position))
+	if _player and locasta_n0 and _player.global_position.z > locasta_n0.global_position.z - 8.0:
+		_fail("Player not north of Locasta on YBR (need walk). p=%.1f L=%.1f" % [_player.global_position.z, locasta_n0.global_position.z])
 	if _scarecrow:
 		var pink := _landing.get_node_or_null("PinkCottage") as Node3D
 		if pink and _scarecrow.global_position.distance_to(pink.global_position) < 14.0:
 			_fail("Scarecrow still near PinkCottage d=%.1f" % _scarecrow.global_position.distance_to(pink.global_position))
-		if _scarecrow.global_position.x < 30.0:
-			_fail("Scarecrow not in east cornfield x=%.1f" % _scarecrow.global_position.x)
-	if _lion and _lion.global_position.z > -20.0:
-		_fail("Lion not north enough z=%.1f" % _lion.global_position.z)
-	if _scarecrow and _scarecrow.global_position.distance_to(Vector3(0, 0, 14)) < 12.0:
-		_fail("Scarecrow too close to spawn")
-	if _tinman and _tinman.global_position.x > -30.0:
-		_fail("TinMan not west enough x=%.1f" % _tinman.global_position.x)
+		if _scarecrow.global_position.z < house_z + 15.0:
+			_fail("Scarecrow not south on YBR z=%.1f" % _scarecrow.global_position.z)
+		if absf(_scarecrow.global_position.x) > 8.0:
+			_fail("Scarecrow off YBR spine x=%.1f" % _scarecrow.global_position.x)
+	if _lion:
+		if _scarecrow and _lion.global_position.z < _scarecrow.global_position.z + 20.0:
+			_fail("Lion not further south on YBR than Scarecrow")
+		if absf(_lion.global_position.x) > 8.0:
+			_fail("Lion off YBR spine x=%.1f" % _lion.global_position.x)
+	if _tinman:
+		if _lion and _tinman.global_position.z < _lion.global_position.z + 20.0:
+			_fail("TinMan not further south on YBR than Lion")
+		if absf(_tinman.global_position.x) > 8.0:
+			_fail("TinMan off YBR spine x=%.1f" % _tinman.global_position.x)
 	var wall_w := _landing.get_node_or_null("WallWest") as Node3D
 	if wall_w and wall_w.global_position.x > -55.0:
-		_fail("WallWest still blocks west path at x=%.1f" % wall_w.global_position.x)
+		_fail("WallWest still blocks path at x=%.1f" % wall_w.global_position.x)
 	print("PLACE_OK sc=", _scarecrow.global_position if _scarecrow else Vector3.ZERO, " lion=", _lion.global_position if _lion else Vector3.ZERO, " tin=", _tinman.global_position if _tinman else Vector3.ZERO)
 
 	if not _failures.is_empty():
@@ -106,14 +126,24 @@ func _initialize() -> void:
 		else:
 			print("LOCASTA_OK")
 
-	# All live puppets must stay inside Munchkinland play bounds.
+	# All live puppets must stay inside expanded YBR play bounds.
+	var bx := 72.0
+	var bz := 140.0
+	var pbx = _landing.get("PLAY_BOUND_X")
+	var pbz = _landing.get("PLAY_BOUND_Z")
+	if typeof(pbx) in [TYPE_FLOAT, TYPE_INT]:
+		bx = float(pbx)
+	if typeof(pbz) in [TYPE_FLOAT, TYPE_INT]:
+		bz = float(pbz)
 	for n in get_nodes_in_group("enemies"):
 		if not is_instance_valid(n) or not (n is Node3D):
 			continue
 		if n.is_in_group("enemies_dead"):
 			continue
+		if n.is_in_group("living_tree") or n.is_in_group("boss"):
+			continue
 		var p := (n as Node3D).global_position
-		if absf(p.x) > 57.0 or absf(p.z) > 53.0:
+		if absf(p.x) > bx + 2.0 or absf(p.z) > bz + 2.0:
 			_fail("puppet outside map bounds pos=%s" % p)
 	print("BOUNDS_OK")
 
@@ -132,7 +162,7 @@ func _initialize() -> void:
 	var lead_pos := _player.global_position
 	seeker.global_position = lead_pos + Vector3(18.0, 0.08, 0.0)
 	if seeker.has_method("set_play_bounds"):
-		seeker.set_play_bounds(56.0, 52.0)
+		seeker.set_play_bounds(bx, bz)
 	if seeker.has_method("arm_delayed"):
 		seeker.arm_delayed(0.0, 2.0)
 	if "combat_ready" in seeker:
@@ -152,7 +182,7 @@ func _initialize() -> void:
 	else:
 		print("HUNT_OK")
 	# Still in bounds after hunt.
-	if absf(seeker.global_position.x) > 57.0 or absf(seeker.global_position.z) > 53.0:
+	if absf(seeker.global_position.x) > bx + 2.0 or absf(seeker.global_position.z) > bz + 2.0:
 		_fail("hunter left map bounds %s" % seeker.global_position)
 	else:
 		print("HUNT_BOUNDS_OK")
@@ -417,37 +447,38 @@ func _initialize() -> void:
 		await process_frame
 	# Park followers / rogues clear of the west road so the path probe is geometry-only.
 	if _scarecrow:
-		_scarecrow.global_position = Vector3(20.0, 0.08, 20.0)
+		_scarecrow.global_position = Vector3(4.0, 0.08, 20.0)
 	if _lion:
-		_lion.global_position = Vector3(12.0, 0.08, -30.0)
+		_lion.global_position = Vector3(-4.0, 0.08, 40.0)
 	if _tinman:
-		# Keep tin on pad; move oil path clear
+		# Keep tin on road spine
 		pass
 	for n in _landing.get_children():
 		if n is CharacterBody3D and n.is_in_group("enemies") and is_instance_valid(n):
-			n.global_position = Vector3(0.0, 0.08, 40.0)
+			n.global_position = Vector3(0.0, 0.08, 50.0)
 			n.collision_layer = 0
-	_player.global_position = Vector3(-12.0, 0.08, 4.0)
+	# Approach Tin from the north along the YBR (south = +Z).
+	_player.global_position = Vector3(0.0, 0.08, 70.0)
 	_player.velocity = Vector3.ZERO
 	var tin_pivot: Node3D = _party.call("camera_basis_node") as Node3D
 	if tin_pivot:
-		# +Y 90°: identity looks −Z; +PI/2 looks −X (west).
-		tin_pivot.rotation = Vector3(0.0, PI * 0.5, 0.0)
+		# Identity looks −Z (north); face +Z (south) with PI yaw.
+		tin_pivot.rotation = Vector3(0.0, PI, 0.0)
 	for _i in 12:
 		await process_frame
 	Input.action_press("move_forward", 1.0)
 	for _i in 220:
 		await physics_frame
 	Input.action_release("move_forward")
-	var tin_path_x := _player.global_position.x
+	var tin_path_z := _player.global_position.z
 	var tin_path_y := _player.global_position.y
-	print("TIN_PATH x=", tin_path_x, " y=", tin_path_y)
+	print("TIN_PATH z=", tin_path_z, " y=", tin_path_y)
 	var blue := _landing.get_node_or_null("BlueCottage") as Node3D
 	if blue:
 		print("BLUE_AT ", blue.global_position)
-	# Must progress west past the old WallWest / cottage choke (~−24).
-	if tin_path_x > -30.0:
-		_fail("Tin path blocked before terrace x=%.2f" % tin_path_x)
+	# Must progress south along YBR toward Tin (~z=95).
+	if tin_path_z < 82.0:
+		_fail("Tin path blocked on YBR z=%.2f" % tin_path_z)
 	else:
 		print("TIN_PATH_OK")
 

@@ -26,9 +26,19 @@ enum Beat {
 	OPEN_ROAD,
 }
 
-## Match MapBorder half extents with a soft inward margin (62/58 rails).
-const PLAY_BOUND_X := 64.0
-const PLAY_BOUND_Z := 62.0
+## Match MapBorder half extents with a soft inward margin (expanded YBR spine).
+const PLAY_BOUND_X := 72.0
+const PLAY_BOUND_Z := 140.0
+
+## Yellow Brick Road story spine (south = +Z toward West castle).
+## House stays at baked ~z=-5; Dorothy starts far north and walks the road south.
+const YBR_SPAWN := Vector3(0.0, 0.08, -52.0)
+const YBR_LOCASTA := Vector3(0.0, 0.08, -28.0) # before the grey house, clear of wreckage
+const YBR_SCARECROW := Vector3(0.0, 0.08, 28.0)
+const YBR_LION := Vector3(0.0, 0.08, 62.0)
+const YBR_TIN := Vector3(0.0, 0.08, 95.0)
+const YBR_TREE := Vector3(0.0, 0.0, 110.0)
+const YBR_WEST_GATE := Vector3(0.0, 0.08, 128.0)
 
 @onready var hud: CanvasLayer = $PlayHUD
 @onready var shoes: Node3D = $SilverShoes
@@ -69,7 +79,7 @@ var compass: Label
 var _sign_sway: Array = []  # MeshInstance3D boards that gently sway
 var _open_road_sting_done: bool = false
 var _west_road_gate: Node3D = null
-var _west_gate_pos: Vector3 = Vector3(0.0, 0.08, 52.0)
+var _west_gate_pos: Vector3 = YBR_WEST_GATE
 var _near_west_gate: bool = false
 var locasta: Node3D
 var locasta_done: bool = false
@@ -80,12 +90,12 @@ var _whimsy_label: Label
 var _near_whimsy: Area3D = null
 var _locasta_lines: PackedStringArray = PackedStringArray([
 	"Locasta: \"Welcome to Munchkinland, child. The house has done what armies could not — the Wicked Witch of the East is gone.\"",
-	"Locasta: \"Her Silver Shoes are yours now. Claim them under the grey house — they chose the one who landed.\"",
-	"Locasta: \"The road east holds a Scarecrow bound to a pole. Free him with kindness (E) — killing will not cut his rope.\"",
-	"Locasta: \"North, a Lion hides in fear. West, a Tin Man rusts. Calm and oil them when you find them — any Lead may help.\"",
-	"Locasta: \"Rogue Munchkins will march on the landing. Kick them (F). Each friend you free teaches a counter. I cannot leave the North — walk the road for me.\"",
-	"Locasta: \"When your friends stand with you, follow the Yellow Brick Road south to the West. The glowing pad is your FINAL STEP.\"",
-	"Locasta: \"The Wicked Witch of the West watches later. For now: Shoes, clear the rogues, free the bound. Go.\"",
+	"Locasta: \"Her Silver Shoes are yours now. Claim them under the grey house ahead on this road — they chose the one who landed.\"",
+	"Locasta: \"Then follow the Yellow Brick Road. First you will find a Scarecrow bound to a pole. Free him with kindness (E).\"",
+	"Locasta: \"Further along the same road: a Lion hides in fear, then a Tin Man rusts. Calm and oil them when you reach them.\"",
+	"Locasta: \"Rogue Munchkins will march near the landing. Kick them (F). Each friend teaches a counter. I keep the North — walk the road.\"",
+	"Locasta: \"When your friends stand with you, keep following the Yellow Brick Road south to the West. The glowing pad is your FINAL STEP.\"",
+	"Locasta: \"The Wicked Witch of the West watches later. For now: Shoes, clear the rogues, free the bound. Follow the brick.\"",
 ])
 
 func _enter_tree() -> void:
@@ -134,50 +144,51 @@ func _fix_world_text() -> void:
 			lab.outline_modulate = Color(0.25, 0.08, 0.14, 1)
 
 func _expand_world() -> void:
-	# Wide Munchkinland — pads only (never scale primary Ground).
-	_add_ground_pad(Vector3(0, -0.05, 0), Vector3(120, 0.1, 120), Color(0.4, 0.6, 0.32))
-	_add_ground_pad(Vector3(0, -0.05, -50), Vector3(100, 0.1, 60), Color(0.42, 0.62, 0.34))
-	_add_ground_pad(Vector3(0, -0.05, 45), Vector3(100, 0.1, 50), Color(0.4, 0.58, 0.3))
-	_add_ground_pad(Vector3(-50, -0.05, 0), Vector3(60, 0.1, 100), Color(0.38, 0.58, 0.3))
-	_add_ground_pad(Vector3(50, -0.05, 0), Vector3(60, 0.1, 100), Color(0.38, 0.58, 0.3))
-	_add_ground_pad(Vector3(-45, -0.05, 5), Vector3(40, 0.1, 40), Color(0.4, 0.6, 0.32))
-	# Bound walls pushed far out so they don't seal companion pads.
+	# Vast YBR corridor — pads only (never scale primary Ground).
+	_add_ground_pad(Vector3(0, -0.05, 0), Vector3(140, 0.1, 160), Color(0.4, 0.6, 0.32))
+	_add_ground_pad(Vector3(0, -0.05, -80), Vector3(120, 0.1, 90), Color(0.42, 0.62, 0.34))
+	_add_ground_pad(Vector3(0, -0.05, 70), Vector3(120, 0.1, 100), Color(0.4, 0.58, 0.3))
+	_add_ground_pad(Vector3(0, -0.05, 130), Vector3(100, 0.1, 60), Color(0.38, 0.56, 0.28))
+	_add_ground_pad(Vector3(-40, -0.05, 40), Vector3(50, 0.1, 120), Color(0.38, 0.58, 0.3))
+	_add_ground_pad(Vector3(40, -0.05, 40), Vector3(50, 0.1, 120), Color(0.38, 0.58, 0.3))
+	# Bound walls pushed far out so they don't seal the spine.
 	for wname in ["WallWest", "WallEast", "WallSouth", "ContentGate"]:
 		var w := get_node_or_null(wname) as Node3D
 		if w == null:
 			continue
 		match wname:
 			"WallWest":
-				w.global_position = Vector3(-70.0, 1.2, 0.0)
+				w.global_position = Vector3(-78.0, 1.2, 30.0)
 			"WallEast":
-				w.global_position = Vector3(70.0, 1.2, 0.0)
+				w.global_position = Vector3(78.0, 1.2, 30.0)
 			"WallSouth":
-				w.global_position = Vector3(0.0, 1.2, 55.0)
+				w.global_position = Vector3(0.0, 1.2, 145.0)
 			"ContentGate":
-				w.global_position = Vector3(0.0, 1.2, -55.0)
-	# Tin terrace far west with east-facing approach ramp (from the square).
-	_add_block_terrace(Vector3(-42, 0, 4), Vector3(14, 0.4, 14), 2, Vector3(1, 0, 0))
-	_add_block_terrace(Vector3(36, 0, 20), Vector3(10, 0.4, 10), 1, Vector3(0, 0, 1))
-	# Roads leave a clear landing plaza around spawn (~0, 14).
-	# Continuous YBR spine: north past Locasta, through plaza, south all the way to West gate.
-	_add_road_spur(Vector3(0, 0.02, -18), Vector3(5.0, 0.05, 70)) # long north–south spine
-	_add_road_spur(Vector3(0, 0.02, 38), Vector3(5.2, 0.06, 36)) # south extension to West gate
-	_add_road_spur(Vector3(18, 0.02, 22), Vector3(36, 0.04, 3.4)) # SE village
-	_add_road_spur(Vector3(22, 0.02, 4), Vector3(40, 0.04, 3.4)) # east to cornfield Scarecrow
-	_add_road_spur(Vector3(-22, 0.02, 4), Vector3(40, 0.04, 3.4)) # west to Tin
-	_add_road_spur(Vector3(8, 0.02, -18), Vector3(3.2, 0.04, 20)) # NE lion spur
-	# Buildings well off the landing — not in your face at spawn.
-	_add_enterable_cottage(Vector3(34, 0, -14), Color(0.92, 0.55, 0.65), "Candy Home")
-	_add_enterable_cottage(Vector3(-18, 0, 36), Color(0.55, 0.7, 0.92), "Mint Home")
-	_add_fence_line(Vector3(-60, 0, 0), Vector3(0, 0, 1), 20)
-	_add_fence_line(Vector3(60, 0, 0), Vector3(0, 0, 1), 20)
-	_scatter_grass(Vector3(0, 0, 0), 40.0, 140)
-	_scatter_grass(Vector3(-42, 0.45, 4), 8.0, 50)
-	_scatter_grass(Vector3(44, 0.0, 4), 12.0, 60)
-	# Soft story border — thicket + solid rails so you never fall into the void.
-	_add_map_border(68.0, 64.0)
+				w.global_position = Vector3(0.0, 1.2, -70.0)
+	# Continuous Yellow Brick Road spine (north spawn → Locasta → house → companions → West).
+	# Center positions are midpoints of long N–S strips on x=0.
+	_add_road_spur(Vector3(0, 0.02, -40), Vector3(5.4, 0.06, 50)) # spawn → Locasta → house approach
+	_add_road_spur(Vector3(0, 0.02, 10), Vector3(5.4, 0.06, 70)) # house → Scarecrow stretch
+	_add_road_spur(Vector3(0, 0.02, 70), Vector3(5.5, 0.06, 70)) # Lion stretch
+	_add_road_spur(Vector3(0, 0.02, 115), Vector3(5.6, 0.07, 50)) # Tin → West gate
+	# Soft side spurs for cottages / whimsy only — not the companion path.
+	_add_road_spur(Vector3(14, 0.02, 20), Vector3(22, 0.04, 3.2))
+	_add_road_spur(Vector3(-14, 0.02, 45), Vector3(22, 0.04, 3.2))
+	# Buildings off the brick — walk the road, duck into homes if you want.
+	_add_enterable_cottage(Vector3(22, 0, 18), Color(0.92, 0.55, 0.65), "Candy Home")
+	_add_enterable_cottage(Vector3(-20, 0, 48), Color(0.55, 0.7, 0.92), "Mint Home")
+	_add_enterable_cottage(Vector3(18, 0, 88), Color(0.95, 0.75, 0.45), "Butter Home")
+	_scatter_grass(Vector3(0, 0, 0), 50.0, 120)
+	_scatter_grass(Vector3(0, 0, 60), 40.0, 100)
+	_scatter_grass(Vector3(0, 0, -40), 30.0, 80)
+	# Soft story border — thicket + solid rails.
+	_add_map_border(85.0, 150.0)
 	_add_whimsy_activities()
 	_ensure_whimsy_hud()
+	# Dorothy starts far up the YBR so Locasta and the house are a real walk south.
+	if player:
+		player.global_position = YBR_SPAWN
+		player.velocity = Vector3.ZERO
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	# Continuous solid rails + shrub/tree dressing. Corners closed so pads can't leak.
@@ -970,53 +981,47 @@ func _add_fence_line(start: Vector3, dir: Vector3, count: int) -> void:
 		post.global_position = start + dir.normalized() * float(i) * 2.2 + Vector3(0, 0.55, 0)
 
 func _spawn_party_world() -> void:
-	# Player spawn ~ (0, 0.08, 14). Companions in open story-true clearings — never cottage wedges.
+	# Linear YBR: companions sit ON the road south of the house — follow the brick to find each.
 	scarecrow = SCARECROW_SCENE.instantiate() as CharacterBody3D
 	add_child(scarecrow)
-	# Cornfield east of the square (Baum/pole-in-the-field), clear of PinkCottage village edge.
-	var sc_field := Vector3(44.0, 0.08, 4.0)
+	var sc_field := YBR_SCARECROW
 	scarecrow.global_position = sc_field
-	_build_pole(sc_field + Vector3(0, 0, 0.15))
-	_build_cornfield(sc_field)
-	_add_way_marker(Vector3(12.0, 0.08, 4.0), Color(0.95, 0.85, 0.3), "SCARECROW", sc_field)
-	_add_way_marker(Vector3(28.0, 0.08, 4.0), Color(0.95, 0.85, 0.3), "SCARECROW", sc_field)
-	_add_way_marker(sc_field + Vector3(-3.5, 0.0, 0.0), Color(0.95, 0.85, 0.3), "SCARECROW", sc_field)
+	_build_pole(sc_field + Vector3(0.35, 0, 0.15))
+	_build_cornfield(sc_field + Vector3(6.0, 0.0, 0.0)) # corn beside the road, not blocking it
+	_add_way_marker(Vector3(0.0, 0.08, 12.0), Color(0.95, 0.85, 0.3), "YBR → SCARECROW", sc_field)
+	_add_way_marker(Vector3(0.0, 0.08, 20.0), Color(0.95, 0.85, 0.3), "YBR → SCARECROW", sc_field)
+	_add_way_marker(sc_field + Vector3(0.0, 0.0, -3.5), Color(0.95, 0.85, 0.3), "SCARECROW", sc_field)
 
 	lion = LION_SCENE.instantiate() as CharacterBody3D
 	add_child(lion)
-	lion.global_position = Vector3(10.0, 0.08, -36.0)
-	_build_lion_den(lion.global_position)
-	_add_way_marker(Vector3(0.0, 0.08, -14.0), Color(1.0, 0.55, 0.15), "LION", lion.global_position)
-	_add_way_marker(Vector3(4.0, 0.08, -28.0), Color(1.0, 0.55, 0.15), "LION", lion.global_position)
-	_add_way_marker(lion.global_position + Vector3(0.0, 0.0, 3.5), Color(1.0, 0.55, 0.15), "LION", lion.global_position)
+	lion.global_position = YBR_LION
+	_build_lion_den(lion.global_position + Vector3(5.0, 0.0, 0.0)) # den mouth toward road
+	_add_way_marker(Vector3(0.0, 0.08, 42.0), Color(1.0, 0.55, 0.15), "YBR → LION", lion.global_position)
+	_add_way_marker(Vector3(0.0, 0.08, 52.0), Color(1.0, 0.55, 0.15), "YBR → LION", lion.global_position)
+	_add_way_marker(lion.global_position + Vector3(0.0, 0.0, -3.5), Color(1.0, 0.55, 0.15), "LION", lion.global_position)
 
 	tinman = TINMAN_SCENE.instantiate() as CharacterBody3D
 	add_child(tinman)
-	# Far-west terrace top (~0.8 after 2×0.4 steps).
-	tinman.global_position = Vector3(-42.0, 0.85, 4.0)
-	_build_oil_can(Vector3(-39.0, 0.85, 5.5))
-	_add_way_marker(Vector3(-14.0, 0.08, 4.0), Color(0.7, 0.85, 0.95), "TIN MAN", tinman.global_position)
-	_add_way_marker(Vector3(-30.0, 0.08, 4.0), Color(0.7, 0.85, 0.95), "TIN MAN", tinman.global_position)
-	_add_way_marker(tinman.global_position + Vector3(3.0, 0.0, 0.0), Color(0.7, 0.85, 0.95), "TIN MAN", tinman.global_position)
-	# Tree past Tin so FREE_TIN is reachable first.
-	_spawn_tree_gate(Vector3(-50.0, 0.0, 4.0))
+	tinman.global_position = YBR_TIN
+	_build_oil_can(YBR_TIN + Vector3(2.5, 0.0, 1.5))
+	_add_way_marker(Vector3(0.0, 0.08, 78.0), Color(0.7, 0.85, 0.95), "YBR → TIN MAN", tinman.global_position)
+	_add_way_marker(Vector3(0.0, 0.08, 88.0), Color(0.7, 0.85, 0.95), "YBR → TIN MAN", tinman.global_position)
+	_add_way_marker(tinman.global_position + Vector3(0.0, 0.0, -3.5), Color(0.7, 0.85, 0.95), "TIN MAN", tinman.global_position)
+	# Tree blocks the road past Tin — axe clears the path south to West.
+	_spawn_tree_gate(YBR_TREE)
 	_spawn_story_witches()
 
 func _spawn_story_witches() -> void:
-	# Vault/book-true: Locasta (Good North) greets first — before companions.
-	# Place her UP the yellow brick road north of spawn so the player must walk to her.
-	# Spawn ~ z=14; house/shoes ~ z=0; Locasta farther north on the road.
-	var greet_at := Vector3(0.0, 0.08, -8.0)
-	if player:
-		# ~22m north of spawn along the YBR, not in Dorothy's face.
-		greet_at = player.global_position + Vector3(0.0, 0.0, -22.0)
-		greet_at.y = 0.08
-		greet_at.x = 0.0 # keep on road centerline
+	# Locasta stands on the YBR *before* the grey house — never inside the wreckage.
+	# Dorothy spawns further north and must walk the brick to reach her.
+	var greet_at := YBR_LOCASTA
 	_spawn_locasta(greet_at)
-	_spawn_west_omen(Vector3(-48.0, 0.5, -36.0))
-	# Road marker toward Locasta
-	_add_way_marker(Vector3(0.0, 0.08, 6.0), Color(0.55, 0.75, 1.0), "LOCASTA →", greet_at)
-	_add_way_marker(Vector3(0.0, 0.08, -2.0), Color(0.55, 0.75, 1.0), "LOCASTA →", greet_at)
+	_spawn_west_omen(Vector3(-36.0, 0.5, 100.0))
+	_add_way_marker(YBR_SPAWN + Vector3(0.0, 0.0, 8.0), Color(0.55, 0.75, 1.0), "YBR → LOCASTA", greet_at)
+	_add_way_marker(Vector3(0.0, 0.08, -40.0), Color(0.55, 0.75, 1.0), "YBR → LOCASTA", greet_at)
+	_add_way_marker(greet_at + Vector3(0.0, 0.0, 3.0), Color(0.55, 0.75, 1.0), "LOCASTA", greet_at)
+	# After Locasta, brick continues to the house/shoes.
+	_add_way_marker(Vector3(0.0, 0.08, -18.0), Color(0.85, 0.85, 0.9), "YBR → HOUSE", Vector3(0.0, 0.08, -5.0))
 
 func _spawn_locasta(at: Vector3) -> void:
 	var root := CharacterBody3D.new()
@@ -1513,8 +1518,8 @@ func _update_compass() -> void:
 				target_pos = marshal.global_position
 				label = "Marshal"
 		Beat.OPEN_ROAD:
-			compass.text = "Road open  ·  Tab cycles Lead"
-			return
+			target_pos = _west_gate_pos
+			label = "YBR West gate"
 	if label == "" or target_pos == Vector3.ZERO:
 		compass.text = ""
 		return
@@ -1584,10 +1589,8 @@ func _tag_baked_landing_puppets() -> void:
 			i += 1
 
 func _spawn_landing_puppets() -> void:
-	# March in from beyond camera — never spawn in the player's face; always inside map rails.
-	var rally := Vector3(0.0, 0.08, 10.0)
-	if player:
-		rally = player.global_position
+	# March toward the house plaza on the YBR — not into Dorothy's far-north start.
+	var rally := Vector3(0.0, 0.08, -2.0)
 	var bearings := [0.55, 2.2, 3.7, 5.1]
 	var i := 0
 	for bearing in bearings:
@@ -1597,7 +1600,6 @@ func _spawn_landing_puppets() -> void:
 		elif pup and pup.has_method("arm_delayed"):
 			pup.arm_delayed(6.0 + float(i) * 1.2, 1.3)
 		i += 1
-	# Need = live landing count so baked + spawned both gate the free beat.
 	landing_need = maxi(3, _count_live_landing())
 
 func _count_live_landing() -> int:
@@ -1674,7 +1676,8 @@ func _spawn_tree_gate(at: Vector3) -> void:
 	living_tree.global_position = at
 
 func _spawn_marshal() -> void:
-	marshal = _spawn_puppet(Vector3(0.0, 0.08, 28.0), Color(0.75, 0.25, 0.4), "marshal")
+	# Blocks the YBR south of the tree, before the West gate.
+	marshal = _spawn_puppet(Vector3(0.0, 0.08, 118.0), Color(0.75, 0.25, 0.4), "marshal")
 	if marshal:
 		marshal.is_marshal = true
 		marshal.armored = true
@@ -2055,44 +2058,43 @@ func _set_beat(next: Beat) -> void:
 	beat = next
 	match beat:
 		Beat.MEET_LOCASTA:
-			hud.set_objective("Speak with Locasta — Good Witch of the North (glowing figure ahead · E).")
-			hud.set_prompt("Walk to Locasta · E advances her counsel")
+			hud.set_objective("Follow the Yellow Brick Road south to Locasta — Good Witch of the North (E).")
+			hud.set_prompt("YBR south · glowing Locasta · E advances her counsel")
 		Beat.SHOES:
-			hud.set_objective("Claim the Silver Shoes under the grey house.")
-			hud.set_prompt("Locasta has spoken — Shoes under the house")
+			hud.set_objective("Keep on the Yellow Brick Road — claim the Silver Shoes under the grey house ahead.")
+			hud.set_prompt("Locasta has spoken — YBR → house · Shoes")
 		Beat.CLEAR_LANDING:
-			hud.set_objective("Rogue Munchkins sneak in — wait, then kick them down (F). %d/%d" % [landing_kills, landing_need])
+			hud.set_objective("Rogue Munchkins sneak in near the landing — kick them down (F). %d/%d" % [landing_kills, landing_need])
 			# Kills before shoes already counted → don't soft-lock waiting for more deaths.
 			_try_advance_landing_clear()
 		Beat.FREE_SCARECROW:
-			hud.set_objective("East cornfield (yellow SCARECROW posts) — free him with E (killing does not free him).")
-			hud.set_prompt("E at the pole frees Scarecrow")
+			hud.set_objective("Follow the Yellow Brick Road south — free the Scarecrow on the pole (E).")
+			hud.set_prompt("YBR south · E at the pole frees Scarecrow")
 		Beat.CROW_FIELD:
-			hud.set_objective("Crow field: you Lead Scarecrow — F = CAW confuses the swarm. %d/%d" % [crow_kills, crow_need])
+			hud.set_objective("Crow field on the road: Lead Scarecrow — F = CAW. %d/%d" % [crow_kills, crow_need])
 			_spawn_crow_field()
 		Beat.FREE_LION:
-			hud.set_objective("North road: orange LION posts → thicket den. Calm him (E as any Lead).")
+			hud.set_objective("Follow the Yellow Brick Road south — calm the Lion (E as any Lead).")
 		Beat.LION_PACK:
-			hud.set_objective("Lion pack: you Lead Lion — F = ROAR to scatter them. %d/%d" % [lion_pack_kills, lion_pack_need])
+			hud.set_objective("Lion pack on the road: Lead Lion — F = ROAR. %d/%d" % [lion_pack_kills, lion_pack_need])
 			_spawn_lion_pack()
 		Beat.FREE_TIN:
-			hud.set_objective("West road: TIN MAN posts → terrace. Oil can, then Tin Man (E as any Lead).")
+			hud.set_objective("Follow the Yellow Brick Road south — oil can, then free the Tin Man (E).")
 		Beat.TREE_GATE:
-			hud.set_objective("You Lead Tin Man — F = AXE the Living Tree (and nearby rogues).")
+			hud.set_objective("Lead Tin Man — F = AXE the Living Tree blocking the Yellow Brick Road.")
 			_spawn_tin_wave()
 		Beat.MARSHAL:
-			hud.set_objective("Marshal rogue blocks the south road — axe or roar recommended.")
+			hud.set_objective("Marshal blocks the Yellow Brick Road south — axe or roar recommended.")
 			if marshal == null:
 				_spawn_marshal()
 		Beat.OPEN_ROAD:
-			hud.set_objective("FINAL STEP (L2): Follow the Yellow Brick Road SOUTH to the glowing gate — E travels to West castle.")
-			hud.set_prompt("End-gate: walk YBR south · E on yellow pad · F10 West · F11 Emerald skip")
+			hud.set_objective("FINAL STEP (L2): Keep following the Yellow Brick Road SOUTH to the glowing gate — E → West castle.")
+			hud.set_prompt("End-gate: YBR south · E on yellow pad · F10 West · F11 Emerald skip")
 			if not _open_road_sting_done:
 				_open_road_sting_done = true
 				_ensure_west_road_gate()
-				# Extra YBR arrows toward the gate
-				_add_way_marker(Vector3(0.0, 0.08, 28.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
-				_add_way_marker(Vector3(0.0, 0.08, 40.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
+				_add_way_marker(Vector3(0.0, 0.08, 118.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
+				_add_way_marker(Vector3(0.0, 0.08, 124.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
 				var d := get_node_or_null("/root/DialogueUI")
 				if d and d.has_method("say"):
 					d.say("Narrator", "The Yellow Brick Road opens south. Follow it to the glowing gate — that is how you leave Munchkinland.", true, 5.0)
@@ -2169,16 +2171,16 @@ func _refresh_whimsy_hud() -> void:
 		_whimsy_label.text = "Whimsy  %d" % whimsy_points
 
 func _add_whimsy_activities() -> void:
-	# Bounce toadstools, giggle blooms, candy chimes — pure side fun.
+	# Side fun along the YBR corridor (not on the brick centerline).
 	var spots := [
-		{"pos": Vector3(12, 0, 18), "kind": "bounce", "name": "Bounce toadstool"},
-		{"pos": Vector3(-14, 0, 22), "kind": "bounce", "name": "Bounce toadstool"},
-		{"pos": Vector3(28, 0, 8), "kind": "giggle", "name": "Giggle bloom"},
-		{"pos": Vector3(-26, 0, -8), "kind": "giggle", "name": "Giggle bloom"},
-		{"pos": Vector3(16, 0, -22), "kind": "chime", "name": "Candy chime"},
-		{"pos": Vector3(-10, 0, 30), "kind": "chime", "name": "Candy chime"},
-		{"pos": Vector3(8, 0, 42), "kind": "giggle", "name": "Roadside giggle"},
-		{"pos": Vector3(-30, 0, 16), "kind": "dance", "name": "Dance ring"},
+		{"pos": Vector3(8, 0, -44), "kind": "bounce", "name": "Bounce toadstool"},
+		{"pos": Vector3(-9, 0, -20), "kind": "giggle", "name": "Giggle bloom"},
+		{"pos": Vector3(10, 0, 8), "kind": "chime", "name": "Candy chime"},
+		{"pos": Vector3(-8, 0, 32), "kind": "bounce", "name": "Bounce toadstool"},
+		{"pos": Vector3(9, 0, 55), "kind": "giggle", "name": "Roadside giggle"},
+		{"pos": Vector3(-10, 0, 75), "kind": "chime", "name": "Candy chime"},
+		{"pos": Vector3(8, 0, 100), "kind": "dance", "name": "Dance ring"},
+		{"pos": Vector3(-8, 0, 120), "kind": "giggle", "name": "Gate giggle"},
 	]
 	for s in spots:
 		_spawn_whimsy(s["pos"], s["kind"], s["name"])
