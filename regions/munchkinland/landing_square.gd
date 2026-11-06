@@ -10,6 +10,7 @@ const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const PUPPET_SCENE := preload("res://actors/enemies/puppet_munchkin.tscn")
 const TREE_SCRIPT := preload("res://actors/enemies/living_tree.gd")
 const WEST_SCENE := "res://regions/winkie/west_castle.tscn"
+const POPPY_SCENE := "res://regions/poppy/poppy_road.tscn"
 const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
 
 enum Beat {
@@ -1988,7 +1989,7 @@ func _process(_delta: float) -> void:
 		elif _near_door != null:
 			_try_use_door()
 		elif _near_west_gate:
-			_go_west_castle()
+			_go_poppy_road()
 		elif _near_whimsy != null:
 			_collect_whimsy(_near_whimsy)
 		elif _near_locasta and not locasta_done:
@@ -2088,25 +2089,29 @@ func _set_beat(next: Beat) -> void:
 			if marshal == null:
 				_spawn_marshal()
 		Beat.OPEN_ROAD:
-			hud.set_objective("FINAL STEP (L2): Keep following the Yellow Brick Road SOUTH to the glowing gate — E → West castle.")
-			hud.set_prompt("End-gate: YBR south · E on yellow pad · F10 West · F11 Emerald skip")
+			hud.set_objective("FINAL STEP (L2): Keep following the Yellow Brick Road SOUTH to the glowing gate — E → Poppy Field (then West).")
+			hud.set_prompt("End-gate: YBR south · E on yellow pad · F10 Poppies · F11 Emerald skip")
 			if not _open_road_sting_done:
 				_open_road_sting_done = true
 				_ensure_west_road_gate()
-				_add_way_marker(Vector3(0.0, 0.08, 118.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
-				_add_way_marker(Vector3(0.0, 0.08, 124.0), Color(0.95, 0.8, 0.2), "YBR → WEST", _west_gate_pos)
+				_add_way_marker(Vector3(0.0, 0.08, 118.0), Color(0.95, 0.8, 0.2), "YBR → POPPIES", _west_gate_pos)
+				_add_way_marker(Vector3(0.0, 0.08, 124.0), Color(0.95, 0.8, 0.2), "YBR → POPPIES", _west_gate_pos)
 				var d := get_node_or_null("/root/DialogueUI")
 				if d and d.has_method("say"):
-					d.say("Narrator", "The Yellow Brick Road opens south. Follow it to the glowing gate — that is how you leave Munchkinland.", true, 5.0)
+					d.say("Narrator", "The Yellow Brick Road opens south. Next come the deadly poppies — then the West. Follow the glowing gate.", true, 5.0)
 	_refresh_roster()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F10:
-			_go_west_castle()
+			_go_poppy_road()
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_F11:
 			_go_emerald_city()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F12:
+			# Playtest: skip poppies straight to West
+			_go_west_castle()
 			get_viewport().set_input_as_handled()
 
 func _ensure_west_road_gate() -> void:
@@ -2128,7 +2133,7 @@ func _ensure_west_road_gate() -> void:
 	pad.material_override = mat
 	_west_road_gate.add_child(pad)
 	var lab := Label3D.new()
-	lab.text = "YELLOW BRICK ROAD\n→ Winkie Country · West castle\nFINAL STEP · E to travel"
+	lab.text = "YELLOW BRICK ROAD\n→ Deadly Poppy Field\n(then West) · FINAL STEP · E"
 	lab.font_size = 52
 	lab.pixel_size = 0.014
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -2298,6 +2303,13 @@ func _collect_whimsy(area: Area3D) -> void:
 			pass
 	)
 
+func _go_poppy_road() -> void:
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(POPPY_SCENE, "The hourglass turns — the poppy field…", "The Deadly Poppy Field")
+	else:
+		get_tree().change_scene_to_file(POPPY_SCENE)
+
 func _go_west_castle() -> void:
 	var lt := get_node_or_null("/root/LevelTransition")
 	if lt and lt.has_method("go_to"):
@@ -2323,7 +2335,7 @@ func _update_proximity_prompt() -> void:
 		else:
 			hud.set_prompt("E  —  Enter %s" % title)
 	elif _near_west_gate:
-		hud.set_prompt("E  —  Take the Yellow Brick Road to the West castle")
+		hud.set_prompt("E  —  Take the Yellow Brick Road into the Deadly Poppy Field")
 	elif _near_whimsy != null and not _near_whimsy.get_meta("taken"):
 		hud.set_prompt("E  —  %s (+whimsy)" % str(_near_whimsy.get_meta("title")))
 	elif _near_locasta and not locasta_done:

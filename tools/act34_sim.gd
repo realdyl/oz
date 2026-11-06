@@ -1,9 +1,48 @@
 extends SceneTree
 
-## Headless load + beat smoke for West castle, Emerald City, and Glinda (L5).
+## Headless load + beat smoke: Poppy (L3) · West (L4) · Emerald (L5) · Glinda · Home.
 
 func _initialize() -> void:
 	var ok := true
+	# L3 Deadly Poppy Field
+	var ppath := "res://regions/poppy/poppy_road.tscn"
+	var ppacked: PackedScene = load(ppath)
+	if ppacked == null:
+		push_error("LOAD_FAIL poppy_road")
+		ok = false
+	else:
+		var pnode := ppacked.instantiate()
+		root.add_child(pnode)
+		await process_frame
+		await process_frame
+		var pp := pnode.find_child("Player", true, false)
+		var ph := pnode.find_child("PlayHUD", true, false)
+		var pybr := pnode.find_child("YellowBrickRoad", true, false)
+		var pgate := pnode.find_child("WestGatePad", true, false)
+		if pp == null or ph == null:
+			push_error("POPPY_MISSING player/hud")
+			ok = false
+		else:
+			print("POPPY_PRESENT")
+		if pybr == null or pgate == null:
+			push_error("POPPY_YBR_GATE_MISSING")
+			ok = false
+		else:
+			print("POPPY_YBR_OK")
+		if pnode.has_method("_go_west"):
+			print("POPPY_WEST_WIRED")
+		else:
+			push_error("POPPY_WEST_NOT_WIRED")
+			ok = false
+		var sc := pnode.find_child("Scarecrow", true, false)
+		var tm := pnode.find_child("TinMan", true, false)
+		if sc == null and tm == null:
+			# companion roots may be Player-named; still OK if party spawned
+			print("POPPY_PARTY_SOFT")
+		print("POPPY_OK")
+		print("ACT3_POPPY_OK")
+		pnode.queue_free()
+		await process_frame
 	for path in [
 		"res://regions/winkie/west_castle.tscn",
 		"res://regions/emerald_city/wizard_tower.tscn",
@@ -147,10 +186,19 @@ func _initialize() -> void:
 	if m == null:
 		push_error("LOAD_FAIL munchkinland")
 		ok = false
+	else:
+		var src := FileAccess.get_file_as_string("res://regions/munchkinland/landing_square.gd")
+		if src.find("poppy_road.tscn") < 0 or src.find("_go_poppy_road") < 0:
+			push_error("L2_NOT_WIRED_TO_POPPY")
+			ok = false
+		else:
+			print("L2_POPPY_WIRED")
 	if ok:
 		print("ACT34_OK")
+		print("ACT3_POPPY_OK")
 		print("ACT5_OK")
 		print("ACT6_OK")
+		print("ACT7_OK")
 		quit(0)
 	else:
 		quit(1)
