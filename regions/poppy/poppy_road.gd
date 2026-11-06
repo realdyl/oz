@@ -155,10 +155,12 @@ func _process(delta: float) -> void:
 			_advance_queen()
 		elif _near_cart and beat == Beat.MICE_CART:
 			_hitch_mice()
-		elif _near_lion and beat == Beat.HAUL_LION and cart_ready:
+		elif _near_lion and beat == Beat.HAUL_LION and cart_ready and not hauling:
 			_start_haul()
+		elif _near_lion and beat == Beat.MICE_CART and not cart_ready:
+			hud.set_prompt("Cart first — E the MICE CART (brown box east of road), then come back to the Lion")
 		elif _near_lion and (beat == Beat.LION_DOWN or beat == Beat.SAVE_QUEEN):
-			hud.set_prompt("Too heavy — save the Mouse Queen first (east of the road).")
+			hud.set_prompt("Lion is TOO HEAVY to carry. Follow compass east: E wildcat → E Queen → E cart → E Lion")
 		else:
 			var w := get_node_or_null("/root/Whimsy")
 			if w and w.has_method("try_collect"):
@@ -301,7 +303,8 @@ func _kill_wildcat() -> void:
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
 		d.say("Tin Man", "No heart — but that was wrong. The little Queen is safe.", true, 3.0)
-	hud.set_prompt("E  —  Speak with the Mouse Queen")
+	hud.set_objective("Lion rescue 1/4 done. Now E the Mouse Queen (grey sphere + crown label, east of YBR).")
+	hud.set_prompt("E  —  Speak with the Mouse Queen (she will send the cart)")
 
 func _advance_queen() -> void:
 	if _queen_line >= QUEEN_LINES.size():
@@ -319,26 +322,45 @@ func _advance_queen() -> void:
 
 func _hitch_mice() -> void:
 	cart_ready = true
+	# Cart sticks to Lead so the next step is only: walk to Lion + E
 	_set_beat(Beat.HAUL_LION)
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
-		d.say("Mouse Queen", "Thousands of us will pull. Bring the cart to the Lion!", true, 3.0)
+		d.say("Mouse Queen", "The cart is yours. Walk to the sleeping Lion on the road and press E — then walk SOUTH.", true, 4.0)
+	hud.set_objective("Lion rescue 3/4: Walk to the SLEEPING LION (on YBR) and press E to hitch the haul. Then walk SOUTH out of the red field.")
+	hud.set_prompt("Compass → Lion · E starts the haul · then walk SOUTH")
 
 func _start_haul() -> void:
 	hauling = true
-	hud.set_prompt("Hauling the Lion south — stay on the Yellow Brick Road")
+	hud.set_objective("Lion rescue 4/4: HAULING — keep walking SOUTH on the Yellow Brick Road until you leave the poppies.")
+	hud.set_prompt("Walk SOUTH — Lion + cart follow. Do not stop in the red field.")
+	var d := get_node_or_null("/root/DialogueUI")
+	if d and d.has_method("say"):
+		d.say("Narrator", "The field mice pull. Stay on the Yellow Brick Road and walk south until the Lion wakes in clear air.", true, 3.5)
 
 func _tick_haul(delta: float) -> void:
-	if not hauling or cart == null or lion == null:
-		return
 	var actor := _lead()
 	if actor == null:
 		return
-	# Cart and lion follow lead south slowly
-	var target := actor.global_position + Vector3(0, 0, -1.2)
+	# After hitch, cart follows Lead even before E on Lion (so you bring it to him).
+	if cart_ready and cart and not hauling and beat == Beat.HAUL_LION:
+		cart.global_position = cart.global_position.lerp(
+			actor.global_position + Vector3(1.6, 0, 0.2), 1.0 - exp(-4.0 * delta)
+		)
+		# Auto-start haul when close enough with cart in tow
+		if lion and actor.global_position.distance_to(lion.global_position) < 3.8:
+			_start_haul()
+			return
+	if not hauling or cart == null or lion == null:
+		return
+	# Cart and lion follow lead — prefer south progress
+	var target := actor.global_position + Vector3(0, 0, -0.4)
 	cart.global_position = cart.global_position.lerp(target + Vector3(1.5, 0, 0), 1.0 - exp(-3.0 * delta))
 	lion.global_position = cart.global_position + Vector3(-1.2, 0.1, 0)
-	if actor.global_position.z >= SAFE_SOUTH.z - 4.0 and not _in_poppy(lion.global_position):
+	# Clear when Lead is south of the poppy band (z past POPPY_END)
+	if actor.global_position.z >= POPPY_END_Z + 6.0 or (
+		actor.global_position.z >= SAFE_SOUTH.z - 8.0 and not _in_poppy(actor.global_position)
+	):
 		hauling = false
 		lion_asleep = false
 		lion_safe = true
@@ -365,8 +387,9 @@ func _set_beat(next: Beat) -> void:
 			hud.set_objective("Carry Dorothy south on the Yellow Brick Road — leave the deadly flowers.")
 			hud.set_prompt("Keep walking south until the meter dies and air clears")
 		Beat.LION_DOWN:
-			hud.set_objective("The Lion is too heavy. A wildcat hunts east of the road — save the Mouse Queen (E).")
-			hud.set_prompt("Compass → Wildcat / Queen · E")
+			hud.set_objective("You cannot carry the Lion. Rescue chain: 1) E wildcat (east) 2) E Mouse Queen 3) E mice cart 4) E Lion 5) walk SOUTH.")
+			hud.set_prompt("Compass → Wildcat (east of YBR) · E")
+			_show_lion_help_marker()
 			if wildcat:
 				wildcat.visible = true
 			if queen:
@@ -374,24 +397,29 @@ func _set_beat(next: Beat) -> void:
 			# Same beat family as SAVE_QUEEN — keep interactions live immediately.
 			beat = Beat.SAVE_QUEEN
 		Beat.SAVE_QUEEN:
-			hud.set_objective("Stop the wildcat (E), then speak with the Mouse Queen (E).")
-			hud.set_prompt("E on wildcat · then E on Queen")
+			hud.set_objective("Lion is too heavy. 1) E the orange WILDCAT east of the road 2) E the Mouse Queen until she offers the cart.")
+			hud.set_prompt("E on wildcat · then E on Queen (several times)")
+			_show_lion_help_marker()
 			if wildcat:
 				wildcat.visible = true
 			if queen:
 				queen.visible = true
 		Beat.MICE_CART:
-			hud.set_objective("Hitch the field mice to the cart (E) — Tin Man's wood-work.")
-			hud.set_prompt("E on the cart")
+			hud.set_objective("Lion rescue 2/4: E the brown MICE CART (east of YBR) to hitch the field mice. Then return to the Lion.")
+			hud.set_prompt("Compass → Mice cart · E")
 			if cart:
 				cart.visible = true
+				_ensure_cart_label_loud()
 		Beat.HAUL_LION:
-			hud.set_objective("E on the sleeping Lion with the cart — haul him south out of the poppies.")
-			hud.set_prompt("E near Lion · then walk south on YBR")
+			hud.set_objective("Lion rescue 3/4: Stand next to the sleeping Lion on the Yellow Brick Road and press E. Then walk SOUTH out of the red field.")
+			hud.set_prompt("E near Lion starts haul · then hold SOUTH on YBR")
+			_show_lion_help_marker()
 		Beat.ROAD_OPEN:
 			hud.set_objective("FINAL STEP (L3): Follow the Yellow Brick Road SOUTH to the glowing West gate — E.")
 			hud.set_prompt("End-gate: YBR south · E on gate · F9/F10 West")
 			_ensure_west_gate_label()
+			if has_node("LionTooHeavyLab"):
+				get_node("LionTooHeavyLab").queue_free()
 
 func _ensure_west_gate_label() -> void:
 	if has_node("WestGateLab"):
@@ -683,13 +711,15 @@ func _update_prompt() -> void:
 	elif _near_cat:
 		hud.set_prompt("E  —  Stop the wildcat (save the Queen)")
 	elif _near_queen and queen_saved:
-		hud.set_prompt("E  —  Speak with the Mouse Queen")
+		hud.set_prompt("E  —  Speak with the Mouse Queen (keep pressing E through her lines)")
 	elif _near_cart and beat == Beat.MICE_CART:
-		hud.set_prompt("E  —  Hitch field mice to the cart")
+		hud.set_prompt("E  —  Hitch field mice to the cart (required before Lion)")
 	elif _near_lion and beat == Beat.HAUL_LION and cart_ready and not hauling:
-		hud.set_prompt("E  —  Haul the Lion south")
+		hud.set_prompt("E  —  Start hauling the Lion SOUTH out of the poppies")
+	elif _near_lion and not cart_ready:
+		hud.set_prompt("Lion too heavy — compass east: wildcat → Queen → cart first")
 	elif hauling:
-		hud.set_prompt("Hauling — walk south on the Yellow Brick Road")
+		hud.set_prompt("HAULING Lion — walk SOUTH on the Yellow Brick Road until clear air")
 	elif dorothy_carried:
 		hud.set_prompt("Carrying Dorothy — south, out of the red field")
 	else:
@@ -698,6 +728,30 @@ func _update_prompt() -> void:
 			var p: String = str(w.call("prompt_if_near"))
 			if p != "":
 				hud.set_prompt(p)
+
+func _show_lion_help_marker() -> void:
+	if has_node("LionTooHeavyLab"):
+		var existing := get_node("LionTooHeavyLab") as Label3D
+		if existing and lion:
+			existing.global_position = lion.global_position + Vector3(0, 3.2, 0)
+		return
+	var lab := Label3D.new()
+	lab.name = "LionTooHeavyLab"
+	lab.text = "LION — TOO HEAVY\nCannot carry alone\n1 Wildcat  2 Queen  3 Cart  4 E here  5 South"
+	lab.font_size = 36
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.modulate = Color(1.0, 0.85, 0.35)
+	add_child(lab)
+	lab.global_position = (lion.global_position if lion else LION_FALL) + Vector3(0, 3.2, 0)
+
+func _ensure_cart_label_loud() -> void:
+	if cart == null:
+		return
+	for c in cart.get_children():
+		if c is Label3D:
+			(c as Label3D).text = "MICE CART — E to hitch\n(then walk to Lion)"
+			(c as Label3D).font_size = 42
+			(c as Label3D).modulate = Color(1.0, 0.95, 0.4)
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	var h := 3.2
