@@ -1,0 +1,229 @@
+extends Node
+
+## Centralized Retail Progression, Save/Load Slot Manager & Codex State (Thrive decoupled signal pattern).
+## Manages 3 JSON save slots, Desire Fragments, Silver-Rose Vitality (5 petals), Allure gauge & Shattered Memories.
+
+signal state_changed
+signal memory_unlocked(mem_id: String, title: String)
+signal desire_gained(amount: int, reason: String)
+
+const SAVE_DIR := "user://saves"
+const MAX_SLOTS := 3
+
+var desire_fragments: int = 0
+var hp: int = 5
+var max_hp: int = 5
+var allure: float = 35.0
+var unlocked_memories: Array[String] = []
+var opened_chests: Array[String] = []
+var current_scene_path: String = "res://regions/kansas/farmyard.tscn"
+var current_chapter: String = "Act 0 · Kansas — The Gale Farm"
+
+const MEMORY_CATALOG := {
+	"kansas_locket": {
+		"title": "Aunt Em's Tarnished Locket",
+		"region": "Kansas Farmhouse",
+		"text": "Inside the tin locket is a faded tintype of a prairie before the dust took the color out of everything. Dorothy remembers thinking that grey was just the price of growing up."
+	},
+	"kansas_barn_diary": {
+		"title": "Uncle Henry's Weather Ledger",
+		"region": "Kansas Barn",
+		"text": "'Barometer dropped three fingers before noon. Stock won't drink. Even the sky wants something it cannot name.' Torn pages smell of axle grease and ozone."
+	},
+	"munchkin_porcelain_mask": {
+		"title": "Cracked Lollipop Mask",
+		"region": "Munchkinland Cottage",
+		"text": "Painted with a permanent pastel smile. Underneath the glaze, fine needle-marks line the rim — proof that cheerfulness in Oz is enforced, not felt."
+	},
+	"munchkin_silver_ledger": {
+		"title": "East Witch's Debt Book",
+		"region": "Munchkinland Interior",
+		"text": "Columns of names traded for sugar, youth, and obedience. The ink still shimmers faintly silver whenever Dorothy's shoes step across the threshold."
+	},
+	"emerald_spectacles": {
+		"title": "Green-Tinted Spectacles",
+		"region": "Emerald City",
+		"text": "Locked with a tiny brass clasp so no citizen can remove them. Everything looks opulent through emerald glass — until you glimpse the rust in the reflection."
+	},
+}
+
+const BESTIARY_CATALOG := [
+	{
+		"name": "Rogue Munchkin Axeman",
+		"region": "Munchkinland",
+		"threat": "Pack Swarms · Hatchet Cleave",
+		"lore": "Sweet-faced guild enforcers driven manic by the East Witch's collapse. Vulnerable to Dorothy's Silver-Shoe Kick and Scarecrow's Crow Scatter."
+	},
+	{
+		"name": "Lollipop Guild Marshal",
+		"region": "Munchkinland Plaza",
+		"threat": "Armored Elite · Heavy Overhead Cleave",
+		"lore": "Captain of the sugar-coated militia. Use Tin Man's Axe to shatter his armor plating or Lion's Roar to break his stance."
+	},
+	{
+		"name": "Wicked Witch of the West",
+		"region": "Winkie Iron Castle",
+		"threat": "Boss · Umbrella-Staff Hexes & Winged Monkeys",
+		"lore": "Pale, gaunt, and one-eyed (Baum canon). Brute force only grounds her — draw water from the ruptured courtyard cistern to unmake her."
+	},
+	{
+		"name": "Oscar Diggs (The Humbug Wizard)",
+		"region": "Emerald Palace",
+		"threat": "Illusionist · Volumetric Hologram & Brass Gears",
+		"lore": "A terrified Omaha balloonist hiding behind crimson velvet drapes and a geared voice-horn, trading false miracles for absolute devotion."
+	},
+]
+
+const COMPANION_CATALOG := [
+	{
+		"id": "dorothy",
+		"name": "Dorothy Gale",
+		"role": "Lead · Mobility & Silver Shoes",
+		"kit": "F: Silver-Shoe Kick · Space: Jump / Heel-Blink · E: Interact",
+		"lore": "Small in a hostile, opulent world. She does not conquer Oz by brute strength — she survives by movement, clarity, and keeping her circle whole."
+	},
+	{
+		"id": "scarecrow",
+		"name": "The Scarecrow",
+		"role": "Crowd Control · Brain",
+		"kit": "F: Crow Flock Caw (confuses & scatters enemy packs)",
+		"lore": "Stuffed with straw and haunted by the fear of being hollow, yet sharpest of all when reading the traps of the Yellow Brick Road."
+	},
+	{
+		"id": "tinman",
+		"name": "The Tin Woodman",
+		"role": "Armor Breaker · Heart",
+		"kit": "F: Cleaving Axe Swing (shatters armor & heavy guards)",
+		"lore": "A rusted shell polished to a mirror sheen. He swings heavy iron to protect the tenderness he is convinced he lost."
+	},
+	{
+		"id": "lion",
+		"name": "The Cowardly Lion",
+		"role": "Fear & Stagger · Courage",
+		"kit": "F: Primal Roar Shockwave (fears & knocks back foes)",
+		"lore": "Snared by doubt in a thorny thicket. His roar shakes the very bravest illusions when he stands between danger and his friends."
+	},
+	{
+		"id": "toto",
+		"name": "Toto",
+		"role": "Wayfinder & Scout · Loyalty",
+		"kit": "F: Fierce Bark (reveals secrets & alerts party; enemies ignore him)",
+		"lore": "Small, fearless Cairn Terrier who sees straight through curtains, holograms, and gilded lies."
+	},
+]
+
+func _ready() -> void:
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+
+func add_desire(amount: int, reason: String = "") -> void:
+	desire_fragments += amount
+	allure = clampf(allure + float(amount) * 0.65, 0.0, 100.0)
+	desire_gained.emit(amount, reason)
+	state_changed.emit()
+
+func take_damage(amount: int = 1) -> void:
+	hp = maxi(1, hp - amount)
+	state_changed.emit()
+
+func heal_full() -> void:
+	hp = max_hp
+	state_changed.emit()
+
+func unlock_memory(mem_id: String) -> bool:
+	if mem_id in unlocked_memories:
+		return false
+	unlocked_memories.append(mem_id)
+	var entry: Dictionary = MEMORY_CATALOG.get(mem_id, {"title": mem_id})
+	add_desire(10, "Memory: %s" % str(entry.get("title", mem_id)))
+	heal_full()
+	memory_unlocked.emit(mem_id, str(entry.get("title", mem_id)))
+	state_changed.emit()
+	return true
+
+func open_chest(chest_id: String, reward: int = 15) -> bool:
+	if chest_id in opened_chests:
+		return false
+	opened_chests.append(chest_id)
+	add_desire(reward, "Gilded Chest")
+	return true
+
+func set_current_location(scene_path: String, chapter_label: String) -> void:
+	if scene_path != "":
+		current_scene_path = scene_path
+	if chapter_label != "":
+		current_chapter = chapter_label
+	state_changed.emit()
+
+func _slot_path(slot: int) -> String:
+	return "%s/slot_%d.json" % [SAVE_DIR, clampi(slot, 1, MAX_SLOTS)]
+
+func save_slot(slot: int) -> bool:
+	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	var cur := get_tree().current_scene
+	if cur and cur.scene_file_path != "":
+		current_scene_path = cur.scene_file_path
+	var payload := {
+		"slot": slot,
+		"scene_path": current_scene_path,
+		"chapter": current_chapter,
+		"desire_fragments": desire_fragments,
+		"hp": hp,
+		"allure": allure,
+		"unlocked_memories": unlocked_memories,
+		"opened_chests": opened_chests,
+		"saved_at": Time.get_datetime_string_from_system(false, true),
+	}
+	var f := FileAccess.open(_slot_path(slot), FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string(JSON.stringify(payload, "\t"))
+	f.close()
+	state_changed.emit()
+	return true
+
+func get_slot_info(slot: int) -> Dictionary:
+	var p := _slot_path(slot)
+	if not FileAccess.file_exists(p):
+		return {}
+	var txt := FileAccess.get_file_as_string(p)
+	var parsed = JSON.parse_string(txt)
+	if parsed is Dictionary:
+		return parsed
+	return {}
+
+func load_slot(slot: int) -> bool:
+	var info := get_slot_info(slot)
+	if info.is_empty():
+		return false
+	desire_fragments = int(info.get("desire_fragments", 0))
+	hp = clampi(int(info.get("hp", max_hp)), 1, max_hp)
+	allure = clampf(float(info.get("allure", 35.0)), 0.0, 100.0)
+	unlocked_memories.clear()
+	for m in info.get("unlocked_memories", []):
+		unlocked_memories.append(str(m))
+	opened_chests.clear()
+	for c in info.get("opened_chests", []):
+		opened_chests.append(str(c))
+	current_scene_path = str(info.get("scene_path", "res://regions/kansas/farmyard.tscn"))
+	current_chapter = str(info.get("chapter", "Act 0 · Kansas"))
+	state_changed.emit()
+	get_tree().paused = false
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(current_scene_path, "Returning to %s…" % current_chapter, current_chapter)
+	else:
+		get_tree().change_scene_to_file(current_scene_path)
+	return true
+
+func delete_slot(slot: int) -> void:
+	var p := _slot_path(slot)
+	if FileAccess.file_exists(p):
+		DirAccess.remove_absolute(p)
+	state_changed.emit()
+
+func has_any_save() -> bool:
+	for s in range(1, MAX_SLOTS + 1):
+		if not get_slot_info(s).is_empty():
+			return true
+	return false

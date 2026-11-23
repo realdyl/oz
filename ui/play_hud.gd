@@ -3,6 +3,7 @@ extends CanvasLayer
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const ThreatRadarScript := preload("res://ui/widgets/threat_radar.gd")
 const PauseMenuScript := preload("res://ui/shell/pause_menu.gd")
+const GrimoireMenuScript := preload("res://ui/grimoire_menu.gd")
 const WorldKit := preload("res://systems/world_kit.gd")
 const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
@@ -33,6 +34,14 @@ const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd"
 var kansas_mode: bool = false
 var threat_compass: Label
 var pause_menu: CanvasLayer
+var grimoire_menu: CanvasLayer
+var _vitality_panel: PanelContainer
+var _petal_labels: Array[Label] = []
+var _allure_bar: ProgressBar
+var _desire_lbl: Label
+var _wheel_root: Control
+var _wheel_open: bool = false
+var _wheel_buttons: Dictionary = {}
 
 var _is_final_step: bool = false
 var _last_objective: String = ""
@@ -60,8 +69,12 @@ func _ready() -> void:
 	_ensure_fade()
 	_ensure_threat_compass()
 	_build_lead_bar()
+	_build_vitality_ribbon()
+	_build_quick_wheel()
 	_ensure_pause_menu()
+	_ensure_grimoire_menu()
 	_connect_party()
+	_connect_save_manager()
 	child_entered_tree.connect(_on_child_entered_tree)
 
 	_apply_theme()
@@ -621,3 +634,182 @@ func _threat_arrow(ang_deg: float) -> String:
 	if a >= -112.5 and a < -67.5:
 		return "←"
 	return "↖"
+
+# ============================================================================
+# PHASE P6: DIEGETIC SILVER-ROSE VITALITY, ALLURE RIBBON, QUICK-WHEEL & CODEX
+# ============================================================================
+
+func _ensure_grimoire_menu() -> void:
+	grimoire_menu = GrimoireMenuScript.new()
+	grimoire_menu.name = "GrimoireMenu"
+	add_child(grimoire_menu)
+
+func _connect_save_manager() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm == null:
+		return
+	if sm.has_signal("state_changed") and not sm.state_changed.is_connected(_refresh_vitality_ribbon):
+		sm.state_changed.connect(_refresh_vitality_ribbon)
+	if sm.has_signal("memory_unlocked") and not sm.memory_unlocked.is_connected(_on_memory_unlocked):
+		sm.memory_unlocked.connect(_on_memory_unlocked)
+	if sm.has_signal("desire_gained") and not sm.desire_gained.is_connected(_on_desire_gained):
+		sm.desire_gained.connect(_on_desire_gained)
+	_refresh_vitality_ribbon()
+
+func _on_memory_unlocked(_mem_id: String, title: String) -> void:
+	if has_method("show_toast"):
+		call("show_toast", "✦ Shattered Memory: %s  (Grimoire [J])" % title)
+
+func _on_desire_gained(amount: int, reason: String) -> void:
+	if has_method("show_toast") and reason != "":
+		call("show_toast", "♦ +%d Desire  ·  %s" % [amount, reason])
+
+func _build_vitality_ribbon() -> void:
+	var safe := get_node_or_null("SafeRoot") as Control
+	if safe == null:
+		return
+	_vitality_panel = PanelContainer.new()
+	_vitality_panel.name = "VitalityRibbon"
+	_vitality_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_vitality_panel.offset_left = -290.0
+	_vitality_panel.offset_right = -16.0
+	_vitality_panel.offset_top = 14.0
+	_vitality_panel.offset_bottom = 98.0
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.07, 0.05, 0.11, 0.86)
+	st.border_color = Color(0.86, 0.70, 0.34, 0.88)
+	st.set_border_width_all(2)
+	st.set_corner_radius_all(8)
+	st.content_margin_left = 12
+	st.content_margin_right = 12
+	st.content_margin_top = 8
+	st.content_margin_bottom = 8
+	_vitality_panel.add_theme_stylebox_override("panel", st)
+	safe.add_child(_vitality_panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	_vitality_panel.add_child(vb)
+
+	# Row 1: 5 Silver-Rose Vitality Petals (Alice-inspired organic meter)
+	var petal_row := HBoxContainer.new()
+	petal_row.add_theme_constant_override("separation", 5)
+	vb.add_child(petal_row)
+	var vit_tag := Label.new()
+	vit_tag.text = "VITALITY"
+	vit_tag.add_theme_font_size_override("font_size", 11)
+	vit_tag.add_theme_color_override("font_color", Color(0.86, 0.78, 0.56))
+	vit_tag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	petal_row.add_child(vit_tag)
+	_petal_labels.clear()
+	for i in range(5):
+		var pl := Label.new()
+		pl.text = "✿"
+		pl.add_theme_font_size_override("font_size", 17)
+		pl.add_theme_color_override("font_color", Color(0.98, 0.24, 0.44))
+		petal_row.add_child(pl)
+		_petal_labels.append(pl)
+
+	# Row 2: Allure / Desire Filigree Progress Bar
+	_allure_bar = ProgressBar.new()
+	_allure_bar.min_value = 0.0
+	_allure_bar.max_value = 100.0
+	_allure_bar.value = 35.0
+	_allure_bar.show_percentage = false
+	_allure_bar.custom_minimum_size = Vector2(220, 8)
+	var bg_sb := StyleBoxFlat.new()
+	bg_sb.bg_color = Color(0.14, 0.10, 0.18, 0.9)
+	bg_sb.set_corner_radius_all(4)
+	var fg_sb := StyleBoxFlat.new()
+	fg_sb.bg_color = Color(0.92, 0.30, 0.56, 0.95)
+	fg_sb.set_corner_radius_all(4)
+	_allure_bar.add_theme_stylebox_override("background", bg_sb)
+	_allure_bar.add_theme_stylebox_override("fill", fg_sb)
+	vb.add_child(_allure_bar)
+
+	# Row 3: Desire Fragments + Grimoire/Wheel Shortcuts
+	_desire_lbl = Label.new()
+	_desire_lbl.text = "♦ 0 Desire  ·  [J] Grimoire  ·  [Q] Wheel"
+	_desire_lbl.add_theme_font_size_override("font_size", 11)
+	_desire_lbl.add_theme_color_override("font_color", Color(0.94, 0.84, 0.56))
+	vb.add_child(_desire_lbl)
+
+func _refresh_vitality_ribbon() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm == null:
+		return
+	var cur_hp: int = int(sm.hp)
+	for i in range(_petal_labels.size()):
+		if i < cur_hp:
+			_petal_labels[i].add_theme_color_override("font_color", Color(0.94, 0.94, 0.98) if kansas_mode else Color(0.98, 0.24, 0.44))
+		else:
+			_petal_labels[i].add_theme_color_override("font_color", Color(0.30, 0.26, 0.34))
+	if _allure_bar:
+		_allure_bar.value = float(sm.allure)
+	if _desire_lbl:
+		_desire_lbl.text = "♦ %d Desire  ·  [J] Grimoire  ·  [Q] Wheel" % int(sm.desire_fragments)
+
+func _build_quick_wheel() -> void:
+	_wheel_root = CenterContainer.new()
+	_wheel_root.name = "CompanionQuickWheel"
+	_wheel_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_wheel_root.visible = false
+	add_child(_wheel_root)
+
+	var pc := PanelContainer.new()
+	pc.custom_minimum_size = Vector2(460, 260)
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.06, 0.04, 0.09, 0.93)
+	st.border_color = Color(0.90, 0.74, 0.36, 0.95)
+	st.set_border_width_all(2)
+	st.set_corner_radius_all(18)
+	st.content_margin_left = 20
+	st.content_margin_right = 20
+	st.content_margin_top = 16
+	st.content_margin_bottom = 16
+	pc.add_theme_stylebox_override("panel", st)
+	_wheel_root.add_child(pc)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	pc.add_child(vb)
+
+	var hdr := Label.new()
+	hdr.text = "✦  CIRCLE QUICK-WHEEL  (Click or 1–5 · Q to Close)"
+	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hdr.add_theme_font_size_override("font_size", 14)
+	hdr.add_theme_color_override("font_color", Color(0.96, 0.84, 0.50))
+	vb.add_child(hdr)
+
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
+	vb.add_child(grid)
+	for def in LEAD_DEFS:
+		var btn := Button.new()
+		btn.text = "[%s] %s  —  %s" % [def["key"], def["name"], def["verb"]]
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var cid: StringName = def["id"]
+		btn.pressed.connect(func():
+			var p := get_node_or_null("/root/Party")
+			if p and p.has_method("set_leader"):
+				p.call("set_leader", cid)
+			_toggle_quick_wheel(false)
+		)
+		grid.add_child(btn)
+		_wheel_buttons[cid] = btn
+
+func _toggle_quick_wheel(force_state = null) -> void:
+	if _wheel_root == null:
+		return
+	_wheel_open = not _wheel_open if force_state == null else bool(force_state)
+	_wheel_root.visible = _wheel_open
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if _wheel_open else Input.MOUSE_MODE_CAPTURED
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_Q:
+			_toggle_quick_wheel()
+			get_viewport().set_input_as_handled()

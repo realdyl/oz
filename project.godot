@@ -22,6 +22,7 @@ LevelTransition="*res://systems/level_transition.gd"
 DialogueUI="*res://systems/dialogue_ui.gd"
 Locomotion="*res://systems/locomotion_util.gd"
 Whimsy="*res://systems/whimsy.gd"
+SaveManager="*res://systems/save_manager.gd"
 
 [display]
 

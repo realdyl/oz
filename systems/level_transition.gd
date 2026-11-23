@@ -219,6 +219,10 @@ func _hide_now() -> void:
 
 ## Call from a level's _ready — plays enter sting if a transition just landed, else a short open.
 func on_level_start(level_title: String = "") -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and sm.has_method("set_current_location"):
+		var cur := get_tree().current_scene
+		sm.set_current_location(cur.scene_file_path if cur else "", level_title)
 	if _is_headless():
 		_pending_enter = ""
 		_busy = false

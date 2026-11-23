@@ -1088,12 +1088,14 @@ func _add_kansas_interior(fit: Node3D, title: String) -> void:
 		_ks_prop(fit, Vector3(-2.7, 0.36, 0.8), Vector3(1.15, 0.72, 1.95), Color(0.38, 0.38, 0.42)) # Dorothy's bed/cot
 		_ks_prop(fit, Vector3(2.4, 0.40, 0.9), Vector3(1.45, 0.80, 1.15), Color(0.34, 0.34, 0.37)) # dining table
 		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Farmhouse Interior", Color(0.96, 0.96, 1.0), 12.0)
+		WorldKit.add_interior_activities(fit, "kansas_farmhouse", "kansas_locket", Vector3(1.8, 0.06, -1.3), Vector3(-1.3, 0.06, -1.2), true)
 	elif "barn" in t:
 		_ks_prop(fit, Vector3(-2.5, 0.65, -2.2), Vector3(1.5, 1.3, 1.8), Color(0.38, 0.38, 0.41)) # stacked hay bales
 		_ks_prop(fit, Vector3(2.5, 0.55, -2.2), Vector3(1.4, 1.1, 1.6), Color(0.44, 0.44, 0.47)) # hay bales
 		_ks_prop(fit, Vector3(-2.7, 0.60, 1.0), Vector3(1.2, 1.2, 2.2), Color(0.28, 0.28, 0.31)) # horse stall partition
 		_ks_prop(fit, Vector3(2.6, 0.48, 1.1), Vector3(1.2, 0.96, 1.8), Color(0.30, 0.30, 0.33)) # workbench
 		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Barn & Hayloft", Color(0.96, 0.96, 1.0), 12.0)
+		WorldKit.add_interior_activities(fit, "kansas_barn", "kansas_barn_diary", Vector3(1.6, 0.06, -0.8), Vector3(-1.4, 0.06, -1.0), true)
 	else:
 		_ks_prop(fit, Vector3(-1.4, 0.28, -1.4), Vector3(1.2, 0.56, 1.0), Color(0.45, 0.45, 0.48))
 		WorldKit.make_world_badge(fit, Vector3(0, 2.35, -hd + 0.22), "✦  Chicken Coop", Color(0.96, 0.96, 1.0), 10.0)

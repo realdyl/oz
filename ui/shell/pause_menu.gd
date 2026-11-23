@@ -17,8 +17,12 @@ var _title: Label
 var _subtitle: Label
 var _objective_recap: Label
 var _settings_view: Control
+var _saves_card: PanelContainer
+var _saves_list: VBoxContainer
 
 var _resume_btn: Button
+var _grimoire_btn: Button
+var _saves_btn: Button
 var _settings_btn: Button
 var _restart_btn: Button
 var _quit_btn: Button
@@ -147,6 +151,16 @@ func _build_ui() -> void:
 	_resume_btn.pressed.connect(close)
 	vbox.add_child(_resume_btn)
 
+	_grimoire_btn = Button.new()
+	_grimoire_btn.text = "Oz Grimoire / Codex (J)"
+	_grimoire_btn.pressed.connect(_open_grimoire)
+	vbox.add_child(_grimoire_btn)
+
+	_saves_btn = Button.new()
+	_saves_btn.text = "Save / Load Game (Slots 1–3)"
+	_saves_btn.pressed.connect(_show_saves)
+	vbox.add_child(_saves_btn)
+
 	_settings_btn = Button.new()
 	_settings_btn.text = "Settings"
 	_settings_btn.pressed.connect(_show_settings)
@@ -168,12 +182,96 @@ func _build_ui() -> void:
 	_settings_view.connect("back_pressed", _show_main_card)
 	center.add_child(_settings_view)
 
+	# Embedded 3-Slot Save / Load Panel
+	_saves_card = PanelContainer.new()
+	_saves_card.custom_minimum_size = Vector2(540, 400)
+	_saves_card.visible = false
+	_saves_card.add_theme_stylebox_override("panel", OzThemeFactory.make_modal_style(kansas_mode))
+	center.add_child(_saves_card)
+	var svb := VBoxContainer.new()
+	svb.add_theme_constant_override("separation", 12)
+	_saves_card.add_child(svb)
+	var shdr := Label.new()
+	shdr.text = "✦  SAVE & LOAD SLOTS"
+	shdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shdr.add_theme_font_size_override("font_size", 20)
+	shdr.add_theme_color_override("font_color", Color(0.95, 0.82, 0.44))
+	svb.add_child(shdr)
+	_saves_list = VBoxContainer.new()
+	_saves_list.add_theme_constant_override("separation", 10)
+	_saves_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	svb.add_child(_saves_list)
+	var sback := Button.new()
+	sback.text = "Back to Pause Menu"
+	sback.pressed.connect(_show_main_card)
+	svb.add_child(sback)
+
+func _open_grimoire() -> void:
+	close()
+	var hud := get_parent()
+	if hud and hud.get("grimoire_menu"):
+		hud.get("grimoire_menu").call("open", 0)
+
+func _show_saves() -> void:
+	_main_card.visible = false
+	_settings_view.visible = false
+	_saves_card.visible = true
+	_refresh_saves_list()
+
+func _refresh_saves_list() -> void:
+	for c in _saves_list.get_children():
+		c.queue_free()
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm == null:
+		return
+	for slot in range(1, 4):
+		var info: Dictionary = sm.get_slot_info(slot)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		_saves_list.add_child(row)
+		var lbl := Label.new()
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if info.is_empty():
+			lbl.text = "Slot %d  —  [Empty]" % slot
+		else:
+			lbl.text = "Slot %d  ·  %s\n♦ %d Desire  ·  %s" % [slot, str(info.get("chapter", "Oz")), int(info.get("desire_fragments", 0)), str(info.get("saved_at", ""))]
+		lbl.add_theme_font_size_override("font_size", 13)
+		row.add_child(lbl)
+		var s_idx := slot
+		var b_save := Button.new()
+		b_save.text = "Save"
+		b_save.pressed.connect(func():
+			sm.save_slot(s_idx)
+			_refresh_saves_list()
+		)
+		row.add_child(b_save)
+		var b_load := Button.new()
+		b_load.text = "Load"
+		b_load.disabled = info.is_empty()
+		b_load.pressed.connect(func():
+			close()
+			sm.load_slot(s_idx)
+		)
+		row.add_child(b_load)
+		var b_del := Button.new()
+		b_del.text = "✕"
+		b_del.disabled = info.is_empty()
+		b_del.pressed.connect(func():
+			sm.delete_slot(s_idx)
+			_refresh_saves_list()
+		)
+		row.add_child(b_del)
+
 func _show_settings() -> void:
 	_main_card.visible = false
+	if _saves_card:
+		_saves_card.visible = false
 	_settings_view.visible = true
 
 func _show_main_card() -> void:
 	_settings_view.visible = false
+	if _saves_card:
+		_saves_card.visible = false
 	_main_card.visible = true
 	_resume_btn.grab_focus()
 

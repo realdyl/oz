@@ -386,9 +386,11 @@ static func add_horizon_hills(parent: Node3D, half_x: float, half_z: float, hill
 	for i in range(32):
 		var ang := float(i) / 32.0 * TAU
 		var rad := rng.randf_range(22.0, 34.0)
-		var margin := rad * 0.85 + 6.0
-		var rx := (half_x + margin + rng.randf_range(0.0, 10.0)) * cos(ang)
-		var rz := (half_z + margin + rng.randf_range(0.0, 10.0)) * sin(ang)
+		# Keep the ENTIRE scaled hill skirt strictly OUTSIDE the playable MapBorder so characters NEVER get buried!
+		var visual_r := rad * 1.35
+		var margin := visual_r + 14.0
+		var rx := (half_x + margin + rng.randf_range(0.0, 12.0)) * cos(ang)
+		var rz := (half_z + margin + rng.randf_range(0.0, 12.0)) * sin(ang)
 		var ht := rng.randf_range(14.0, 26.0)
 		var mat := m_near if i % 2 == 0 else m_far
 		var hbody := StaticBody3D.new()
@@ -399,9 +401,49 @@ static func add_horizon_hills(parent: Node3D, half_x: float, half_z: float, hill
 		_mi(hbody, _sph(rad, ht, 16), mat, Vector3.ZERO, Vector3.ZERO, Vector3(1.35, 0.72, 1.35))
 		var hcs := CollisionShape3D.new()
 		var hsh := SphereShape3D.new()
-		hsh.radius = rad * 0.88
+		hsh.radius = visual_r
 		hcs.shape = hsh
 		hbody.add_child(hcs)
+
+## Animated flowing water shader (scrolling dual-layer wave ripples, shimmering caustics & Fresnel sky reflection).
+static func make_flowing_water_material(base_col: Color = Color(0.18, 0.62, 0.90), foam_col: Color = Color(0.76, 0.94, 1.0), flow_speed: float = 1.0) -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode blend_mix, cull_back, specular_schlick_ggx;
+
+uniform vec3 water_color : source_color = vec3(0.18, 0.62, 0.90);
+uniform vec3 foam_color : source_color = vec3(0.76, 0.94, 1.0);
+uniform float flow_speed = 1.0;
+
+void vertex() {
+	float t = TIME * flow_speed;
+	float wave = sin(VERTEX.x * 2.4 + t * 2.2) * cos(VERTEX.z * 1.8 - t * 1.9) * 0.018;
+	VERTEX.y += wave;
+}
+
+void fragment() {
+	float t = TIME * flow_speed;
+	vec2 uv1 = UV * vec2(5.0, 14.0) + vec2(0.0, -t * 0.42);
+	vec2 uv2 = UV * vec2(8.0, 20.0) + vec2(t * 0.16, -t * 0.65);
+	float r1 = sin(uv1.x * 6.28 + sin(uv1.y * 6.28)) * 0.5 + 0.5;
+	float r2 = cos(uv2.y * 6.28 + cos(uv2.x * 4.5)) * 0.5 + 0.5;
+	float caustic = smoothstep(0.68, 0.95, r1 * r2);
+	float fresnel = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.8);
+	vec3 col = mix(water_color, foam_color, caustic * 0.55 + fresnel * 0.35);
+	ALBEDO = col;
+	ROUGHNESS = 0.08;
+	METALLIC = 0.18;
+	EMISSION = foam_color * (caustic * 0.35 + fresnel * 0.25);
+	ALPHA = 0.88;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("water_color", Vector3(base_col.r, base_col.g, base_col.b))
+	mat.set_shader_parameter("foam_color", Vector3(foam_col.r, foam_col.g, foam_col.b))
+	mat.set_shader_parameter("flow_speed", flow_speed)
+	return mat
 
 ## Walkable, COLLIDABLE gentle grassy hills in the side meadows (characters physically climb up them!).
 static func add_walkable_meadow_hills(parent: Node3D, specs: Array, grass_col: Color) -> void:
@@ -752,6 +794,10 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	plaque.position = Vector3(0.65, 2.15, -half_d + 0.26)
 	fit.add_child(plaque)
 
+	# Interactive interior activities: Gilded Desire Chest + Shattered Memory Keepsake!
+	var mem_id := "munchkin_silver_ledger" if ("debt" in tlow or "mayor" in tlow or "hall" in tlow) else "munchkin_porcelain_mask"
+	add_interior_activities(fit, "cottage_%s" % tlow.replace(" ", "_"), mem_id, Vector3(half_w - 1.5, 0.08, 0.9), Vector3(-0.3, 0.08, -half_d + 1.8), false)
+
 	# Warm interior lighting
 	var lamp := OmniLight3D.new()
 	lamp.light_color = Color(1.0, 0.90, 0.70)
@@ -768,6 +814,63 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	fit.add_child(hearth_light)
 
 	return fit
+
+## Populates a building interior with an interactive Gilded Desire Chest (+15 Desire) & Shattered Memory Crystal (Codex Lore).
+static func add_interior_activities(fit: Node3D, room_id: String, memory_id: String, chest_pos: Vector3, mem_pos: Vector3, monochrome: bool = false) -> void:
+	var pickup_script := preload("res://systems/interior_pickup.gd")
+	var gold_c := Color(0.75, 0.75, 0.78) if monochrome else Color(0.95, 0.78, 0.30)
+	var wood_c := Color(0.28, 0.28, 0.31) if monochrome else Color(0.32, 0.16, 0.14)
+	var rose_c := Color(0.92, 0.92, 0.96) if monochrome else Color(0.98, 0.32, 0.58)
+
+	# 1) Gilded Desire Chest
+	var chest := Area3D.new()
+	chest.set_script(pickup_script)
+	chest.name = "DesireChest"
+	chest.set("kind", "chest")
+	chest.set("item_id", "%s_chest" % room_id)
+	chest.set("reward_amount", 15)
+	chest.position = chest_pos
+	fit.add_child(chest)
+	var ccol := CollisionShape3D.new()
+	var csh := SphereShape3D.new()
+	csh.radius = 1.25
+	ccol.shape = csh
+	chest.add_child(ccol)
+	var cvis := Node3D.new()
+	cvis.name = "Visual"
+	chest.add_child(cvis)
+	_mi(cvis, _box(Vector3(0.78, 0.44, 0.52)), _mat(wood_c, 0.65), Vector3(0, 0.22, 0))
+	_mi(cvis, _box(Vector3(0.82, 0.08, 0.56)), _mat(gold_c, 0.24, 0.88, gold_c, 0.35), Vector3(0, 0.42, 0))
+	var lid := Node3D.new()
+	lid.name = "Lid"
+	lid.position = Vector3(0, 0.44, -0.26)
+	cvis.add_child(lid)
+	_mi(lid, _box(Vector3(0.80, 0.18, 0.54)), _mat(wood_c.lightened(0.08), 0.60), Vector3(0, 0.09, 0.26))
+	_mi(lid, _box(Vector3(0.18, 0.14, 0.08)), _mat(gold_c, 0.22, 0.90, gold_c, 0.55), Vector3(0, 0.04, 0.54))
+	make_world_badge(chest, Vector3(0, 1.05, 0), "♦  Gilded Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
+
+	# 2) Floating Shattered Memory Keepsake
+	if memory_id != "":
+		var mem := Area3D.new()
+		mem.set_script(pickup_script)
+		mem.name = "ShatteredMemory"
+		mem.set("kind", "memory")
+		mem.set("item_id", memory_id)
+		mem.position = mem_pos
+		fit.add_child(mem)
+		var mcol := CollisionShape3D.new()
+		var msh := SphereShape3D.new()
+		msh.radius = 1.25
+		mcol.shape = msh
+		mem.add_child(mcol)
+		var mvis := Node3D.new()
+		mvis.name = "Visual"
+		mvis.position = Vector3(0, 0.95, 0)
+		mem.add_child(mvis)
+		var crystal_m := _mat(rose_c, 0.14, 0.30, rose_c, 1.8)
+		_mi(mvis, _cyl(0.02, 0.18, 0.32, 6), crystal_m, Vector3(0, 0.16, 0))
+		_mi(mvis, _cyl(0.18, 0.02, 0.32, 6), crystal_m, Vector3(0, -0.16, 0))
+		make_world_badge(mem, Vector3(0, 1.65, 0), "✦  Shattered Memory", rose_c.lightened(0.20), 8.0)
 
 static func make_gnarled_tree(at: Vector3, rng: RandomNumberGenerator, scale_mult: float = 1.0) -> Node3D:
 	var root := Node3D.new()
@@ -1084,54 +1187,79 @@ static func build_poppy_beds(parent: Node3D, z_start: float, z_end: float) -> No
 # LION SANCTUARY, PRISTINE WATER CISTERN & KANSAS 3D STORYBOOK PROPS
 # ============================================================================
 
-## Sculpted mossy boulder & gnarled-root forest sanctuary for the Cowardly Lion in Munchkinland.
+## Gothic dark-fairytale Bramble & Wrought-Iron Snare Grotto for the Cowardly Lion in Munchkinland.
 static func build_lion_sanctuary(parent: Node3D, at: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.name = "LionDen"
 	root.position = at
 	parent.add_child(root)
 
-	var stone := _mat(Color(0.36, 0.35, 0.38), 0.94)
-	var moss := _mat(Color(0.22, 0.44, 0.22), 0.92)
-	var bark := _mat(Color(0.26, 0.17, 0.11), 0.92)
-	var fern_m := make_wind_grass_material(Color(0.20, 0.48, 0.22))
-	var berry_m := _mat(Color(1.0, 0.62, 0.18), 0.3, 0.0, Color(1.0, 0.55, 0.15), 1.4)
+	var stone := _mat(Color(0.28, 0.27, 0.31), 0.94)
+	var stone_hi := _mat(Color(0.38, 0.37, 0.42), 0.88)
+	var moss := _mat(Color(0.18, 0.40, 0.19), 0.92)
+	var bark := _mat(Color(0.20, 0.13, 0.09), 0.92)
+	var iron := _mat(Color(0.16, 0.16, 0.20), 0.42, 0.85)
+	var thorn_m := _mat(Color(0.28, 0.10, 0.14), 0.78)
+	var fern_m := make_wind_grass_material(Color(0.18, 0.46, 0.20))
+	var lantern_m := _mat(Color(1.0, 0.74, 0.26), 0.2, 0.0, Color(1.0, 0.68, 0.20), 2.2)
 
-	# Mossy forest floor mound (walkable visual bed)
-	_mi(root, _cyl(2.6, 2.9, 0.14, 18), moss, Vector3(0, 0.05, 0.15))
+	# Carved mossy stone dais floor (flush at y = 0.04m so feet never clip!)
+	_mi(root, _cyl(3.1, 3.4, 0.08, 20), stone, Vector3(0, 0.04, 0.15))
+	_mi(root, _cyl(2.6, 2.8, 0.04, 18), moss, Vector3(0, 0.08, 0.15))
 
-	# Horseshoe of sculpted mossy boulders forming a natural stone hollow (open toward +Z south)
-	var rocks := [
-		{"p": Vector3(0.0, 0.85, -1.75), "r": 1.35, "s": Vector3(1.5, 0.95, 0.85)},
-		{"p": Vector3(-1.85, 0.72, -0.95), "r": 1.15, "s": Vector3(0.95, 0.95, 1.2)},
-		{"p": Vector3(1.85, 0.72, -0.95), "r": 1.15, "s": Vector3(0.95, 0.95, 1.2)},
-		{"p": Vector3(-2.15, 0.52, 0.65), "r": 0.90, "s": Vector3(0.85, 0.8, 1.1)},
-		{"p": Vector3(2.15, 0.52, 0.65), "r": 0.90, "s": Vector3(0.85, 0.8, 1.1)},
+	# Tiered craggy limestone cliff alcove & overhanging keystone arch (open toward +Z south)
+	var crags := [
+		{"p": Vector3(0.0, 1.35, -2.15), "s": Vector3(3.4, 2.7, 1.4), "r": Vector3(6, 0, 0)},
+		{"p": Vector3(-2.15, 1.15, -1.25), "s": Vector3(1.5, 2.3, 1.8), "r": Vector3(0, 26, -8)},
+		{"p": Vector3(2.15, 1.15, -1.25), "s": Vector3(1.5, 2.3, 1.8), "r": Vector3(0, -26, 8)},
+		{"p": Vector3(-2.45, 0.78, 0.55), "s": Vector3(1.2, 1.55, 1.4), "r": Vector3(-6, 14, -10)},
+		{"p": Vector3(2.45, 0.78, 0.55), "s": Vector3(1.2, 1.55, 1.4), "r": Vector3(-6, -14, 10)},
 	]
-	for rk in rocks:
-		var rp: Vector3 = rk["p"]
-		var rr: float = float(rk["r"])
-		var rs: Vector3 = rk["s"]
-		_mi(root, _sph(rr, rr * 1.8, 12), stone, rp, Vector3.ZERO, rs)
-		_mi(root, _sph(rr * 0.82, rr * 0.9, 10), moss, rp + Vector3(0, rr * 0.55, 0), Vector3.ZERO, rs)
+	for cr in crags:
+		_mi(root, _box(cr["s"]), stone, cr["p"], cr["r"])
+		_mi(root, _box(cr["s"] * Vector3(0.88, 0.22, 0.88)), moss, cr["p"] + Vector3(0, cr["s"].y * 0.52, 0), cr["r"])
+	# Jagged stone roof cap & keystone arch
+	_mi(root, _box(Vector3(4.6, 0.65, 2.6)), stone_hi, Vector3(0, 2.75, -1.25), Vector3(8, 0, 0))
+	_mi(root, _box(Vector3(4.2, 0.22, 2.4)), moss, Vector3(0, 3.12, -1.25), Vector3(8, 0, 0))
 
-	# Arching gnarled forest roots curving over the hollow
+	# Intertwined gnarled ancient tree roots & crimson-thorn brambles curling over the grotto mouth
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(root, _cyl(0.14, 0.24, 2.6, 8), bark, Vector3(s * 1.65, 1.35, -0.45), Vector3(14, 0, -s * 28))
-		_mi(root, _cyl(0.10, 0.15, 1.8, 8), bark, Vector3(s * 0.65, 2.45, -0.75), Vector3(8, 0, -s * 72))
-		# Amber forest lantern-berries hanging from the root arch
-		_mi(root, _sph(0.10, 0.14, 8), berry_m, Vector3(s * 1.15, 2.10, -0.15))
+		_mi(root, _cyl(0.18, 0.34, 3.1, 10), bark, Vector3(s * 2.05, 1.45, 0.05), Vector3(12, 0, -s * 18))
+		_mi(root, _cyl(0.12, 0.20, 2.4, 10), bark, Vector3(s * 1.05, 2.85, -0.15), Vector3(6, 0, -s * 62))
+		_mi(root, _cyl(0.06, 0.09, 2.2, 8), thorn_m, Vector3(s * 1.45, 2.15, 0.38), Vector3(22, 0, -s * 44))
+		# Wrought-iron hunter's snare stakes & hanging amber woodland lanterns flanking the Lion!
+		_mi(root, _cyl(0.055, 0.07, 1.45, 8), iron, Vector3(s * 1.65, 0.72, 1.55), Vector3(0, 0, -s * 12))
+		_mi(root, _cyl(0.11, 0.14, 0.32, 6), lantern_m, Vector3(s * 1.52, 2.38, 0.52))
+		# Iron chain links tethering stake toward den threshold
+		for ci in range(4):
+			_mi(root, _torus(0.05, 0.09, 8), iron, Vector3(s * (1.55 - float(ci) * 0.24), 0.24 + float(ci) * 0.06, 1.45 - float(ci) * 0.25), Vector3(45 * ci, 20, 0))
 
-	# Swaying fern fronds ringing the entrance
+	# Warm amber sanctuary glow inside the grotto
+	var den_light := OmniLight3D.new()
+	den_light.light_color = Color(1.0, 0.72, 0.32)
+	den_light.light_energy = 2.2
+	den_light.omni_range = 9.0
+	den_light.position = Vector3(0, 2.0, 0.2)
+	root.add_child(den_light)
+
+	# Swaying fern fronds ringing the boulders
 	var frond := PrismMesh.new()
-	frond.size = Vector3(0.28, 0.95, 0.04)
-	for fi in range(12):
-		var a := -PI * 0.15 + float(fi) / 11.0 * (PI * 1.3)
-		_mi(root, frond, fern_m, Vector3(cos(a) * 2.35, 0.42, -sin(a) * 1.75 + 0.4), Vector3(38, rad_to_deg(a), 0))
+	frond.size = Vector3(0.32, 1.05, 0.04)
+	for fi in range(14):
+		var a := -PI * 0.18 + float(fi) / 13.0 * (PI * 1.36)
+		_mi(root, frond, fern_m, Vector3(cos(a) * 2.75, 0.46, -sin(a) * 2.15 + 0.45), Vector3(38, rad_to_deg(a), 0))
 
-	make_world_badge(root, Vector3(0, 2.95, 0.1), "✦  A Trembling Thicket", Color(1.0, 0.82, 0.48), 11.0)
+	make_world_badge(root, Vector3(0, 3.65, 0.25), "✦  The Snared Thicket  ·  Calm Lion (E)", Color(1.0, 0.84, 0.48), 13.0)
 	return root
+
+static func _torus(inner_r: float, outer_r: float, rings: int = 10) -> TorusMesh:
+	var t := TorusMesh.new()
+	t.inner_radius = inner_r
+	t.outer_radius = outer_r
+	t.rings = rings
+	t.ring_segments = 8
+	return t
 
 ## Pristine octagonal carved stone & copper courtyard Water Cistern for L4 Winkie Castle.
 static func build_water_cistern(parent: Node3D) -> void:
@@ -1140,8 +1268,7 @@ static func build_water_cistern(parent: Node3D) -> void:
 	var copper := _mat(Color(0.42, 0.62, 0.56), 0.36, 0.72)
 	var iron := _mat(Color(0.14, 0.14, 0.18), 0.44, 0.82)
 	var wood := _mat(Color(0.38, 0.24, 0.14), 0.85)
-	var water := _mat(Color(0.22, 0.68, 0.98, 0.92), 0.08, 0.15, Color(0.25, 0.72, 1.0), 1.35)
-	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var water := make_flowing_water_material(Color(0.20, 0.68, 0.98), Color(0.80, 0.96, 1.0), 1.35)
 
 	# Stepped octagonal stone well basin + copper coping rim
 	_mi(parent, _cyl(1.95, 2.15, 0.24, 8), stone, Vector3(0, 0.12, 0))
@@ -1786,8 +1913,7 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 	var marble := _mat(Color(0.96, 0.92, 0.94), 0.32, 0.06)
 	var rose_marble := _mat(Color(0.86, 0.44, 0.62), 0.36, 0.10)
 	var gold := _mat(Color(0.94, 0.78, 0.34), 0.24, 0.88, Color(0.90, 0.72, 0.24), 0.22)
-	var water := _mat(Color(0.42, 0.74, 0.96, 0.85), 0.08, 0.20, Color(0.45, 0.72, 0.98), 0.55)
-	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var water := make_flowing_water_material(Color(0.32, 0.70, 0.96), Color(0.88, 0.96, 1.0), 0.95)
 	var lotus := _mat(Color(1.0, 0.58, 0.78), 0.45, 0.0, Color(1.0, 0.55, 0.76), 0.55)
 	var star_glow := _mat(Color(1.0, 0.92, 0.72), 0.15, 0.0, Color(1.0, 0.88, 0.62), 2.2)
 

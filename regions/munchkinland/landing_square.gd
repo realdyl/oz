@@ -148,8 +148,8 @@ func _fix_world_text() -> void:
 func _expand_world() -> void:
 	# Single seamless collidable ground slab covering well past the 85x150 MapBorder (zero invisible ledges!)
 	_add_ground_pad(Vector3(0, -0.06, 20), Vector3(220, 0.14, 360), Color(0.40, 0.60, 0.32))
-	# Bound walls pushed far out so they don't seal the spine.
-	for wname in ["WallWest", "WallEast", "WallSouth", "ContentGate"]:
+	# Bound walls pushed far out so they don't seal the spine or trap enemies behind Dorothy.
+	for wname in ["WallNorth", "WallWest", "WallEast", "WallSouth", "ContentGate"]:
 		var w := get_node_or_null(wname) as Node3D
 		if w == null:
 			continue
@@ -185,6 +185,10 @@ func _expand_world() -> void:
 			mn.visible = false
 	# Soft story border — thicket + solid rails + distant skyline + walkable meadow hills + YBR street lanterns.
 	_add_map_border(85.0, 150.0)
+	# Apply animated flowing water shader to Munchkinland WellWater if present.
+	var well_w := get_node_or_null("WellWater") as MeshInstance3D
+	if well_w:
+		well_w.material_override = WorldKit.make_flowing_water_material(Color(0.20, 0.68, 0.94), Color(0.82, 0.96, 1.0), 1.2)
 	WorldKit.add_horizon_hills(self, 85.0, 150.0, Color(0.28, 0.48, 0.30))
 	# Emerald City skyline stands AHEAD down the Yellow Brick Road (+Z) so you walk TOWARD it!
 	WorldKit.add_emerald_skyline(self, Vector3(0.0, 0.0, 195.0))
@@ -1224,19 +1228,18 @@ func _nearest_enemy_pos(from: Node3D, wave: String = "") -> Vector3:
 
 func _tag_baked_landing_puppets() -> void:
 	# Scene-baked puppets had no wave meta → kills never advanced CLEAR_LANDING.
-	# Relocate them far off-camera and march them in so they never "pop" near the house.
+	# Place their march-in rally strictly AHEAD/BESIDE Dorothy inside walkable bounds (never behind WallNorth!).
 	var i := 0
-	var rally := Vector3(0.0, 0.08, 10.0)
-	if player:
-		rally = player.global_position
+	var rally := Vector3(0.0, 0.08, -32.0)
+	var safe_bearings := [0.45, 1.25, 2.05, 2.75, 0.85]
 	for n in get_children():
 		if n is CharacterBody3D and n.is_in_group("enemies") and not n.has_meta("wave"):
 			n.set_meta("wave", "landing")
 			if n.has_method("set_play_bounds"):
 				n.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
-			var bearing: float = float(i) * TAU / 5.0 + 0.4
+			var bearing: float = float(safe_bearings[i % safe_bearings.size()])
 			if n.has_method("march_from_afar"):
-				n.march_from_afar(rally, bearing, 22.0 + float(i) * 1.5, 8.0 + float(i) * 1.2, 1.75)
+				n.march_from_afar(rally, bearing, 18.0 + float(i) * 1.5, 8.0 + float(i) * 1.2, 1.75)
 			elif n.has_method("arm_delayed"):
 				n.arm_delayed(6.0 + float(i) * 1.2, 1.4)
 			i += 1
