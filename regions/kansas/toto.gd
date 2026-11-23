@@ -58,10 +58,21 @@ func _stick_to_basket(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player == null:
 		return
-	var target: Vector3 = player.global_position + Vector3(0.28, 0.55, 0.05)
-	global_position = global_position.lerp(target, 1.0 - exp(-hop_speed * delta))
-	_hop_t += delta
-	visual.position.y = absf(sin(_hop_t * 10.0)) * 0.06
-	# Face outward a bit
-	if player.has_node("Visual"):
-		visual.rotation.y = player.get_node("Visual").rotation.y
+	# Trot right on the prairie ground beside Dorothy (never floating mid-air!)
+	var target: Vector3 = player.global_position + Vector3(0.95, 0.0, 0.55)
+	target.y = 0.0
+	var to_t := target - global_position
+	to_t.y = 0.0
+	var dist := to_t.length()
+	if dist > 0.35:
+		global_position = global_position.lerp(target, 1.0 - exp(-hop_speed * delta))
+		global_position.y = 0.0
+		_hop_t += delta * 12.0
+		visual.position.y = absf(sin(_hop_t)) * 0.05
+		visual.rotation.y = atan2(to_t.x, to_t.z)
+	else:
+		global_position.y = 0.0
+		visual.position.y = 0.0
+	var tail := _parts.get("tail") as Node3D
+	if tail:
+		tail.rotation.z = sin(Time.get_ticks_msec() * 0.015) * 0.42

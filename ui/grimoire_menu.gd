@@ -27,6 +27,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif visible and event.keycode == KEY_ESCAPE:
 			close()
 			get_viewport().set_input_as_handled()
+		elif visible and event.keycode == KEY_LEFT:
+			_active_tab = (_active_tab - 1 + TABS.size()) % TABS.size()
+			_refresh_tab()
+			get_viewport().set_input_as_handled()
+		elif visible and event.keycode == KEY_RIGHT:
+			_active_tab = (_active_tab + 1) % TABS.size()
+			_refresh_tab()
+			get_viewport().set_input_as_handled()
+		elif visible and event.keycode in [KEY_1, KEY_2, KEY_3, KEY_4]:
+			_active_tab = event.keycode - KEY_1
+			_refresh_tab()
+			get_viewport().set_input_as_handled()
 
 func toggle() -> void:
 	if visible:
@@ -38,11 +50,17 @@ func open(tab_index: int = 0) -> void:
 	_active_tab = clampi(tab_index, 0, TABS.size() - 1)
 	visible = true
 	get_tree().paused = true
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_refresh_tab()
+	if _active_tab < _tab_buttons.size():
+		_tab_buttons[_active_tab].grab_focus()
 
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _build_ui() -> void:
 	_backdrop = ColorRect.new()

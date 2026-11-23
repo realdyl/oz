@@ -181,10 +181,10 @@ func _build_farm_layout() -> void:
 	_add_windmill_ghost(Vector3(-32.0, 0.0, -10.0))
 	_add_cyclone_funnel(Vector3(12.0, 0.0, -36.0))
 	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 4), 36.0, 120, 4.8)
-	# Enterable Kansas buildings (E door enter/exit with full Munchkinland-grade 4-wall interior + indoor camera!).
-	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 4.8), Vector3(5.5, 3.6, 4.2))
-	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 30.6), Vector3(5.5, 3.8, 4.5))
-	_make_enterable_simple(Vector3(24.0, 0.0, -20.0), "Chicken coop", Vector3(2.6, 1.4, 2.0), Color(0.4, 0.4, 0.42))
+	# Enterable Kansas buildings (clean invisible door triggers flush with each building's real architectural door!).
+	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 3.8), Vector3(5.5, 3.6, 4.2))
+	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 29.8), Vector3(5.5, 3.8, 4.5))
+	_build_chicken_coop_and_chickens(Vector3(24.0, 0.0, -20.0))
 	_add_map_border(56.0, 54.0)
 	WorldKit.add_horizon_hills(self, 56.0, 54.0, Color(0.32, 0.32, 0.35))
 	_add_kansas_whimsy()
@@ -438,7 +438,6 @@ func _add_house_shutter(at: Vector3) -> void:
 	panel.material_override = pm
 	panel.position = Vector3(-0.35, 1.1, 0.1)
 	shutter.add_child(panel)
-	WorldKit.make_world_badge(shutter, Vector3(0, 2.2, 0), "✦  Shutter (E)", Color(0.92, 0.92, 0.96), 10.0)
 	add_child(shutter)
 	shutter.global_position = at
 	shutter.body_entered.connect(func(b): if b.is_in_group("player"): _near_shutter = true)
@@ -853,7 +852,8 @@ func _on_basket_taken() -> void:
 	phase = Phase.NEED_TOTO
 	hud.set_objective("Toto is at the chicken run — east past the house (compass). Call him into the basket (E).")
 	_safe_pos = player.global_position
-	_retarget_marker(toto.global_position + Vector3(0, 1.2, 0))
+	# Offset lantern marker 2.0m beside Toto so it NEVER impales or overlaps Toto!
+	_retarget_marker(toto.global_position + Vector3(2.0, 0.0, 1.2))
 	_dlg("Dorothy", "There — Toto's basket. Now where's that dog?")
 
 func _on_toto_joined() -> void:
@@ -999,19 +999,7 @@ func _make_enterable_box(host: Node3D, title: String, interior: Vector3, exterio
 	sph.radius = 1.15
 	col.shape = sph
 	door.add_child(col)
-	# Visible door plate so enter is intentional, not porch-wide.
-	var plate := MeshInstance3D.new()
-	var pb := BoxMesh.new()
-	pb.size = Vector3(1.0, 2.0, 0.1)
-	plate.mesh = pb
-	var pm := _grey_mat(Color(0.28, 0.28, 0.3))
-	pm.emission_enabled = true
-	pm.emission = Color(0.55, 0.55, 0.6)
-	pm.emission_energy_multiplier = 0.35
-	plate.material_override = pm
-	plate.position = Vector3(0, 1.0, 0)
-	door.add_child(plate)
-	WorldKit.make_world_badge(door, Vector3(0, 2.35, 0), "✦  Enter %s (E)" % title, Color(0.92, 0.92, 0.96), 9.0)
+	# Invisible trigger seated cleanly in front of the building's built-in architectural door (NO detached box slab!)
 	add_child(door)
 	door.global_position = exterior
 	door.set_meta("title", title)
@@ -1032,6 +1020,21 @@ func _make_enterable_box(host: Node3D, title: String, interior: Vector3, exterio
 		if b.is_in_group("player") and _near_build_door == door and not _inside_building:
 			_near_build_door = null
 	)
+
+func _build_chicken_coop_and_chickens(at: Vector3) -> void:
+	## Distinct pitched-roof Kansas timber Chicken Coop + see-through wire fence + 5 sculpted 3D chickens!
+	var body := StaticBody3D.new()
+	body.name = "ChickenCoop"
+	add_child(body)
+	body.global_position = at
+	WorldKit.build_chicken_coop(body)
+	var c := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = Vector3(3.4, 2.2, 2.6)
+	c.shape = sh
+	c.position = Vector3(0, 1.1, 0)
+	body.add_child(c)
+	_make_enterable_box(body, "Chicken coop", at + Vector3(0, 0.12, 0), at + Vector3(0, 0.12, 2.1), Vector3(3.4, 2.2, 2.6))
 
 func _make_enterable_simple(at: Vector3, title: String, size: Vector3, col: Color) -> void:
 	var body := StaticBody3D.new()
@@ -1097,8 +1100,12 @@ func _add_kansas_interior(fit: Node3D, title: String) -> void:
 		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Barn & Hayloft", Color(0.96, 0.96, 1.0), 12.0)
 		WorldKit.add_interior_activities(fit, "kansas_barn", "kansas_barn_diary", Vector3(1.6, 0.06, -0.8), Vector3(-1.4, 0.06, -1.0), true)
 	else:
-		_ks_prop(fit, Vector3(-1.4, 0.28, -1.4), Vector3(1.2, 0.56, 1.0), Color(0.45, 0.45, 0.48))
-		WorldKit.make_world_badge(fit, Vector3(0, 2.35, -hd + 0.22), "✦  Chicken Coop", Color(0.96, 0.96, 1.0), 10.0)
+		_ks_prop(fit, Vector3(-1.8, 0.36, -1.6), Vector3(1.6, 0.72, 0.9), Color(0.38, 0.38, 0.41)) # straw nesting boxes
+		_ks_prop(fit, Vector3(1.7, 0.55, -1.6), Vector3(1.8, 0.12, 0.14), Color(0.28, 0.28, 0.31)) # roosting perch
+		WorldKit.build_chicken_visual(fit, Vector3(-1.6, 0.72, -1.5), 20.0)
+		WorldKit.build_chicken_visual(fit, Vector3(1.5, 0.62, -1.55), -35.0)
+		WorldKit.build_chicken_visual(fit, Vector3(-0.6, 0.06, 0.6), 110.0)
+		WorldKit.make_world_badge(fit, Vector3(0, 2.35, -hd + 0.22), "✦  Chicken Coop Interior", Color(0.96, 0.96, 1.0), 10.0)
 
 func _set_indoor_camera(inside: bool) -> void:
 	if player == null:

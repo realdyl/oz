@@ -822,7 +822,7 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 	var wood_c := Color(0.28, 0.28, 0.31) if monochrome else Color(0.32, 0.16, 0.14)
 	var rose_c := Color(0.92, 0.92, 0.96) if monochrome else Color(0.98, 0.32, 0.58)
 
-	# 1) Gilded Desire Chest
+	# 1) Curved-lid Ornate Gilded Desire Chest (vaulted barrel lid + brass bands + inner crimson velvet)
 	var chest := Area3D.new()
 	chest.set_script(pickup_script)
 	chest.name = "DesireChest"
@@ -833,21 +833,28 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 	fit.add_child(chest)
 	var ccol := CollisionShape3D.new()
 	var csh := SphereShape3D.new()
-	csh.radius = 1.25
+	csh.radius = 1.3
 	ccol.shape = csh
 	chest.add_child(ccol)
 	var cvis := Node3D.new()
 	cvis.name = "Visual"
 	chest.add_child(cvis)
-	_mi(cvis, _box(Vector3(0.78, 0.44, 0.52)), _mat(wood_c, 0.65), Vector3(0, 0.22, 0))
-	_mi(cvis, _box(Vector3(0.82, 0.08, 0.56)), _mat(gold_c, 0.24, 0.88, gold_c, 0.35), Vector3(0, 0.42, 0))
+	var brass_m := _mat(gold_c, 0.20, 0.92, gold_c, 0.40)
+	_mi(cvis, _box(Vector3(0.92, 0.46, 0.58)), _mat(wood_c, 0.62), Vector3(0, 0.23, 0))
+	for bx in [-0.42, 0.0, 0.42]:
+		_mi(cvis, _box(Vector3(0.08, 0.48, 0.62)), brass_m, Vector3(float(bx), 0.24, 0))
+	_mi(cvis, _box(Vector3(0.96, 0.07, 0.62)), brass_m, Vector3(0, 0.45, 0))
+	# Glowing jewels inside chest
+	_mi(cvis, _sph(0.18, 0.14, 10), _mat(rose_c, 0.12, 0.3, rose_c, 1.8), Vector3(0, 0.44, 0))
 	var lid := Node3D.new()
 	lid.name = "Lid"
-	lid.position = Vector3(0, 0.44, -0.26)
+	lid.position = Vector3(0, 0.46, -0.29)
 	cvis.add_child(lid)
-	_mi(lid, _box(Vector3(0.80, 0.18, 0.54)), _mat(wood_c.lightened(0.08), 0.60), Vector3(0, 0.09, 0.26))
-	_mi(lid, _box(Vector3(0.18, 0.14, 0.08)), _mat(gold_c, 0.22, 0.90, gold_c, 0.55), Vector3(0, 0.04, 0.54))
-	make_world_badge(chest, Vector3(0, 1.05, 0), "♦  Gilded Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
+	_mi(lid, _cyl(0.28, 0.28, 0.92, 12), _mat(wood_c.lightened(0.08), 0.58), Vector3(0, 0.02, 0.29), Vector3(0, 0, 90))
+	for bx in [-0.42, 0.0, 0.42]:
+		_mi(lid, _cyl(0.295, 0.295, 0.08, 12), brass_m, Vector3(float(bx), 0.02, 0.29), Vector3(0, 0, 90))
+	_mi(lid, _box(Vector3(0.16, 0.16, 0.08)), brass_m, Vector3(0, 0.0, 0.58))
+	make_world_badge(chest, Vector3(0, 1.15, 0), "♦  Gilded Treasure Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
 
 	# 2) Floating Shattered Memory Keepsake
 	if memory_id != "":
@@ -1187,71 +1194,133 @@ static func build_poppy_beds(parent: Node3D, z_start: float, z_end: float) -> No
 # LION SANCTUARY, PRISTINE WATER CISTERN & KANSAS 3D STORYBOOK PROPS
 # ============================================================================
 
-## Gothic dark-fairytale Bramble & Wrought-Iron Snare Grotto for the Cowardly Lion in Munchkinland.
+## Sculpted organic woodland Cave & Bramble Grotto for the Cowardly Lion (NO boxy bunker slabs!).
 static func build_lion_sanctuary(parent: Node3D, at: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.name = "LionDen"
 	root.position = at
 	parent.add_child(root)
 
-	var stone := _mat(Color(0.28, 0.27, 0.31), 0.94)
-	var stone_hi := _mat(Color(0.38, 0.37, 0.42), 0.88)
-	var moss := _mat(Color(0.18, 0.40, 0.19), 0.92)
-	var bark := _mat(Color(0.20, 0.13, 0.09), 0.92)
+	var rock_dark := _mat(Color(0.24, 0.23, 0.27), 0.96)
+	var rock_mid := _mat(Color(0.34, 0.33, 0.37), 0.92)
+	var moss := _mat(Color(0.18, 0.42, 0.20), 0.90)
+	var bark := _mat(Color(0.22, 0.14, 0.09), 0.94)
 	var iron := _mat(Color(0.16, 0.16, 0.20), 0.42, 0.85)
-	var thorn_m := _mat(Color(0.28, 0.10, 0.14), 0.78)
-	var fern_m := make_wind_grass_material(Color(0.18, 0.46, 0.20))
-	var lantern_m := _mat(Color(1.0, 0.74, 0.26), 0.2, 0.0, Color(1.0, 0.68, 0.20), 2.2)
+	var vine_m := make_wind_grass_material(Color(0.16, 0.44, 0.20))
+	var lantern_m := _mat(Color(1.0, 0.78, 0.30), 0.2, 0.0, Color(1.0, 0.72, 0.22), 2.0)
 
-	# Carved mossy stone dais floor (flush at y = 0.04m so feet never clip!)
-	_mi(root, _cyl(3.1, 3.4, 0.08, 20), stone, Vector3(0, 0.04, 0.15))
-	_mi(root, _cyl(2.6, 2.8, 0.04, 18), moss, Vector3(0, 0.08, 0.15))
+	# Flush mossy woodland cave floor
+	_mi(root, _cyl(3.2, 3.6, 0.06, 20), moss, Vector3(0, 0.03, 0.2))
 
-	# Tiered craggy limestone cliff alcove & overhanging keystone arch (open toward +Z south)
-	var crags := [
-		{"p": Vector3(0.0, 1.35, -2.15), "s": Vector3(3.4, 2.7, 1.4), "r": Vector3(6, 0, 0)},
-		{"p": Vector3(-2.15, 1.15, -1.25), "s": Vector3(1.5, 2.3, 1.8), "r": Vector3(0, 26, -8)},
-		{"p": Vector3(2.15, 1.15, -1.25), "s": Vector3(1.5, 2.3, 1.8), "r": Vector3(0, -26, 8)},
-		{"p": Vector3(-2.45, 0.78, 0.55), "s": Vector3(1.2, 1.55, 1.4), "r": Vector3(-6, 14, -10)},
-		{"p": Vector3(2.45, 0.78, 0.55), "s": Vector3(1.2, 1.55, 1.4), "r": Vector3(-6, -14, 10)},
-	]
-	for cr in crags:
-		_mi(root, _box(cr["s"]), stone, cr["p"], cr["r"])
-		_mi(root, _box(cr["s"] * Vector3(0.88, 0.22, 0.88)), moss, cr["p"] + Vector3(0, cr["s"].y * 0.52, 0), cr["r"])
-	# Jagged stone roof cap & keystone arch
-	_mi(root, _box(Vector3(4.6, 0.65, 2.6)), stone_hi, Vector3(0, 2.75, -1.25), Vector3(8, 0, 0))
-	_mi(root, _box(Vector3(4.2, 0.22, 2.4)), moss, Vector3(0, 3.12, -1.25), Vector3(8, 0, 0))
+	# Naturalistic overlapping low-poly stone cave vault (18 organic sculpted rock formations curving into a real grotto!)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 404
+	for i in range(13):
+		var a := PI * 0.12 + float(i) / 12.0 * (PI * 0.76) # horseshoe open to +Z
+		var rad := 2.65 + rng.randf_range(-0.25, 0.25)
+		var rx := cos(a) * rad
+		var rz := -sin(a) * rad + 0.35
+		var bh := rng.randf_range(1.6, 2.8)
+		var br := rng.randf_range(0.85, 1.35)
+		var rm: StandardMaterial3D = rock_dark if (i % 2 == 0) else rock_mid
+		_mi(root, _sph(br, bh, 7), rm, Vector3(rx, bh * 0.42, rz), Vector3(rng.randf_range(-12, 12), rad_to_deg(a), rng.randf_range(-12, 12)), Vector3(1.1, 1.0, 0.9))
+		_mi(root, _sph(br * 0.78, bh * 0.45, 7), moss, Vector3(rx, bh * 0.82, rz), Vector3(0, rad_to_deg(a), 0))
+	# Natural rocky cave-arch dome overhead
+	for vi in range(5):
+		var vx := -1.6 + float(vi) * 0.8
+		var vy := 2.65 + (1.0 - absf(vx) / 2.2) * 0.85
+		_mi(root, _sph(1.15, 1.45, 7), rock_mid, Vector3(vx, vy, -1.05), Vector3(14, float(vi) * 28.0, 0), Vector3(1.1, 0.72, 1.35))
+		_mi(root, _sph(0.95, 0.75, 7), moss, Vector3(vx, vy + 0.45, -1.05), Vector3(10, float(vi) * 28.0, 0))
 
-	# Intertwined gnarled ancient tree roots & crimson-thorn brambles curling over the grotto mouth
+	# Weeping gnarled roots & hanging moss vines framing the cave mouth
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(root, _cyl(0.18, 0.34, 3.1, 10), bark, Vector3(s * 2.05, 1.45, 0.05), Vector3(12, 0, -s * 18))
-		_mi(root, _cyl(0.12, 0.20, 2.4, 10), bark, Vector3(s * 1.05, 2.85, -0.15), Vector3(6, 0, -s * 62))
-		_mi(root, _cyl(0.06, 0.09, 2.2, 8), thorn_m, Vector3(s * 1.45, 2.15, 0.38), Vector3(22, 0, -s * 44))
-		# Wrought-iron hunter's snare stakes & hanging amber woodland lanterns flanking the Lion!
-		_mi(root, _cyl(0.055, 0.07, 1.45, 8), iron, Vector3(s * 1.65, 0.72, 1.55), Vector3(0, 0, -s * 12))
-		_mi(root, _cyl(0.11, 0.14, 0.32, 6), lantern_m, Vector3(s * 1.52, 2.38, 0.52))
-		# Iron chain links tethering stake toward den threshold
+		_mi(root, _cyl(0.14, 0.28, 3.2, 8), bark, Vector3(s * 2.2, 1.45, 0.35), Vector3(14, 0, -s * 18))
+		_mi(root, _cyl(0.08, 0.16, 2.2, 8), bark, Vector3(s * 1.1, 2.95, 0.15), Vector3(8, 0, -s * 58))
+		# Wrought-iron hunter's snare stake & floor chain links
+		_mi(root, _cyl(0.05, 0.065, 1.15, 8), iron, Vector3(s * 1.75, 0.56, 1.65), Vector3(0, 0, -s * 14))
 		for ci in range(4):
-			_mi(root, _torus(0.05, 0.09, 8), iron, Vector3(s * (1.55 - float(ci) * 0.24), 0.24 + float(ci) * 0.06, 1.45 - float(ci) * 0.25), Vector3(45 * ci, 20, 0))
+			_mi(root, _torus(0.045, 0.085, 8), iron, Vector3(s * (1.65 - float(ci) * 0.24), 0.18, 1.55 - float(ci) * 0.25), Vector3(45 * ci, 20, 0))
+		# Glowing woodland firefly-lantern hanging from vine
+		_mi(root, _sph(0.12, 0.18, 8), lantern_m, Vector3(s * 1.48, 2.25, 0.55))
 
-	# Warm amber sanctuary glow inside the grotto
+	# Draping cave-mouth ivy tendrils & ferns
+	var frond := PrismMesh.new()
+	frond.size = Vector3(0.26, 0.95, 0.04)
+	for fi in range(10):
+		var fx := -1.5 + float(fi) * 0.33
+		_mi(root, frond, vine_m, Vector3(fx, 2.55 - absf(fx) * 0.18, 0.38), Vector3(180, float(fi) * 18.0, 0))
+
 	var den_light := OmniLight3D.new()
 	den_light.light_color = Color(1.0, 0.72, 0.32)
-	den_light.light_energy = 2.2
-	den_light.omni_range = 9.0
-	den_light.position = Vector3(0, 2.0, 0.2)
+	den_light.light_energy = 2.4
+	den_light.omni_range = 10.0
+	den_light.position = Vector3(0, 1.9, 0.2)
 	root.add_child(den_light)
-
-	# Swaying fern fronds ringing the boulders
-	var frond := PrismMesh.new()
-	frond.size = Vector3(0.32, 1.05, 0.04)
-	for fi in range(14):
-		var a := -PI * 0.18 + float(fi) / 13.0 * (PI * 1.36)
-		_mi(root, frond, fern_m, Vector3(cos(a) * 2.75, 0.46, -sin(a) * 2.15 + 0.45), Vector3(38, rad_to_deg(a), 0))
-
-	make_world_badge(root, Vector3(0, 3.65, 0.25), "✦  The Snared Thicket  ·  Calm Lion (E)", Color(1.0, 0.84, 0.48), 13.0)
 	return root
+
+## Sculpted 3D Kansas Chicken (plump feathered body, tail fan, comb, beak, wings & legs — matches Toto's detail!).
+static func build_chicken_visual(parent: Node3D, pos: Vector3, yaw_deg: float = 0.0) -> Node3D:
+	var ch := Node3D.new()
+	ch.name = "Chicken"
+	ch.position = pos
+	ch.rotation_degrees.y = yaw_deg
+	parent.add_child(ch)
+	var feather := _mat(Color(0.86, 0.86, 0.88), 0.85)
+	var wing_m := _mat(Color(0.70, 0.70, 0.74), 0.88)
+	var comb_m := _mat(Color(0.45, 0.45, 0.48), 0.75)
+	var beak_m := _mat(Color(0.58, 0.58, 0.60), 0.70)
+	var eye_m := _mat(Color(0.08, 0.08, 0.10), 0.2)
+	# Legs
+	for sx in [-0.055, 0.055]:
+		_mi(ch, _cyl(0.012, 0.014, 0.18, 6), beak_m, Vector3(float(sx), 0.09, 0))
+	# Plump body + tucked wings + upturned tail feathers
+	_mi(ch, _sph(0.16, 0.26, 12), feather, Vector3(0, 0.24, 0), Vector3(0, 0, 0), Vector3(0.88, 0.85, 1.25))
+	for sx in [-1.0, 1.0]:
+		_mi(ch, _sph(0.11, 0.18, 10), wing_m, Vector3(float(sx) * 0.13, 0.24, 0.02), Vector3(0, 0, -float(sx) * 14), Vector3(0.45, 0.75, 1.1))
+	_mi(ch, _cyl(0.04, 0.12, 0.22, 8), wing_m, Vector3(0, 0.34, -0.18), Vector3(-42, 0, 0))
+	# Neck + Head + Comb + Beak + Eyes
+	_mi(ch, _cyl(0.055, 0.075, 0.15, 8), feather, Vector3(0, 0.36, 0.14), Vector3(18, 0, 0))
+	_mi(ch, _sph(0.075, 0.15, 10), feather, Vector3(0, 0.44, 0.18))
+	_mi(ch, _box(Vector3(0.025, 0.055, 0.09)), comb_m, Vector3(0, 0.52, 0.18))
+	_mi(ch, _cyl(0.005, 0.028, 0.08, 6), beak_m, Vector3(0, 0.43, 0.27), Vector3(90, 0, 0))
+	for sx in [-0.045, 0.045]:
+		_mi(ch, _sph(0.014, 0.028, 6), eye_m, Vector3(float(sx), 0.46, 0.23))
+	return ch
+
+## Distinct Kansas Timber-Slat Chicken Coop with sloped roof, ramp, nesting box, wire-mesh run & 5 sculpted 3D chickens!
+static func build_chicken_coop(parent: Node3D) -> void:
+	var timber := _mat(Color(0.38, 0.38, 0.41), 0.90)
+	var trim := _mat(Color(0.26, 0.26, 0.29), 0.88)
+	var roof_m := _mat(Color(0.22, 0.22, 0.25), 0.78, 0.25)
+	var wire_m := _mat(Color(0.55, 0.55, 0.58, 0.36), 0.45, 0.65)
+	wire_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	# Raised coop house on stilt legs + sloped shed roof + recessed coop door + chicken ramp
+	for lx in [-1.45, 1.45]:
+		for lz in [-1.05, 1.05]:
+			_mi(parent, _box(Vector3(0.16, 0.55, 0.16)), trim, Vector3(float(lx), 0.28, float(lz)))
+	_mi(parent, _box(Vector3(3.2, 1.55, 2.3)), timber, Vector3(0, 1.32, 0))
+	_mi(parent, _box(Vector3(3.6, 0.14, 2.75)), roof_m, Vector3(0, 2.22, 0), Vector3(11, 0, 0))
+	# Recessed built-in coop door + wooden chicken ramp
+	_mi(parent, _box(Vector3(0.95, 1.35, 0.10)), trim, Vector3(0, 1.15, 1.15))
+	_mi(parent, _box(Vector3(0.65, 0.08, 1.15)), timber, Vector3(0, 0.32, 1.55), Vector3(28, 0, 0))
+	# Side nesting box bay
+	_mi(parent, _box(Vector3(0.65, 0.62, 1.45)), trim, Vector3(1.85, 1.05, 0))
+	# See-through wooden-post & wire-mesh fenced chicken run extending east/south
+	for px in [-2.6, 0.0, 2.6, 5.2]:
+		_mi(parent, _cyl(0.055, 0.065, 1.25, 8), trim, Vector3(float(px), 0.62, 4.4))
+		_mi(parent, _cyl(0.055, 0.065, 1.25, 8), trim, Vector3(float(px), 0.62, -2.4))
+	_mi(parent, _box(Vector3(7.8, 1.1, 0.04)), wire_m, Vector3(1.3, 0.58, 4.4))
+	_mi(parent, _box(Vector3(7.8, 1.1, 0.04)), wire_m, Vector3(1.3, 0.58, -2.4))
+	_mi(parent, _box(Vector3(0.04, 1.1, 6.8)), wire_m, Vector3(5.2, 0.58, 1.0))
+	_mi(parent, _box(Vector3(0.04, 1.1, 6.8)), wire_m, Vector3(-2.6, 0.58, 1.0))
+	make_building_crest_sign(parent, Vector3(0, 2.55, 1.35), "CHICKEN COOP", Color(0.46, 0.46, 0.49), true)
+	# 5 Sculpted 3D prairie chickens scratching & roosting inside the fenced run!
+	build_chicken_visual(parent, Vector3(2.4, 0.0, 2.2), 35.0)
+	build_chicken_visual(parent, Vector3(3.6, 0.0, 0.4), -70.0)
+	build_chicken_visual(parent, Vector3(1.4, 0.0, 3.1), 140.0)
+	build_chicken_visual(parent, Vector3(-1.3, 0.0, 2.8), 60.0)
+	build_chicken_visual(parent, Vector3(3.2, 0.0, -1.2), -15.0)
 
 static func _torus(inner_r: float, outer_r: float, rings: int = 10) -> TorusMesh:
 	var t := TorusMesh.new()

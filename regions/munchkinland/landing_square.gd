@@ -201,10 +201,18 @@ func _expand_world() -> void:
 	_add_whimsy_activities()
 	_ensure_whimsy_hud()
 	call_deferred("_cull_world_labels")
-	# Dorothy starts far up the YBR so Locasta and the house are a real walk south.
+	# Dorothy starts far up the YBR facing +Z directly down the Yellow Brick Road toward Locasta & the Emerald spires!
 	if player:
 		player.global_position = YBR_SPAWN
 		player.velocity = Vector3.ZERO
+		var cam_p := player.get_node_or_null("CameraPivot") as Node3D
+		if cam_p:
+			cam_p.rotation.y = PI
+		var vis := player.get_node_or_null("Visual") as Node3D
+		if vis:
+			vis.rotation.y = PI
+		if "_yaw" in player:
+			player.set("_yaw", PI)
 
 func _cull_world_labels() -> void:
 	# Hide baked giant floating road signs like "The road goes on."
@@ -704,11 +712,12 @@ func _set_interior_view(building: Node, inside: bool) -> void:
 	var fit := building.get_node_or_null("InteriorFitout")
 	if fit:
 		fit.visible = inside
-	# Hide leftover solid shell pieces on baked cottages.
-	for mesh_name in ["Walls", "Roof", "Door"]:
-		var mi := building.get_node_or_null(mesh_name) as MeshInstance3D
-		if mi:
-			mi.visible = false if inside else mi.visible
+	# Hide leftover solid shell pieces & floating sign labels on baked cottages while inside.
+	for n in building.get_children():
+		if fit and (n == fit or fit.is_ancestor_of(n)):
+			continue
+		if n is MeshInstance3D or n is Label3D:
+			(n as Node3D).visible = not inside
 	_set_indoor_camera(inside)
 
 func _set_indoor_camera(inside: bool) -> void:
@@ -1703,15 +1712,8 @@ func _ensure_west_road_gate() -> void:
 	mat.emission_energy_multiplier = 0.85
 	pad.material_override = mat
 	_west_road_gate.add_child(pad)
-	var lab := Label3D.new()
-	lab.text = "YELLOW BRICK ROAD\n→ Deadly Poppy Field\n(then West) · FINAL STEP · E"
-	lab.font_size = 52
-	lab.pixel_size = 0.014
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(1.0, 0.88, 0.35)
-	lab.outline_size = 10
-	_west_road_gate.add_child(lab)
-	lab.position = Vector3(0, 3.6, 0)
+	# Ornate gilded Poppy-Road archway crest (NO giant floating sky Label3D!)
+	WorldKit.make_building_crest_sign(_west_road_gate, Vector3(0, 4.2, 0), "ROAD TO POPPY FIELD", Color(0.95, 0.78, 0.24), false)
 	# Tall emissive post so gate reads from far up the road
 	var post := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()

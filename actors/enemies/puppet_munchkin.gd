@@ -31,6 +31,10 @@ var gravity: float = 24.0
 var body_mat: StandardMaterial3D
 var confuse_t: float = 0.0
 var fear_t: float = 0.0
+var bind_t: float = 0.0
+var enamored_t: float = 0.0
+var _chain_partner: Node3D = null
+var _chain_t: float = 0.0
 var fear_from: Vector3 = Vector3.ZERO
 var combat_ready: bool = true
 var _activate_t: float = 0.0
@@ -126,6 +130,12 @@ func _physics_process(delta: float) -> void:
 		return
 	confuse_t = maxf(confuse_t - delta, 0.0)
 	fear_t = maxf(fear_t - delta, 0.0)
+	bind_t = maxf(bind_t - delta, 0.0)
+	enamored_t = maxf(enamored_t - delta, 0.0)
+	if _chain_t > 0.0:
+		_chain_t = maxf(_chain_t - delta, 0.0)
+		if _chain_t <= 0.0:
+			_chain_partner = null
 	_resolve_target()
 
 	if not is_on_floor():
@@ -147,7 +157,14 @@ func _physics_process(delta: float) -> void:
 		_clamp_in_bounds()
 		return
 
-	if confuse_t > 0.0 and state != State.DEAD and state != State.STAGGER:
+	if bind_t > 0.0 and state != State.DEAD:
+		velocity.x = move_toward(velocity.x, 0.0, 18.0 * delta)
+		velocity.z = move_toward(velocity.z, 0.0, 18.0 * delta)
+	elif enamored_t > 0.0 and state != State.DEAD and state != State.STAGGER:
+		velocity.x = move_toward(velocity.x, 0.0, 12.0 * delta)
+		velocity.z = move_toward(velocity.z, 0.0, 12.0 * delta)
+		visual.rotation.y += delta * 1.4
+	elif confuse_t > 0.0 and state != State.DEAD and state != State.STAGGER:
 		_run_confused(delta)
 	elif fear_t > 0.0 and state != State.DEAD and state != State.STAGGER:
 		_run_feared(delta)
@@ -255,6 +272,8 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 	if state == State.DEAD:
 		return
 	var dmg := amount
+	if bind_t > 0.0 or enamored_t > 0.0:
+		dmg = int(ceilf(float(dmg) * 1.5))
 	if armored and not bool(tags.get("armor_break", false)):
 		dmg = maxi(1, int(amount * 0.35))
 		CombatFx.label(self, global_position, "CLINK", Color(0.8, 0.85, 0.95))
@@ -276,8 +295,33 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 	velocity.y = 1.6
 	_set_state(State.STAGGER)
 	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.7, 0), Color(1.0, 0.5, 0.55), 0.35, 0.12)
+	# Gilded Chain tether mirrors 75% of damage onto bound partner!
+	if not bool(tags.get("chain_echo", false)) and _chain_partner and is_instance_valid(_chain_partner) and _chain_partner.has_method("take_damage"):
+		var echo_dmg := maxi(1, int(float(dmg) * 0.75))
+		CombatFx.gilded_chain(self, global_position, _chain_partner.global_position)
+		_chain_partner.take_damage(echo_dmg, global_position, {"chain_echo": true, "knockback": 2.0})
 	if health <= 0:
 		_die()
+
+func apply_bind(duration: float = 3.5) -> void:
+	if state == State.DEAD:
+		return
+	bind_t = maxf(bind_t, duration)
+	CombatFx.silk_cocoon(self, global_position)
+	CombatFx.label(self, global_position, "BOUND", Color(0.98, 0.36, 0.82))
+
+func apply_enamored(duration: float = 5.0) -> void:
+	if state == State.DEAD:
+		return
+	enamored_t = maxf(enamored_t, duration)
+	CombatFx.label(self, global_position, "♥ ENAMORED", Color(1.0, 0.34, 0.66))
+
+func set_chain_partner(other: Node3D, duration: float = 8.0) -> void:
+	if state == State.DEAD or other == null or other == self:
+		return
+	_chain_partner = other
+	_chain_t = duration
+	CombatFx.label(self, global_position, "⛓ TETHERED", Color(1.0, 0.84, 0.30))
 
 func apply_confuse(duration: float = 2.4) -> void:
 	if state == State.DEAD:
@@ -319,6 +363,10 @@ func _die() -> void:
 	collision_mask = 0
 	set_physics_process(false)
 	add_to_group("enemies_dead")
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and sm.has_method("add_desire"):
+		var bonus := 8 if (bind_t > 0.0 or enamored_t > 0.0) else 3
+		sm.add_desire(bonus, "Allure Execution" if bonus > 3 else "")
 	var tween := create_tween()
 	tween.tween_property(visual, "rotation:x", deg_to_rad(78), 0.35)
 	tween.parallel().tween_property(visual, "position:y", 0.15, 0.35)

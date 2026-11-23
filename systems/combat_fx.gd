@@ -524,3 +524,122 @@ func label(host: Node3D, pos: Vector3, text: String, color: Color = Color.WHITE)
 	tw.tween_property(holder, "global_position:y", holder.global_position.y + 0.9, 0.55)
 	tw.parallel().tween_property(lab, "modulate:a", 0.0, 0.55)
 	tw.tween_callback(holder.queue_free)
+
+# ============================================================================
+# PHASE P7: RATED-M "KINKY ARMAMENTS" & RAPTURE / HYSTERIA VFX
+# ============================================================================
+
+func whip_lash(host: Node3D, from: Vector3, to: Vector3) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var diff := to - from
+	var dist := maxf(diff.length(), 0.4)
+	var beam := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.045
+	cyl.bottom_radius = 0.065
+	cyl.height = dist
+	beam.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.95, 0.14, 0.36, 0.92)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.18, 0.46)
+	mat.emission_energy_multiplier = 2.8
+	beam.material_override = mat
+	root.add_child(beam)
+	var mid := (from + to) * 0.5 + Vector3(0, 0.85, 0)
+	beam.global_position = mid
+	if diff.length() > 0.05:
+		beam.look_at(to + Vector3(0, 0.85, 0), Vector3.UP)
+		beam.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	var tw := host.get_tree().create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.28)
+	tw.tween_callback(beam.queue_free)
+	flash_sphere(host, to + Vector3(0, 0.85, 0), Color(1.0, 0.22, 0.52), 0.55, 0.22)
+
+func silk_cocoon(host: Node3D, target_pos: Vector3) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	for i in range(3):
+		var ring := MeshInstance3D.new()
+		var t := TorusMesh.new()
+		t.inner_radius = 0.36
+		t.outer_radius = 0.44
+		ring.mesh = t
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.96, 0.32, 0.78, 0.88)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.42, 0.86)
+		mat.emission_energy_multiplier = 2.0
+		ring.material_override = mat
+		root.add_child(ring)
+		ring.global_position = target_pos + Vector3(0, 0.35 + float(i) * 0.35, 0)
+		ring.rotation_degrees = Vector3(float(i) * 18.0, float(i) * 45.0, float(i) * -15.0)
+		var tw := host.get_tree().create_tween()
+		tw.tween_property(ring, "rotation:y", ring.rotation.y + TAU, 1.4)
+		tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 1.4)
+		tw.tween_callback(ring.queue_free)
+
+func perfume_cloud(host: Node3D, center: Vector3, radius: float = 6.0) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var cloud := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 0.8
+	sph.height = 1.6
+	cloud.mesh = sph
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.95, 0.36, 0.72, 0.42)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = Color(0.98, 0.32, 0.74)
+	mat.emission_energy_multiplier = 1.6
+	cloud.material_override = mat
+	root.add_child(cloud)
+	cloud.global_position = center + Vector3(0, 0.8, 0)
+	var tw := host.get_tree().create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(cloud, "scale", Vector3.ONE * (radius * 1.1), 0.55).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.65)
+	tw.chain().tween_callback(cloud.queue_free)
+
+func gilded_chain(host: Node3D, pos_a: Vector3, pos_b: Vector3) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var diff := pos_b - pos_a
+	var dist := maxf(diff.length(), 0.4)
+	var beam := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.055
+	cyl.bottom_radius = 0.055
+	cyl.height = dist
+	beam.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.98, 0.82, 0.28, 0.92)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.84, 0.32)
+	mat.emission_energy_multiplier = 2.6
+	beam.material_override = mat
+	root.add_child(beam)
+	beam.global_position = (pos_a + pos_b) * 0.5 + Vector3(0, 0.85, 0)
+	if diff.length() > 0.05:
+		beam.look_at(pos_b + Vector3(0, 0.85, 0), Vector3.UP)
+		beam.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	var tw := host.get_tree().create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, 1.2)
+	tw.tween_callback(beam.queue_free)
+
+func rapture_burst(host: Node3D, pos: Vector3) -> void:
+	flash_sphere(host, pos + Vector3(0, 1.0, 0), Color(0.98, 0.10, 0.34), 2.8, 0.45)
+	label(host, pos + Vector3(0, 0.6, 0), "✦ RAPTURE MODE ✦", Color(1.0, 0.22, 0.48))

@@ -39,6 +39,14 @@ var follow_target: Node3D = null
 var parked: bool = false
 var park_pos: Vector3 = Vector3.ZERO
 
+# Phase P7: 3-Hit Combo, Rated-M Kinky Armaments (C cast · Z/X swap) & Rapture/Hysteria Mode (H)
+const ARMAMENT_NAMES := ["Lace Whip", "Silk Bindings", "Hypnotic Perfume", "Gilded Chain"]
+var _armament_idx: int = 0
+var _armament_cd: float = 0.0
+var _combo_step: int = 0
+var _combo_reset_t: float = 0.0
+var _rapture_t: float = 0.0
+
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
@@ -98,6 +106,18 @@ func _physics_process(delta: float) -> void:
 	kick_active = maxf(kick_active - delta, 0.0)
 	iframe_timer = maxf(iframe_timer - delta, 0.0)
 	stun_timer = maxf(stun_timer - delta, 0.0)
+	_armament_cd = maxf(_armament_cd - delta, 0.0)
+	if _combo_reset_t > 0.0:
+		_combo_reset_t = maxf(_combo_reset_t - delta, 0.0)
+		if _combo_reset_t <= 0.0:
+			_combo_step = 0
+	if _rapture_t > 0.0:
+		_rapture_t = maxf(_rapture_t - delta, 0.0)
+		iframe_timer = maxf(iframe_timer, 0.2)
+		if _rapture_t <= 0.0:
+			var hud := get_tree().get_first_node_in_group("hud")
+			if hud and hud.has_method("set_rapture_visual"):
+				hud.call("set_rapture_visual", false)
 
 	# Anti-oblivion safety net
 	if global_position.y < -3.5:
@@ -311,6 +331,12 @@ func _blink_destination(dir: Vector3) -> Vector3:
 func _kick() -> void:
 	kick_timer = kick_cooldown
 	kick_active = 0.22
+	# 3-Hit Melee Combo: Hit 1 = 10 (keeps sim contract green!), Hit 2 = 14, Hit 3 Finisher = 22!
+	_combo_step = (_combo_step % 3) + 1
+	_combo_reset_t = 1.35
+	var step_dmg := kick_damage if _combo_step == 1 else (14 if _combo_step == 2 else 22)
+	if _rapture_t > 0.0:
+		step_dmg = int(float(step_dmg) * 2.5)
 	var forward := -visual.global_transform.basis.z
 	forward.y = 0.0
 	if forward.length() < 0.01:
@@ -323,11 +349,12 @@ func _kick() -> void:
 		CombatFx.kick_arc(self, global_position, forward)
 	else:
 		CombatFx.slash_box(self, global_position, forward, Color(0.85, 0.9, 1.0), Vector3(0.95, 0.22, 1.2), 0.16)
-	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.7, 0) + forward * 0.95, Color(0.92, 0.96, 1.0), 0.38, 0.14)
-	CombatFx.label(self, global_position, "KICK", Color(0.95, 0.95, 1.0))
+	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.7, 0) + forward * 0.95, Color(0.98, 0.35, 0.58) if _rapture_t > 0.0 else Color(0.92, 0.96, 1.0), 0.38 + float(_combo_step) * 0.08, 0.14)
+	var lbl_txt := "KICK" if _combo_step == 1 else ("HEEL SWEEP ×2" if _combo_step == 2 else "✦ FINISHER ×3")
+	CombatFx.label(self, global_position, lbl_txt, Color(1.0, 0.38, 0.62) if _combo_step == 3 else Color(0.95, 0.95, 1.0))
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
-	shape.radius = 0.55
+	shape.radius = 0.55 + (0.25 if _combo_step == 3 else 0.0)
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = shape
 	params.collision_mask = 4
@@ -338,12 +365,116 @@ func _kick() -> void:
 	for hit in hits:
 		var collider: Object = hit.collider
 		if collider and collider.has_method("take_damage"):
-			collider.take_damage(kick_damage, global_position, {"knockback": 8.5, "launch": true})
+			collider.take_damage(step_dmg, global_position, {"knockback": 8.5 + float(_combo_step) * 1.5, "launch": true})
 			connected = true
 	if connected:
 		_hitstop()
-		# Small lunge into the kick
 		velocity += forward * 3.2
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm and sm.has_method("add_desire") and (_combo_step == 3 or _rapture_t > 0.0):
+			sm.add_desire(5 if _combo_step == 3 else 3, "")
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not leading or parked or not shoes_claimed:
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_Z:
+			_cycle_armament(-1)
+		elif event.keycode == KEY_X:
+			_cycle_armament(1)
+		elif event.keycode == KEY_C:
+			_use_armament()
+		elif event.keycode == KEY_H:
+			_try_rapture_mode()
+
+func _cycle_armament(dir: int) -> void:
+	_armament_idx = (_armament_idx + dir + ARMAMENT_NAMES.size()) % ARMAMENT_NAMES.size()
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("set_active_armament"):
+		hud.call("set_active_armament", ARMAMENT_NAMES[_armament_idx])
+
+func _use_armament() -> void:
+	if _armament_cd > 0.0:
+		return
+	_armament_cd = 0.85
+	var enemies := _find_live_enemies(11.0)
+	var sm := get_node_or_null("/root/SaveManager")
+	match _armament_idx:
+		0: # The Lace Whip — bind & pull target straight into Kick range!
+			if enemies.is_empty():
+				CombatFx.label(self, global_position, "LACE WHIP", Color(1.0, 0.25, 0.52))
+				return
+			var foe: Node3D = enemies[0]
+			CombatFx.whip_lash(self, global_position, foe.global_position)
+			var pull_pos := global_position + (foe.global_position - global_position).normalized() * 1.65
+			pull_pos.y = foe.global_position.y
+			var tw := create_tween()
+			tw.tween_property(foe, "global_position", pull_pos, 0.22).set_ease(Tween.EASE_OUT)
+			if foe.has_method("apply_bind"):
+				foe.call("apply_bind", 2.2)
+			if foe.has_method("take_damage"):
+				foe.take_damage(12 if _rapture_t <= 0.0 else 28, global_position, {"knockback": 0.5})
+			if sm and sm.has_method("add_desire"):
+				sm.add_desire(5, "Lace Whip Bind")
+		1: # Silk Bindings — cocoon up to 3 nearby enemies!
+			var hit_any := false
+			for i in range(mini(3, enemies.size())):
+				var foe: Node3D = enemies[i]
+				if foe.global_position.distance_to(global_position) <= 8.5 and foe.has_method("apply_bind"):
+					foe.call("apply_bind", 3.5)
+					hit_any = true
+			if hit_any and sm and sm.has_method("add_desire"):
+				sm.add_desire(5, "Silk Bindings")
+			else:
+				CombatFx.silk_cocoon(self, global_position - visual.global_transform.basis.z * 2.5)
+		2: # Hypnotic Perfume — rose-violet pheromone aura enamors all foes within 7m!
+			CombatFx.perfume_cloud(self, global_position, 6.8)
+			var charmed := 0
+			for foe in enemies:
+				if foe.global_position.distance_to(global_position) <= 7.0 and foe.has_method("apply_enamored"):
+					foe.call("apply_enamored", 5.0)
+					charmed += 1
+			if charmed > 0 and sm and sm.has_method("add_desire"):
+				sm.add_desire(5 * charmed, "Hypnotic Perfume")
+		3: # The Gilded Chain — tether 2 nearest foes so damage mirrors 75%!
+			if enemies.size() >= 2:
+				var a: Node3D = enemies[0]
+				var b: Node3D = enemies[1]
+				CombatFx.gilded_chain(self, a.global_position, b.global_position)
+				if a.has_method("set_chain_partner"):
+					a.call("set_chain_partner", b, 8.0)
+				if b.has_method("set_chain_partner"):
+					b.call("set_chain_partner", a, 8.0)
+				if sm and sm.has_method("add_desire"):
+					sm.add_desire(6, "Gilded Chain Tether")
+			else:
+				CombatFx.label(self, global_position, "Need 2 Foes to Chain", Color(1.0, 0.85, 0.35))
+
+func _try_rapture_mode() -> void:
+	if _rapture_t > 0.0:
+		return
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and float(sm.allure) < 35.0 and int(sm.hp) > 2:
+		CombatFx.label(self, global_position, "Build Allure to Enter Rapture", Color(0.95, 0.45, 0.65))
+		return
+	_rapture_t = 10.0
+	if sm:
+		sm.allure = maxf(0.0, float(sm.allure) - 35.0)
+		sm.state_changed.emit()
+	CombatFx.rapture_burst(self, global_position)
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("set_rapture_visual"):
+		hud.call("set_rapture_visual", true)
+
+func _find_live_enemies(max_dist: float) -> Array:
+	var out: Array = []
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e == null or not is_instance_valid(e) or e.is_in_group("enemies_dead"):
+			continue
+		if e is Node3D and (e as Node3D).global_position.distance_to(global_position) <= max_dist:
+			out.append(e)
+	out.sort_custom(func(a, b): return (a as Node3D).global_position.distance_to(global_position) < (b as Node3D).global_position.distance_to(global_position))
+	return out
 
 func _hitstop() -> void:
 	Engine.time_scale = 0.08
