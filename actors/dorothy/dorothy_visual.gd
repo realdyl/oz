@@ -113,10 +113,25 @@ func _build() -> void:
 
 	var hip_w := 0.21 if mature_silhouette else 0.16
 	var waist := 0.125 if mature_silhouette else 0.14
+	var ribbon_mat := _mat(Color(0.22, 0.34, 0.62), 0.52)
+	var trim_mat := _mat(Color(0.18, 0.28, 0.54), 0.65)
 	_mi(_hip, _cyl(hip_w, hip_w * 0.92, 0.17), dress, Vector3(0, -0.04, 0))
-	# Shorter flared skirt (adult farm hem)
-	_mi(_hip, _cyl(0.26, 0.38, 0.36), dress, Vector3(0, -0.28, 0))
-	_mi(_hip, _box(Vector3(0.3, 0.32, 0.05)), apron, Vector3(0, -0.2, -0.18))
+	# Layered flared gingham skirt + darker trim band + white lace petticoat hem
+	_mi(_hip, _cyl(0.24, 0.39, 0.36), dress, Vector3(0, -0.27, 0))
+	_mi(_hip, _cyl(0.38, 0.40, 0.045), trim_mat, Vector3(0, -0.43, 0))
+	_mi(_hip, _cyl(0.36, 0.42, 0.06), apron, Vector3(0, -0.47, 0))
+	# Front apron panel + wrap-around waist sash + sculpted storybook back bow & tails (hero third-person read!)
+	_mi(_hip, _box(Vector3(0.28, 0.30, 0.05)), apron, Vector3(0, -0.20, -0.21))
+	_mi(_hip, _cyl(0.16, 0.17, 0.065), apron, Vector3(0, 0.06, 0))
+	_mi(_hip, _sphere(0.055), apron, Vector3(0, 0.06, 0.18)) # bow knot
+	var bow_l := _mi(_hip, _sphere(0.08), apron, Vector3(-0.085, 0.07, 0.21), Vector3(1.15, 0.65, 0.45))
+	bow_l.rotation_degrees = Vector3(0, 18, 16)
+	var bow_r := _mi(_hip, _sphere(0.08), apron, Vector3(0.085, 0.07, 0.21), Vector3(1.15, 0.65, 0.45))
+	bow_r.rotation_degrees = Vector3(0, -18, -16)
+	var tail_l := _mi(_hip, _box(Vector3(0.065, 0.26, 0.025)), apron, Vector3(-0.06, -0.08, 0.23))
+	tail_l.rotation_degrees = Vector3(14, 0, -12)
+	var tail_r := _mi(_hip, _box(Vector3(0.065, 0.26, 0.025)), apron, Vector3(0.06, -0.08, 0.23))
+	tail_r.rotation_degrees = Vector3(14, 0, 12)
 
 	_torso = Node3D.new()
 	_torso.name = "Torso"
@@ -126,13 +141,18 @@ func _build() -> void:
 	if mature_silhouette:
 		_mi(_torso, _sphere(0.105), dress, Vector3(-0.095, 0.26, -0.05), Vector3(1.2, 0.88, 1.05))
 		_mi(_torso, _sphere(0.105), dress, Vector3(0.095, 0.26, -0.05), Vector3(1.2, 0.88, 1.05))
-		_mi(_torso, _cyl(0.155, 0.14, 0.12), dress, Vector3(0, 0.28, 0))
+		_mi(_torso, _cyl(0.155, 0.14, 0.12), apron, Vector3(0, 0.28, 0))
 	else:
-		_mi(_torso, _cyl(0.15, 0.16, 0.3), dress, Vector3(0, 0.18, 0))
-	_mi(_torso, _sphere(0.115), dress, Vector3(-0.17, 0.34, 0), Vector3(1.25, 0.62, 0.85))
-	_mi(_torso, _sphere(0.115), dress, Vector3(0.17, 0.34, 0), Vector3(1.25, 0.62, 0.85))
+		_mi(_torso, _cyl(0.15, 0.16, 0.3), apron, Vector3(0, 0.18, 0))
+	# White puffed blouse sleeves + pinafore crossed back straps + collar trim
+	_mi(_torso, _sphere(0.12), apron, Vector3(-0.18, 0.33, 0), Vector3(1.15, 0.82, 0.95))
+	_mi(_torso, _sphere(0.12), apron, Vector3(0.18, 0.33, 0), Vector3(1.15, 0.82, 0.95))
+	var strap_l := _mi(_torso, _box(Vector3(0.055, 0.34, 0.03)), dress, Vector3(-0.06, 0.20, 0.13))
+	strap_l.rotation_degrees = Vector3(0, 0, 22)
+	var strap_r := _mi(_torso, _box(Vector3(0.055, 0.34, 0.03)), dress, Vector3(0.06, 0.20, 0.13))
+	strap_r.rotation_degrees = Vector3(0, 0, -22)
 	_mi(_torso, _box(Vector3(0.2, 0.07, 0.15)), gingham, Vector3(0, 0.18, -0.03))
-	_mi(_torso, _box(Vector3(0.14, 0.04, 0.08)), apron, Vector3(0, 0.34, -0.09))
+	_mi(_torso, _cyl(0.095, 0.125, 0.045), apron, Vector3(0, 0.36, 0))
 
 	var head := Node3D.new()
 	head.name = "Head"
@@ -140,11 +160,15 @@ func _build() -> void:
 	_torso.add_child(head)
 	_mi(head, _cyl(0.045, 0.055, 0.09), skin, Vector3(0, 0.02, 0))
 	_mi(head, _sphere(0.128), skin, Vector3(0, 0.15, 0), Vector3(1.0, 1.14, 0.95))
-	_mi(head, _sphere(0.135), hair, Vector3(0, 0.2, -0.01), Vector3(1.14, 0.9, 1.12))
-	_mi(head, _sphere(0.085), hair, Vector3(-0.14, 0.05, 0.02), Vector3(0.85, 1.85, 0.85))
-	_mi(head, _sphere(0.085), hair, Vector3(0.14, 0.05, 0.02), Vector3(0.85, 1.85, 0.85))
-	_mi(head, _sphere(0.065), hair, Vector3(-0.15, -0.1, 0.0), Vector3(0.7, 1.4, 0.7))
-	_mi(head, _sphere(0.065), hair, Vector3(0.15, -0.1, 0.0), Vector3(0.7, 1.4, 0.7))
+	_mi(head, _sphere(0.138), hair, Vector3(0, 0.2, 0.01), Vector3(1.14, 0.94, 1.12))
+	# Braided pigtails + hair ribbons
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(head, _sphere(0.078), hair, Vector3(s * 0.145, 0.07, 0.04), Vector3(0.85, 1.55, 0.85))
+		_mi(head, _sphere(0.062), hair, Vector3(s * 0.155, -0.06, 0.05), Vector3(0.75, 1.35, 0.75))
+		_mi(head, _sphere(0.045), hair, Vector3(s * 0.155, -0.17, 0.05), Vector3(0.65, 1.15, 0.65))
+		_mi(head, _box(Vector3(0.09, 0.045, 0.04)), ribbon_mat, Vector3(s * 0.15, 0.12, 0.08))
+		_mi(head, _box(Vector3(0.065, 0.035, 0.035)), ribbon_mat, Vector3(s * 0.155, -0.14, 0.07))
 	_mi(head, _sphere(0.03), white, Vector3(-0.042, 0.16, -0.108))
 	_mi(head, _sphere(0.03), white, Vector3(0.042, 0.16, -0.108))
 	_mi(head, _sphere(0.017), eye, Vector3(-0.042, 0.16, -0.122))

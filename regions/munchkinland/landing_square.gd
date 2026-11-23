@@ -9,6 +9,7 @@ const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const PUPPET_SCENE := preload("res://actors/enemies/puppet_munchkin.tscn")
 const TREE_SCRIPT := preload("res://actors/enemies/living_tree.gd")
+const WorldKit := preload("res://systems/world_kit.gd")
 const WEST_SCENE := "res://regions/winkie/west_castle.tscn"
 const POPPY_SCENE := "res://regions/poppy/poppy_road.tscn"
 const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
@@ -182,14 +183,20 @@ func _expand_world() -> void:
 	_scatter_grass(Vector3(0, 0, 0), 50.0, 120)
 	_scatter_grass(Vector3(0, 0, 60), 40.0, 100)
 	_scatter_grass(Vector3(0, 0, -40), 30.0, 80)
-	# Soft story border — thicket + solid rails.
+	# Soft story border — thicket + solid rails + rolling horizon hills + YBR street lanterns.
 	_add_map_border(85.0, 150.0)
+	WorldKit.add_horizon_hills(self, 85.0, 150.0, Color(0.28, 0.48, 0.30))
+	WorldKit.dress_ybr_spine(self, -54.0, 126.0, 2.75)
 	_add_whimsy_activities()
 	_ensure_whimsy_hud()
+	call_deferred("_cull_world_labels")
 	# Dorothy starts far up the YBR so Locasta and the house are a real walk south.
 	if player:
 		player.global_position = YBR_SPAWN
 		player.velocity = Vector3.ZERO
+
+func _cull_world_labels() -> void:
+	WorldKit.apply_label3d_culling(self, 15.0, 4.0)
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	# Continuous solid rails + shrub/tree dressing. Corners closed so pads can't leak.
@@ -233,33 +240,8 @@ func _add_map_border(half_x: float, half_z: float) -> void:
 		_add_border_tree(p, rng)
 
 func _add_border_tree(at: Vector3, rng: RandomNumberGenerator) -> void:
-	var root := Node3D.new()
+	var root := WorldKit.make_gnarled_tree(at, rng, rng.randf_range(0.85, 1.35))
 	add_child(root)
-	root.global_position = at
-	var trunk := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	var th := rng.randf_range(1.6, 2.8)
-	cyl.top_radius = 0.12
-	cyl.bottom_radius = 0.18
-	cyl.height = th
-	trunk.mesh = cyl
-	var tm := StandardMaterial3D.new()
-	tm.albedo_color = Color(0.28, 0.18, 0.1)
-	trunk.material_override = tm
-	root.add_child(trunk)
-	trunk.position = Vector3(0, th * 0.5, 0)
-	var canopy := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	var cr := rng.randf_range(0.9, 1.6)
-	sph.radius = cr
-	sph.height = cr * 1.6
-	canopy.mesh = sph
-	var cm := StandardMaterial3D.new()
-	cm.albedo_color = Color(0.22, 0.48, 0.26).lerp(Color(0.35, 0.55, 0.2), rng.randf())
-	cm.roughness = 0.9
-	canopy.material_override = cm
-	root.add_child(canopy)
-	canopy.position = Vector3(0, th + cr * 0.35, 0)
 	# Low shrub collision bump so bodies don't clip the trunk line.
 	var bump := StaticBody3D.new()
 	root.add_child(bump)
@@ -428,6 +410,7 @@ func _add_enterable_cottage(at: Vector3, wall_col: Color, title: String) -> void
 	roof.material_override = rm
 	exterior.add_child(roof)
 	roof.position = Vector3(0, wall_h + 0.1, 0)
+	WorldKit.dress_cottage_exterior(exterior, half_w, half_d, wall_h, wall_col, Color(0.46, 0.16, 0.26), false)
 	# Closed door visual (not ajar gap you can stroll through)
 	var door_vis := MeshInstance3D.new()
 	door_vis.name = "DoorVis"
@@ -713,6 +696,7 @@ func _open_baked_cottages() -> void:
 		roof.material_override = rm
 		exterior.add_child(roof)
 		roof.position = Vector3(0, wall_h + 0.1, 0)
+		WorldKit.dress_cottage_exterior(exterior, half_w, half_d, wall_h, wall_col, Color(0.42, 0.16, 0.26), path == "GuildHall")
 		var fit := _build_interior_fitout(cottage, half_w, half_d, wall_h, wall_col.lightened(0.2), path)
 		fit.visible = false
 		var door_area := Area3D.new()
@@ -1033,100 +1017,7 @@ func _spawn_locasta(at: Vector3) -> void:
 	add_child(root)
 	root.global_position = at
 	locasta = root
-	var hip := Node3D.new()
-	root.add_child(hip)
-	hip.position = Vector3(0, 1.05, 0)
-	# Full-ish body: legs, layered skirts, torso, arms, head, pointed hat + wand.
-	_locasta_mesh(hip, Vector3(-0.16, -0.55, 0), Vector3(0.18, 0.7, 0.18), Color(0.75, 0.85, 1.0))
-	_locasta_mesh(hip, Vector3(0.16, -0.55, 0), Vector3(0.18, 0.7, 0.18), Color(0.75, 0.85, 1.0))
-	# Outer robe flare
-	var robe := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.32
-	cyl.bottom_radius = 0.72
-	cyl.height = 1.35
-	robe.mesh = cyl
-	var rm := StandardMaterial3D.new()
-	rm.albedo_color = Color(0.45, 0.72, 1.0)
-	rm.emission_enabled = true
-	rm.emission = Color(0.35, 0.6, 1.0)
-	rm.emission_energy_multiplier = 0.9
-	robe.material_override = rm
-	hip.add_child(robe)
-	robe.position = Vector3(0, -0.25, 0)
-	# Inner petticoat
-	_locasta_mesh(hip, Vector3(0, -0.15, 0), Vector3(0.55, 1.05, 0.55), Color(0.85, 0.92, 1.0, 0.0))
-	var pet := MeshInstance3D.new()
-	var pc := CylinderMesh.new()
-	pc.top_radius = 0.22
-	pc.bottom_radius = 0.5
-	pc.height = 1.05
-	pet.mesh = pc
-	var pm := StandardMaterial3D.new()
-	pm.albedo_color = Color(0.92, 0.95, 1.0)
-	pet.material_override = pm
-	hip.add_child(pet)
-	pet.position = Vector3(0, -0.2, 0)
-	# Bodice
-	_locasta_mesh(hip, Vector3(0, 0.55, 0), Vector3(0.55, 0.55, 0.32), Color(0.55, 0.35, 0.75))
-	# Arms
-	_locasta_mesh(hip, Vector3(-0.42, 0.45, 0), Vector3(0.14, 0.7, 0.14), Color(0.95, 0.82, 0.72))
-	_locasta_mesh(hip, Vector3(0.42, 0.45, 0), Vector3(0.14, 0.7, 0.14), Color(0.95, 0.82, 0.72))
-	# Head
-	var head := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	sph.radius = 0.24
-	sph.height = 0.48
-	head.mesh = sph
-	var hm := StandardMaterial3D.new()
-	hm.albedo_color = Color(0.96, 0.84, 0.74)
-	head.material_override = hm
-	hip.add_child(head)
-	head.position = Vector3(0, 1.0, 0)
-	# Hair bun
-	_locasta_mesh(hip, Vector3(0, 1.18, -0.05), Vector3(0.28, 0.18, 0.28), Color(0.92, 0.88, 0.55))
-	# Pointed hat
-	var hat := MeshInstance3D.new()
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.02
-	cone.bottom_radius = 0.42
-	cone.height = 0.7
-	hat.mesh = cone
-	var hatm := StandardMaterial3D.new()
-	hatm.albedo_color = Color(1.0, 0.88, 0.3)
-	hatm.emission_enabled = true
-	hatm.emission = Color(1.0, 0.85, 0.25)
-	hatm.emission_energy_multiplier = 1.5
-	hat.material_override = hatm
-	hip.add_child(hat)
-	hat.position = Vector3(0, 1.48, 0)
-	# Brim
-	var brim := MeshInstance3D.new()
-	var bc := CylinderMesh.new()
-	bc.top_radius = 0.48
-	bc.bottom_radius = 0.48
-	bc.height = 0.05
-	brim.mesh = bc
-	brim.material_override = hatm
-	hip.add_child(brim)
-	brim.position = Vector3(0, 1.18, 0)
-	# Star tip
-	var star := MeshInstance3D.new()
-	var starm := SphereMesh.new()
-	starm.radius = 0.14
-	starm.height = 0.28
-	star.mesh = starm
-	var sm := StandardMaterial3D.new()
-	sm.albedo_color = Color(1.0, 1.0, 0.7)
-	sm.emission_enabled = true
-	sm.emission = Color(1.0, 0.95, 0.4)
-	sm.emission_energy_multiplier = 2.4
-	star.material_override = sm
-	hip.add_child(star)
-	star.position = Vector3(0, 1.9, 0)
-	# Wand
-	_locasta_mesh(hip, Vector3(0.55, 0.35, 0.15), Vector3(0.06, 1.1, 0.06), Color(0.85, 0.75, 0.4))
-	_locasta_mesh(hip, Vector3(0.55, 0.95, 0.15), Vector3(0.16, 0.16, 0.16), Color(1.0, 0.95, 0.5))
+	WorldKit.build_locasta_visual(root)
 	# Soft aura ring at feet
 	var aura := MeshInstance3D.new()
 	var atorus := TorusMesh.new()
@@ -1143,15 +1034,15 @@ func _spawn_locasta(at: Vector3) -> void:
 	root.add_child(aura)
 	aura.position = Vector3(0, 0.08, 0)
 	var lab := Label3D.new()
-	lab.text = "LOCASTA\nGood Witch of the North\n(E — speak)"
-	lab.font_size = 56
-	lab.pixel_size = 0.014
+	lab.text = "Locasta · Good Witch of the North"
+	lab.font_size = 32
+	lab.pixel_size = 0.0065
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.9, 0.95, 1.0)
-	lab.outline_size = 10
-	lab.outline_modulate = Color(0.05, 0.1, 0.25)
+	lab.modulate = Color(0.95, 0.96, 1.0)
+	lab.outline_size = 8
+	lab.outline_modulate = Color(0.05, 0.08, 0.20)
 	root.add_child(lab)
-	lab.position = Vector3(0, 3.6, 0)
+	lab.position = Vector3(0, 2.55, 0)
 	var col_body := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.42

@@ -90,23 +90,41 @@ func _build() -> void:
 	_hip.position = Vector3(0, 0.82, 0)
 	add_child(_hip)
 
-	_mi(_hip, _cyl(0.2, 0.24, 0.22), burlap, Vector3(0, -0.05, 0))
-	_mi(_hip, _cyl(0.18, 0.2, 0.42), burlap, Vector3(0, 0.28, 0))
-	_mi(_hip, _box(Vector3(0.2, 0.2, 0.05)), patch, Vector3(0.1, 0.3, -0.18))
+	_mi(_hip, _cyl(0.20, 0.28, 0.26), burlap, Vector3(0, -0.08, 0)) # ragged coat tail
+	_mi(_hip, _cyl(0.18, 0.21, 0.42), burlap, Vector3(0, 0.26, 0))
+	_mi(_hip, _cyl(0.205, 0.205, 0.06), pole, Vector3(0, 0.06, 0)) # knotted rope belt
+	_mi(_hip, _box(Vector3(0.18, 0.18, 0.05)), patch, Vector3(0.10, 0.30, -0.18))
+	_mi(_hip, _box(Vector3(0.16, 0.16, 0.05)), patch, Vector3(-0.11, 0.18, 0.18))
 	# Pole scar through chest
-	_mi(_hip, _cyl(0.04, 0.04, 0.55), pole, Vector3(0, 0.25, 0.12))
+	_mi(_hip, _cyl(0.04, 0.04, 0.55), pole, Vector3(0, 0.25, 0.14))
+	# Golden straw collar bursts
+	for si in range(6):
+		var a := float(si) / 6.0 * TAU
+		var tuft := _mi(_hip, _cyl(0.015, 0.035, 0.16), straw, Vector3(cos(a) * 0.16, 0.48, sin(a) * 0.16))
+		tuft.rotation_degrees = Vector3(sin(a) * 42.0, 0, -cos(a) * 42.0)
 
 	var head := Node3D.new()
 	head.position = Vector3(0, 0.58, 0)
 	_hip.add_child(head)
-	_mi(head, _sph(0.16), burlap, Vector3(0, 0.08, 0), Vector3(1.05, 1.1, 1.0))
-	_mi(head, _cyl(0.06, 0.28, 0.22), hat, Vector3(0, 0.28, 0))
-	_mi(head, _sph(0.04), eye, Vector3(-0.06, 0.1, -0.14))
-	_mi(head, _sph(0.04), eye, Vector3(0.07, 0.09, -0.14))
+	_mi(head, _sph(0.165), burlap, Vector3(0, 0.08, 0), Vector3(1.05, 1.12, 1.0))
+	# Wide floppy brimmed farm/witch hat + bent peak + ribbon band
+	var brim := _mi(head, _cyl(0.36, 0.38, 0.035), hat, Vector3(0, 0.22, 0))
+	brim.rotation_degrees = Vector3(-6, 0, 8)
+	var hband := _mi(head, _cyl(0.17, 0.18, 0.05), patch, Vector3(0, 0.25, 0))
+	hband.rotation_degrees = Vector3(-6, 0, 8)
+	var peak := _mi(head, _cyl(0.03, 0.17, 0.32), hat, Vector3(0.03, 0.40, 0.02))
+	peak.rotation_degrees = Vector3(-14, 0, 18)
+	_mi(head, _sph(0.042), eye, Vector3(-0.06, 0.10, -0.145))
+	_mi(head, _sph(0.042), eye, Vector3(0.07, 0.09, -0.145))
+	_mi(head, _box(Vector3(0.16, 0.025, 0.03)), stitch, Vector3(0, 0.01, -0.155))
 	_mi(head, _box(Vector3(0.03, 0.22, 0.03)), stitch, Vector3(0, 0.08, -0.15))
-	# Straw tufts
-	_mi(head, _cyl(0.02, 0.04, 0.12), straw, Vector3(-0.14, 0.0, 0.0))
-	_mi(head, _cyl(0.02, 0.04, 0.12), straw, Vector3(0.14, 0.0, 0.0))
+	# Straw tufts bursting from hat sides
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		var t1 := _mi(head, _cyl(0.018, 0.04, 0.16), straw, Vector3(s * 0.16, 0.02, 0.0))
+		t1.rotation_degrees = Vector3(0, 0, -s * 40.0)
+		var t2 := _mi(head, _cyl(0.015, 0.035, 0.14), straw, Vector3(s * 0.15, 0.12, 0.04))
+		t2.rotation_degrees = Vector3(15, 0, -s * 60.0)
 
 	_arm_l = _limb(_hip, true, true, burlap, straw)
 	_arm_r = _limb(_hip, false, true, burlap, straw)

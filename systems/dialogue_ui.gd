@@ -1,92 +1,174 @@
 extends Node
 
-## On-screen dialogue + optional OS TTS (when the platform has voices).
-## AI voice pipeline (ElevenLabs / local XTTS / Godot AudioStreamPlayer clips) can plug into speak() later.
+## On-screen dialogue v2 + optional OS TTS (when the platform has voices).
+## Storybook card with raised Speaker Nameplate, smooth typewriter reveal,
+## tactile [E] Continue keycap chip, and automatic Oz/Kansas palette matching.
+
+var tts_enabled: bool = true
 
 var _box: Control
+var _panel: PanelContainer
+var _nameplate: PanelContainer
 var _speaker: Label
 var _body: Label
-var _hint: Label
-var _panel: ColorRect
+var _hint_wrap: HBoxContainer
+var _hint_cap: PanelContainer
+var _hint_key: Label
+var _hint_lbl: Label
+var _divider: ColorRect
+
 var _visible_t: float = 0.0
 var _tts_voice: String = ""
+var _type_progress: float = 0.0
+var _typing: bool = false
+var _kansas_cached: bool = false
+
+const TYPE_CPS := 75.0
+const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer_hint()
 	_build()
 	_hide()
 	_pick_voice()
 
-func layer_hint() -> void:
-	# Autoload is a Node; if we become CanvasLayer children of root, keep simple.
-	pass
-
 func _build() -> void:
-	# Attach under a CanvasLayer so it draws above 3D.
 	var layer := CanvasLayer.new()
 	layer.name = "DialogueLayer"
 	layer.layer = 80
 	add_child(layer)
+
 	_box = Control.new()
 	_box.name = "DialogueRoot"
 	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_box)
-	_panel = ColorRect.new()
+
+	# Center container at bottom so card has refined modern margins on 720p and 1080p+
+	var anchor := Control.new()
+	anchor.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	anchor.offset_left = 110.0
+	anchor.offset_right = -110.0
+	anchor.offset_top = -188.0
+	anchor.offset_bottom = -20.0
+	anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box.add_child(anchor)
+
+	_panel = PanelContainer.new()
 	_panel.name = "Panel"
-	_panel.color = Color(0.06, 0.04, 0.1, 0.88)
-	_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_panel.offset_top = -168.0
-	_panel.offset_bottom = -16.0
-	_panel.offset_left = 48.0
-	_panel.offset_right = -48.0
+	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel.offset_top = 18.0
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.add_child(_panel)
-	var border := ColorRect.new()
-	border.color = Color(0.85, 0.72, 0.35, 0.55)
-	border.set_anchors_preset(Control.PRESET_FULL_RECT)
-	border.offset_top = 0.0
-	border.offset_bottom = 3.0
-	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.add_child(border)
-	_speaker = Label.new()
-	_speaker.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_speaker.offset_left = 20.0
-	_speaker.offset_right = -20.0
-	_speaker.offset_top = 10.0
-	_speaker.offset_bottom = 42.0
-	_speaker.add_theme_font_size_override("font_size", 20)
-	_speaker.add_theme_color_override("font_color", Color(0.95, 0.82, 0.4))
-	_speaker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.add_child(_speaker)
+	anchor.add_child(_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_theme_constant_override("separation", 8)
+	_panel.add_child(vbox)
+
+	# Top breathing room below raised nameplate + subtle hairline divider
+	var top_pad := Control.new()
+	top_pad.custom_minimum_size = Vector2(0, 6)
+	top_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(top_pad)
+
+	_divider = ColorRect.new()
+	_divider.custom_minimum_size = Vector2(0, 1)
+	_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_divider)
+
 	_body = Label.new()
-	_body.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_body.offset_left = 20.0
-	_body.offset_right = -20.0
-	_body.offset_top = 44.0
-	_body.offset_bottom = -28.0
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_body.add_theme_font_size_override("font_size", 22)
-	_body.add_theme_color_override("font_color", Color(0.96, 0.94, 0.9))
+	_body.add_theme_font_size_override("font_size", 20)
 	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.add_child(_body)
-	_hint = Label.new()
-	_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_hint.offset_left = 20.0
-	_hint.offset_right = -20.0
-	_hint.offset_top = -26.0
-	_hint.offset_bottom = -6.0
-	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hint.add_theme_font_size_override("font_size", 14)
-	_hint.add_theme_color_override("font_color", Color(0.7, 0.68, 0.62))
-	_hint.text = "E — continue"
-	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.add_child(_hint)
+	vbox.add_child(_body)
+
+	# Bottom-right tactile [E] Continue chip
+	var bottom_row := HBoxContainer.new()
+	bottom_row.alignment = BoxContainer.ALIGNMENT_END
+	bottom_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(bottom_row)
+
+	_hint_wrap = HBoxContainer.new()
+	_hint_wrap.add_theme_constant_override("separation", 8)
+	_hint_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom_row.add_child(_hint_wrap)
+
+	_hint_cap = PanelContainer.new()
+	_hint_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint_wrap.add_child(_hint_cap)
+
+	_hint_key = Label.new()
+	_hint_key.text = "E"
+	_hint_key.add_theme_font_size_override("font_size", 12)
+	_hint_key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint_cap.add_child(_hint_key)
+
+	_hint_lbl = Label.new()
+	_hint_lbl.text = "continue ▸"
+	_hint_lbl.add_theme_font_size_override("font_size", 14)
+	_hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint_wrap.add_child(_hint_lbl)
+
+	# Raised Speaker Nameplate overlapping top-left corner of the dialogue card
+	_nameplate = PanelContainer.new()
+	_nameplate.name = "Nameplate"
+	_nameplate.position = Vector2(22, 0)
+	_nameplate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	anchor.add_child(_nameplate)
+
+	_speaker = Label.new()
+	_speaker.add_theme_font_size_override("font_size", 15)
+	_speaker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_nameplate.add_child(_speaker)
+
+	_apply_palette(false)
+
+func _apply_palette(kansas: bool) -> void:
+	_kansas_cached = kansas
+	if _panel:
+		_panel.add_theme_stylebox_override("panel", OzThemeFactory.make_modal_style(kansas))
+	if _nameplate:
+		_nameplate.add_theme_stylebox_override("panel", OzThemeFactory.make_nameplate_style(kansas))
+	if _speaker:
+		_speaker.add_theme_color_override("font_color", OzThemeFactory.ink_color(kansas))
+	if _divider:
+		_divider.color = OzThemeFactory.KS_BORDER_SUBTLE if kansas else OzThemeFactory.OZ_BORDER_SUBTLE
+	if _body:
+		_body.add_theme_color_override("font_color", OzThemeFactory.text_color(kansas))
+	if _hint_cap:
+		_hint_cap.add_theme_stylebox_override("panel", OzThemeFactory.make_keycap_style(kansas))
+	if _hint_key:
+		_hint_key.add_theme_color_override("font_color", OzThemeFactory.ink_color(kansas))
+	if _hint_lbl:
+		_hint_lbl.add_theme_color_override("font_color", OzThemeFactory.muted_text_color(kansas))
+
+func _detect_kansas_mode() -> bool:
+	var tree := get_tree()
+	if tree == null:
+		return false
+	var hud := tree.get_first_node_in_group("hud")
+	if hud and "kansas_mode" in hud:
+		return bool(hud.get("kansas_mode"))
+	return false
 
 func _process(delta: float) -> void:
 	if _visible_t > 0.0:
 		_visible_t = maxf(_visible_t - delta, 0.0)
+	if _box and _box.visible:
+		if _typing and _body:
+			_type_progress += delta * TYPE_CPS
+			var total := _body.get_total_character_count()
+			var shown := int(_type_progress)
+			if shown >= total:
+				_body.visible_characters = -1
+				_typing = false
+			else:
+				_body.visible_characters = shown
+		if _hint_lbl and not _is_headless():
+			var pulse := 0.72 + 0.28 * sin(Time.get_ticks_msec() * 0.006)
+			_hint_wrap.modulate.a = pulse
 
 func _pick_voice() -> void:
 	_tts_voice = ""
@@ -95,7 +177,6 @@ func _pick_voice() -> void:
 	var voices = DisplayServer.tts_get_voices()
 	if voices == null:
 		return
-	# Prefer English voices.
 	for v in voices:
 		if typeof(v) == TYPE_DICTIONARY:
 			var id := str(v.get("id", ""))
@@ -114,20 +195,41 @@ func _pick_voice() -> void:
 		else:
 			_tts_voice = str(first)
 
+func set_tts_enabled(on: bool) -> void:
+	tts_enabled = on
+	if not on:
+		stop_tts()
+
 ## Show a dialogue line. speaker e.g. "Locasta", text without speaker prefix preferred.
 func say(speaker: String, text: String, also_tts: bool = true, hold: float = 0.0) -> void:
 	if _box == null:
 		_build()
+	var kansas := _detect_kansas_mode()
+	if kansas != _kansas_cached:
+		_apply_palette(kansas)
+
 	_box.visible = true
 	_panel.visible = true
 	_speaker.text = speaker.to_upper()
+	_nameplate.visible = speaker.strip_edges() != ""
 	_body.text = text
 	_visible_t = hold
-	if also_tts:
+
+	if _is_headless():
+		_body.visible_characters = -1
+		_typing = false
+	else:
+		_type_progress = 0.0
+		_body.visible_characters = 0
+		_typing = true
+		_panel.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(_panel, "modulate:a", 1.0, 0.16)
+
+	if also_tts and tts_enabled:
 		speak_tts("%s. %s" % [speaker, text])
 
 func say_line(full_line: String, also_tts: bool = true) -> void:
-	## Parse "Name: \"quote\"" or "Name: quote"
 	var speaker := "Voice"
 	var body := full_line
 	var idx := full_line.find(":")
@@ -143,20 +245,19 @@ func clear() -> void:
 	stop_tts()
 
 func _hide() -> void:
+	_typing = false
 	if _box:
 		_box.visible = false
 
 func speak_tts(text: String) -> void:
-	if _is_headless():
+	if not tts_enabled or _is_headless():
 		return
 	if not DisplayServer.has_method("tts_speak"):
 		return
 	stop_tts()
-	# Godot 4 TTS: tts_speak(text, voice_id, volume, pitch, rate, utterance_id, interrupt)
 	if _tts_voice != "":
 		DisplayServer.tts_speak(text, _tts_voice, 50, 1.0, 1.0, 0, true)
 	else:
-		# Some builds accept empty voice id as default.
 		DisplayServer.tts_speak(text, "", 50, 1.0, 1.0, 0, true)
 
 func stop_tts() -> void:

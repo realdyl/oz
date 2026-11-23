@@ -35,6 +35,12 @@ var fear_from: Vector3 = Vector3.ZERO
 var combat_ready: bool = true
 var _activate_t: float = 0.0
 var _base_notice: float = 9.0
+var _anim_phase: float = 0.0
+var _p_head: Node3D
+var _p_arm_l: Node3D
+var _p_arm_r: Node3D
+var _p_leg_l: Node3D
+var _p_leg_r: Node3D
 
 @onready var visual: Node3D = $Visual
 
@@ -49,20 +55,10 @@ func _ready() -> void:
 	if activation_delay > 0.0:
 		combat_ready = false
 		notice_range = 5.5 # only react if the player walks into them while sneaking
-	var body := visual.get_node_or_null("Body") as MeshInstance3D
-	if body:
-		var active := body.get_active_material(0)
-		if active is StandardMaterial3D:
-			body_mat = (active as StandardMaterial3D).duplicate()
-			body_mat.albedo_color = tint
-			if armored:
-				body_mat.metallic = 0.55
-				body_mat.roughness = 0.35
-			body.set_surface_override_material(0, body_mat)
-	for part_name in ["Head", "ArmL", "ArmR"]:
-		var part := visual.get_node_or_null(part_name) as MeshInstance3D
-		if part and body_mat:
-			part.set_surface_override_material(0, body_mat)
+	body_mat = StandardMaterial3D.new()
+	body_mat.albedo_color = tint
+	body_mat.roughness = 0.55
+	call_deferred("_build_detailed_visual")
 
 func set_play_bounds(half_x: float, half_z: float) -> void:
 	bound_half_x = maxf(half_x, 8.0)
@@ -146,6 +142,7 @@ func _physics_process(delta: float) -> void:
 		if _activate_t >= activation_delay or _target_dist() < 2.2:
 			_finish_arming()
 		_pulse()
+		_animate_puppet(delta)
 		move_and_slide()
 		_clamp_in_bounds()
 		return
@@ -222,6 +219,7 @@ func _physics_process(delta: float) -> void:
 				pass
 
 	_pulse()
+	_animate_puppet(delta)
 	move_and_slide()
 	_clamp_in_bounds()
 
@@ -423,3 +421,253 @@ func _pulse() -> void:
 		if armored:
 			body_mat.emission = Color(0.4, 0.5, 0.6)
 			body_mat.emission_energy_multiplier = 0.35
+
+func _pm(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO, scl: Vector3 = Vector3.ONE) -> MeshInstance3D:
+	var n := MeshInstance3D.new()
+	n.mesh = mesh
+	n.material_override = mat
+	n.position = pos
+	n.rotation_degrees = rot_deg
+	n.scale = scl
+	parent.add_child(n)
+	return n
+
+func _mat_s(c: Color, rough: float = 0.65, metal: float = 0.0, emit_c: Color = Color(0, 0, 0), emit_e: float = 0.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = c
+	m.roughness = rough
+	m.metallic = metal
+	if emit_e > 0.0:
+		m.emission_enabled = true
+		m.emission = emit_c
+		m.emission_energy_multiplier = emit_e
+	return m
+
+func _build_detailed_visual() -> void:
+	if visual == null or not is_instance_valid(visual):
+		return
+	for c in visual.get_children():
+		c.queue_free()
+
+	body_mat.albedo_color = tint
+	body_mat.metallic = 0.58 if armored else 0.08
+	body_mat.roughness = 0.34 if armored else 0.56
+
+	var licorice := _mat_s(Color(0.08, 0.05, 0.09), 0.42, 0.12)
+	var porcelain := _mat_s(Color(0.95, 0.91, 0.86), 0.32, 0.05)
+	var brass := _mat_s(Color(0.90, 0.72, 0.30), 0.28, 0.85)
+	var crimson := _mat_s(Color(0.72, 0.12, 0.22), 0.45, 0.1)
+	var eye_glow := _mat_s(Color(1.0, 0.32, 0.46), 0.2, 0.0, Color(1.0, 0.24, 0.40), 1.4)
+	var stitch := _mat_s(Color(0.35, 0.08, 0.18), 0.5, 0.0, Color(0.82, 0.18, 0.38), 0.7)
+	var ruff := _mat_s(Color(0.96, 0.93, 0.90), 0.78)
+
+	# Tailored cabaret waistcoat torso + flared coat skirt
+	var coat_c := CylinderMesh.new()
+	coat_c.top_radius = 0.17
+	coat_c.bottom_radius = 0.24
+	coat_c.height = 0.46
+	coat_c.radial_segments = 12
+	_pm(visual, coat_c, body_mat, Vector3(0, 0.68, 0))
+
+	var skirt_c := CylinderMesh.new()
+	skirt_c.top_radius = 0.23
+	skirt_c.bottom_radius = 0.32
+	skirt_c.height = 0.22
+	skirt_c.radial_segments = 12
+	_pm(visual, skirt_c, body_mat, Vector3(0, 0.42, 0))
+
+	# Licorice waist belt + brass buckle + buttons + glowing stitch seam
+	var belt_c := CylinderMesh.new()
+	belt_c.top_radius = 0.22
+	belt_c.bottom_radius = 0.22
+	belt_c.height = 0.08
+	_pm(visual, belt_c, licorice, Vector3(0, 0.52, 0))
+	var b_box := BoxMesh.new()
+	b_box.size = Vector3(0.10, 0.09, 0.05)
+	_pm(visual, b_box, brass, Vector3(0, 0.52, -0.21))
+
+	var st_box := BoxMesh.new()
+	st_box.size = Vector3(0.035, 0.32, 0.035)
+	_pm(visual, st_box, stitch, Vector3(0, 0.72, -0.21))
+	for by in [0.62, 0.74, 0.84]:
+		var bs := SphereMesh.new()
+		bs.radius = 0.022
+		bs.height = 0.044
+		_pm(visual, bs, brass, Vector3(-0.07, float(by), -0.19))
+		_pm(visual, bs, brass, Vector3(0.07, float(by), -0.19))
+
+	# Ruffled Pierrot collar
+	var collar_c := CylinderMesh.new()
+	collar_c.top_radius = 0.24
+	collar_c.bottom_radius = 0.16
+	collar_c.height = 0.07
+	collar_c.radial_segments = 14
+	_pm(visual, collar_c, ruff, Vector3(0, 0.93, 0))
+
+	# Marshal Armor Pauldrons & Sash
+	if is_marshal or armored:
+		var steel := _mat_s(Color(0.55, 0.60, 0.68), 0.28, 0.88)
+		var chest_b := BoxMesh.new()
+		chest_b.size = Vector3(0.36, 0.34, 0.26)
+		_pm(visual, chest_b, steel, Vector3(0, 0.74, -0.04))
+		for sx in [-1.0, 1.0]:
+			var ep := SphereMesh.new()
+			ep.radius = 0.11
+			ep.height = 0.14
+			_pm(visual, ep, brass if is_marshal else steel, Vector3(float(sx) * 0.25, 0.90, 0))
+
+	# Articulated Head (Cracked porcelain mask + stitched grin + glowing eyes + cabaret hat)
+	_p_head = Node3D.new()
+	_p_head.position = Vector3(0, 1.08, 0)
+	visual.add_child(_p_head)
+	var h_sph := SphereMesh.new()
+	h_sph.radius = 0.175
+	h_sph.height = 0.36
+	_pm(_p_head, h_sph, porcelain, Vector3(0, 0.06, 0))
+	# Porcelain crack line + stitched mouth
+	var crk := BoxMesh.new()
+	crk.size = Vector3(0.015, 0.18, 0.02)
+	_pm(_p_head, crk, licorice, Vector3(0.06, 0.10, -0.165), Vector3(0, 0, 18))
+	var grin := BoxMesh.new()
+	grin.size = Vector3(0.14, 0.022, 0.02)
+	_pm(_p_head, grin, licorice, Vector3(0, -0.02, -0.165))
+	# Glowing button eyes
+	for ex in [-0.065, 0.065]:
+		var es := SphereMesh.new()
+		es.radius = 0.032
+		es.height = 0.064
+		_pm(_p_head, es, eye_glow, Vector3(float(ex), 0.09, -0.155))
+
+	# Hat: Gilded Shako with plume for Marshal, Crooked Cabaret Top Hat for Rogues
+	if is_marshal:
+		var shako := CylinderMesh.new()
+		shako.top_radius = 0.17
+		shako.bottom_radius = 0.15
+		shako.height = 0.30
+		_pm(_p_head, shako, licorice, Vector3(0, 0.32, 0))
+		var band := CylinderMesh.new()
+		band.top_radius = 0.175
+		band.bottom_radius = 0.175
+		band.height = 0.06
+		_pm(_p_head, band, brass, Vector3(0, 0.22, 0))
+		var plume := SphereMesh.new()
+		plume.radius = 0.075
+		plume.height = 0.22
+		_pm(_p_head, plume, crimson, Vector3(0, 0.54, -0.04))
+	else:
+		var brim := CylinderMesh.new()
+		brim.top_radius = 0.25
+		brim.bottom_radius = 0.25
+		brim.height = 0.035
+		_pm(_p_head, brim, licorice, Vector3(0, 0.21, 0), Vector3(-6, 0, 8))
+		var crown := CylinderMesh.new()
+		crown.top_radius = 0.16
+		crown.bottom_radius = 0.12
+		crown.height = 0.24
+		_pm(_p_head, crown, licorice, Vector3(0.02, 0.34, 0), Vector3(-6, 0, 10))
+		var rib := CylinderMesh.new()
+		rib.top_radius = 0.135
+		rib.bottom_radius = 0.135
+		rib.height = 0.05
+		_pm(_p_head, rib, crimson, Vector3(0.01, 0.24, 0), Vector3(-6, 0, 10))
+
+	# Articulated Arms + Weapon (Licorice Cane / Marshal Halberd)
+	_p_arm_l = _build_arm(-1.0, licorice, porcelain, brass, crimson)
+	_p_arm_r = _build_arm(1.0, licorice, porcelain, brass, crimson)
+
+	# Articulated Legs + Spats Boots
+	_p_leg_l = _build_leg(-1.0, licorice, porcelain)
+	_p_leg_r = _build_leg(1.0, licorice, porcelain)
+
+func _build_arm(side: float, licorice: Material, porcelain: Material, brass: Material, crimson: Material) -> Node3D:
+	var arm := Node3D.new()
+	arm.position = Vector3(side * 0.25, 0.86, 0)
+	visual.add_child(arm)
+	var sleeve := CylinderMesh.new()
+	sleeve.top_radius = 0.065
+	sleeve.bottom_radius = 0.05
+	sleeve.height = 0.38
+	_pm(arm, sleeve, body_mat, Vector3(0, -0.18, 0))
+	var hand := SphereMesh.new()
+	hand.radius = 0.048
+	hand.height = 0.096
+	_pm(arm, hand, porcelain, Vector3(0, -0.39, 0))
+	# Weapon in right hand
+	if side > 0.0:
+		var staff := CylinderMesh.new()
+		staff.top_radius = 0.024
+		staff.bottom_radius = 0.024
+		staff.height = 0.95 if is_marshal else 0.62
+		_pm(arm, staff, licorice, Vector3(0.02, -0.44, -0.26), Vector3(72, 0, 0))
+		if is_marshal:
+			var blade := BoxMesh.new()
+			blade.size = Vector3(0.04, 0.26, 0.18)
+			_pm(arm, blade, brass, Vector3(0.02, -0.58, -0.68), Vector3(72, 0, 0))
+		else:
+			var knob := SphereMesh.new()
+			knob.radius = 0.055
+			knob.height = 0.11
+			_pm(arm, knob, crimson, Vector3(0.02, -0.54, -0.52))
+	return arm
+
+func _build_leg(side: float, licorice: Material, porcelain: Material) -> Node3D:
+	var leg := Node3D.new()
+	leg.position = Vector3(side * 0.11, 0.42, 0)
+	visual.add_child(leg)
+	var shin := CylinderMesh.new()
+	shin.top_radius = 0.058
+	shin.bottom_radius = 0.046
+	shin.height = 0.36
+	_pm(leg, shin, licorice, Vector3(0, -0.18, 0))
+	var boot := BoxMesh.new()
+	boot.size = Vector3(0.11, 0.09, 0.18)
+	_pm(leg, boot, licorice, Vector3(0, -0.37, -0.03))
+	var spat := CylinderMesh.new()
+	spat.top_radius = 0.055
+	spat.bottom_radius = 0.055
+	spat.height = 0.06
+	_pm(leg, spat, porcelain, Vector3(0, -0.31, 0))
+	return leg
+
+func _animate_puppet(delta: float) -> void:
+	if _p_leg_l == null:
+		return
+	var hspd := Vector2(velocity.x, velocity.z).length()
+	if confuse_t > 0.0:
+		_anim_phase += delta * 11.0
+		_p_head.rotation.z = sin(_anim_phase) * 0.45
+		_p_arm_l.rotation.z = 0.6 + sin(_anim_phase * 1.3) * 0.3
+		_p_arm_r.rotation.z = -0.6 - sin(_anim_phase * 1.3) * 0.3
+		return
+	if fear_t > 0.0:
+		_anim_phase += delta * 15.0
+		_p_arm_l.rotation.x = -2.1 + sin(_anim_phase) * 0.4
+		_p_arm_r.rotation.x = -2.1 - sin(_anim_phase) * 0.4
+		_p_leg_l.rotation.x = sin(_anim_phase) * 0.75
+		_p_leg_r.rotation.x = -sin(_anim_phase) * 0.75
+		return
+	if state == State.TELEGRAPH:
+		_p_arm_r.rotation.x = lerp_angle(_p_arm_r.rotation.x, -1.9, 10.0 * delta)
+		_p_arm_l.rotation.x = lerp_angle(_p_arm_l.rotation.x, 0.5, 10.0 * delta)
+		_p_head.rotation.z = lerp_angle(_p_head.rotation.z, 0.22, 8.0 * delta)
+		return
+	if state == State.LUNGE:
+		_p_arm_r.rotation.x = lerp_angle(_p_arm_r.rotation.x, 1.35, 18.0 * delta)
+		return
+	if hspd > 0.25:
+		_anim_phase += delta * (7.5 + clampf(hspd * 1.2, 0.0, 8.0))
+		var sw := sin(_anim_phase) * 0.62
+		_p_leg_l.rotation.x = sw
+		_p_leg_r.rotation.x = -sw
+		_p_arm_l.rotation.x = -sw * 0.85
+		_p_arm_r.rotation.x = sw * 0.75
+		_p_arm_l.rotation.z = 0.12
+		_p_arm_r.rotation.z = -0.12
+		_p_head.rotation.z = sin(_anim_phase * 0.5) * 0.12
+	else:
+		_anim_phase += delta * 2.4
+		_p_leg_l.rotation.x = lerp_angle(_p_leg_l.rotation.x, 0.0, 6.0 * delta)
+		_p_leg_r.rotation.x = lerp_angle(_p_leg_r.rotation.x, 0.0, 6.0 * delta)
+		_p_arm_l.rotation.x = lerp_angle(_p_arm_l.rotation.x, 0.0, 6.0 * delta)
+		_p_arm_r.rotation.x = lerp_angle(_p_arm_r.rotation.x, 0.0, 6.0 * delta)
+		_p_head.rotation.z = sin(_anim_phase) * 0.08

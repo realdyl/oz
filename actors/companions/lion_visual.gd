@@ -91,16 +91,26 @@ func _build() -> void:
 		_body.rotation.x = 0.35
 	add_child(_body)
 
-	_mi(_body, _cyl(0.28, 0.32, 0.7), fur, Vector3(0, 0.1, 0.05), Vector3(1.0, 1.0, 1.35))
-	# Mane + head
+	var mane_hi := _mat(Color(0.66, 0.36, 0.14), 0.92)
+	_mi(_body, _cyl(0.28, 0.34, 0.72), fur, Vector3(0, 0.1, 0.04), Vector3(1.0, 1.0, 1.38))
+	_mi(_body, _sph(0.29), fur, Vector3(0, 0.08, 0.34), Vector3(0.95, 0.9, 1.05)) # muscular haunches
+	# Sculpted storm-cloud mane (ring of 10 overlapping tufts) + lion muzzle & ears
 	var head := Node3D.new()
-	head.position = Vector3(0, 0.25, -0.45)
+	head.position = Vector3(0, 0.26, -0.46)
 	_body.add_child(head)
-	_mi(head, _sph(0.22), mane, Vector3(0, 0.05, 0), Vector3(1.3, 1.2, 1.2))
-	_mi(head, _sph(0.16), fur, Vector3(0, 0.0, -0.12))
-	_mi(head, _sph(0.035), eye, Vector3(-0.07, 0.04, -0.24))
-	_mi(head, _sph(0.035), eye, Vector3(0.07, 0.04, -0.24))
-	_mi(head, _sph(0.05), dark, Vector3(0, -0.04, -0.28), Vector3(1.2, 0.7, 1.0))
+	_mi(head, _sph(0.23), mane, Vector3(0, 0.06, 0.04), Vector3(1.32, 1.25, 1.15))
+	for mi_i in range(10):
+		var a := float(mi_i) / 10.0 * TAU
+		var tmat := mane_hi if mi_i % 2 == 0 else mane
+		_mi(head, _sph(0.115), tmat, Vector3(cos(a) * 0.24, 0.06 + sin(a) * 0.22, 0.02))
+	_mi(head, _sph(0.165), fur, Vector3(0, 0.02, -0.12))
+	_mi(head, _sph(0.09), fur, Vector3(0, -0.04, -0.24), Vector3(1.15, 0.85, 1.1)) # snout
+	# Rounded ears
+	_mi(head, _sph(0.06), fur, Vector3(-0.14, 0.17, -0.06))
+	_mi(head, _sph(0.06), fur, Vector3(0.14, 0.17, -0.06))
+	_mi(head, _sph(0.036), eye, Vector3(-0.072, 0.055, -0.25))
+	_mi(head, _sph(0.036), eye, Vector3(0.072, 0.055, -0.25))
+	_mi(head, _sph(0.052), dark, Vector3(0, -0.02, -0.32), Vector3(1.25, 0.72, 0.9))
 
 	_tail = Node3D.new()
 	_tail.position = Vector3(0, 0.15, 0.45)

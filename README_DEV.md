@@ -22,9 +22,11 @@ This is the development workspace for **Oz: The Road Home**.
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . -s res://tools/smoke_check.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . -s res://tools/kansas_sim.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . -s res://tools/play_sim.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . -s res://tools/act34_sim.gd
 ```
 
-Agent protocol: `obsidian-oz/08 Technical/Agent Token Efficiency.md`  
+Agent protocol: `AGENTS.md` + `obsidian-oz/08 Technical/Agent Token Efficiency.md`  
+Auto-Git Policy: `obsidian-oz/08 Technical/Auto Git Policy.md` (commit & push both `oz` and `obsidian-oz` after verified passes)  
 Kansas design: `obsidian-oz/02 World/Kansas Farmyard Prologue.md`
 
 

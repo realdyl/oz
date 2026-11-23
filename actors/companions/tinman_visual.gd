@@ -91,27 +91,44 @@ func _build() -> void:
 	_hip.position = Vector3(0, 0.88, 0)
 	add_child(_hip)
 
-	_mi(_hip, _cyl(0.2, 0.22, 0.2), tin, Vector3(0, -0.05, 0))
-	_mi(_hip, _box(Vector3(0.42, 0.5, 0.28)), tin, Vector3(0, 0.28, 0))
+	var brass := _mat(Color(0.82, 0.65, 0.30), 0.88, 0.28)
+	var wood := _mat(Color(0.36, 0.22, 0.12), 0.05, 0.85)
+	_mi(_hip, _cyl(0.21, 0.24, 0.22), tin, Vector3(0, -0.05, 0))
+	# Rounded riveted boiler chest + brass trim bands + heart-latch plate
+	_mi(_hip, _cyl(0.24, 0.20, 0.52), tin, Vector3(0, 0.29, 0))
+	_mi(_hip, _cyl(0.245, 0.245, 0.05), dark, Vector3(0, 0.12, 0))
+	_mi(_hip, _cyl(0.25, 0.25, 0.05), dark, Vector3(0, 0.48, 0))
+	_mi(_hip, _box(Vector3(0.12, 0.14, 0.05)), brass, Vector3(-0.07, 0.34, -0.22)) # hollow heart door
+	# Shoulder pauldrons
+	for px in [-1.0, 1.0]:
+		_mi(_hip, _sph(0.12), tin, Vector3(float(px) * 0.28, 0.48, 0), Vector3(1.15, 0.78, 1.05))
+		_mi(_hip, _sph(0.03), brass, Vector3(float(px) * 0.30, 0.52, 0))
 	# Rivets
-	for x in [-0.12, 0.12]:
-		for y in [0.15, 0.35]:
-			_mi(_hip, _sph(0.025), dark, Vector3(x, y, -0.15))
+	for x in [-0.14, 0.14]:
+		for y in [0.18, 0.38]:
+			_mi(_hip, _sph(0.024), dark, Vector3(float(x), float(y), -0.22))
 
 	var head := Node3D.new()
 	head.position = Vector3(0, 0.62, 0)
 	_hip.add_child(head)
-	_mi(head, _cyl(0.14, 0.15, 0.22), tin, Vector3(0, 0.08, 0))
-	_mi(head, _cyl(0.04, 0.16, 0.18), tin, Vector3(0, 0.28, 0)) # funnel hat
-	_mi(head, _sph(0.03), eye, Vector3(-0.05, 0.1, -0.14))
-	_mi(head, _sph(0.03), eye, Vector3(0.05, 0.1, -0.14))
+	_mi(head, _cyl(0.14, 0.15, 0.24), tin, Vector3(0, 0.09, 0))
+	_mi(head, _cyl(0.02, 0.04, 0.09), tin, Vector3(0, 0.08, -0.17)).rotation_degrees = Vector3(-90, 0, 0) # pointed tin nose
+	_mi(head, _box(Vector3(0.16, 0.04, 0.12)), dark, Vector3(0, -0.01, -0.10)) # hinged jaw
+	# Angled oil-funnel hat + spout + handle
+	var funnel := _mi(head, _cyl(0.035, 0.17, 0.22), tin, Vector3(0.02, 0.29, 0))
+	funnel.rotation_degrees = Vector3(0, 0, -14)
+	var spout := _mi(head, _cyl(0.02, 0.03, 0.12), tin, Vector3(0.05, 0.42, 0))
+	spout.rotation_degrees = Vector3(0, 0, -14)
+	_mi(head, _sph(0.03), eye, Vector3(-0.05, 0.12, -0.14))
+	_mi(head, _sph(0.03), eye, Vector3(0.05, 0.12, -0.14))
 
 	_arm_l = _arm(_hip, true, tin)
 	_arm_r = _arm(_hip, false, tin)
-	# Axe on right
+	# Sculpted Woodsman Axe on right arm
 	if not rusted:
-		_mi(_arm_r, _box(Vector3(0.06, 0.55, 0.06)), dark, Vector3(0.05, -0.55, 0))
-		_mi(_arm_r, _box(Vector3(0.35, 0.12, 0.04)), axe, Vector3(0.05, -0.85, 0))
+		_mi(_arm_r, _cyl(0.028, 0.032, 0.82), wood, Vector3(0.05, -0.62, -0.04))
+		_mi(_arm_r, _box(Vector3(0.05, 0.24, 0.34)), axe, Vector3(0.05, -0.96, -0.14))
+		_mi(_arm_r, _box(Vector3(0.07, 0.12, 0.10)), dark, Vector3(0.05, -0.96, -0.02))
 	_leg_l = _leg(_hip, true, tin)
 	_leg_r = _leg(_hip, false, tin)
 

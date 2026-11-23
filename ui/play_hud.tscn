@@ -1,50 +1,176 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://ui/play_hud.gd" id="1_script"]
+[ext_resource type="Script" path="res://ui/widgets/threat_radar.gd" id="2_radar"]
 
 [node name="PlayHUD" type="CanvasLayer"]
 script = ExtResource("1_script")
 
-[node name="Paper" type="ColorRect" parent="."]
+[node name="SafeRoot" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ObjectivePanel" type="PanelContainer" parent="SafeRoot"]
+layout_mode = 0
 offset_left = 16.0
 offset_top = 14.0
-offset_right = 520.0
-offset_bottom = 86.0
+offset_right = 416.0
+offset_bottom = 82.0
 mouse_filter = 2
-color = Color(0.96, 0.91, 0.82, 0.9)
 
-[node name="Objective" type="Label" parent="Paper"]
-layout_mode = 0
-offset_left = 14.0
-offset_top = 16.0
-offset_right = 490.0
-offset_bottom = 60.0
+[node name="ObjHBox" type="HBoxContainer" parent="SafeRoot/ObjectivePanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="AccentBar" type="ColorRect" parent="SafeRoot/ObjectivePanel/ObjHBox"]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.98, 0.82, 0.38, 1)
+
+[node name="ObjVBox" type="VBoxContainer" parent="SafeRoot/ObjectivePanel/ObjHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Kicker" type="Label" parent="SafeRoot/ObjectivePanel/ObjHBox/ObjVBox"]
+layout_mode = 2
+mouse_filter = 2
+text = "OBJECTIVE"
+
+[node name="Objective" type="Label" parent="SafeRoot/ObjectivePanel/ObjHBox/ObjVBox"]
+custom_minimum_size = Vector2(354, 0)
+layout_mode = 2
+mouse_filter = 2
 text = "The Shoes are under the house."
+autowrap_mode = 3
 
-[node name="Prompt" type="Label" parent="."]
-anchors_preset = 7
+[node name="ThreatRadar" type="Control" parent="SafeRoot"]
+layout_mode = 1
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 1.0
 anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -180.0
-offset_top = -128.0
-offset_right = 180.0
-offset_bottom = -84.0
+offset_left = -170.0
+offset_top = 8.0
+offset_right = 170.0
+offset_bottom = 48.0
 grow_horizontal = 2
-grow_vertical = 0
 mouse_filter = 2
-text = "E  —  Take the Shoes"
-horizontal_alignment = 1
+script = ExtResource("2_radar")
 
-[node name="Controls" type="Label" parent="."]
+[node name="ToastPanel" type="PanelContainer" parent="SafeRoot"]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -360.0
+offset_top = 14.0
+offset_right = -16.0
+offset_bottom = 66.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="ToastLabel" type="Label" parent="SafeRoot/ToastPanel"]
+layout_mode = 2
+mouse_filter = 2
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="LeadBar" type="HBoxContainer" parent="SafeRoot"]
+visible = false
+layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -42.0
-offset_right = 920.0
-offset_bottom = -14.0
+offset_left = 16.0
+offset_top = -98.0
+offset_right = 620.0
+offset_bottom = -50.0
 grow_vertical = 0
 mouse_filter = 2
-text = "Click the game window to look around.  Esc releases the mouse."
+theme_override_constants/separation = 8
+
+[node name="PromptCenter" type="CenterContainer" parent="SafeRoot"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -158.0
+offset_bottom = -106.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="PromptPanel" type="PanelContainer" parent="SafeRoot/PromptCenter"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PromptHBox" type="HBoxContainer" parent="SafeRoot/PromptCenter/PromptPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="KeycapPanel" type="PanelContainer" parent="SafeRoot/PromptCenter/PromptPanel/PromptHBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="KeycapLabel" type="Label" parent="SafeRoot/PromptCenter/PromptPanel/PromptHBox/KeycapPanel"]
+layout_mode = 2
+mouse_filter = 2
+text = "E"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PromptLabel" type="Label" parent="SafeRoot/PromptCenter/PromptPanel/PromptHBox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Take the Shoes"
+vertical_alignment = 1
+
+[node name="ControlsCenter" type="CenterContainer" parent="SafeRoot"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -44.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="ControlsPanel" type="PanelContainer" parent="SafeRoot/ControlsCenter"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Controls" type="Label" parent="SafeRoot/ControlsCenter/ControlsPanel"]
+layout_mode = 2
+mouse_filter = 2
+text = "Click the game window to look around.  Esc pauses."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ThreatCompass" type="Label" parent="."]
+visible = false
+mouse_filter = 2
+
+[node name="Fade" type="ColorRect" parent="."]
+z_index = 20
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)

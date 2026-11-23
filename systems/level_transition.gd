@@ -1,14 +1,108 @@
 extends CanvasLayer
 
-## Brief spinning hourglass between levels — enter and exit only, never stays up.
-## Original prop read (time / road turning). Not a film-trade-dress recreation.
+## Storybook hourglass transition between levels — enter and exit only.
+## Original prop read (time / road turning) with refined vector brass/glass art
+## and a storybook chapter title plaque.
 
 const DEFAULT_HOLD := 2.15
 const EXIT_HOLD := 2.0
+const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
+
+class HourglassCanvas extends Control:
+	var stream_phase: float = 0.0
+
+	func _draw() -> void:
+		var cx := size.x * 0.5
+		var cy := size.y * 0.5
+
+		# Soft ambient gold aura behind the hourglass
+		draw_circle(Vector2(cx, cy), 86.0, Color(0.84, 0.69, 0.36, 0.08))
+		draw_circle(Vector2(cx, cy), 58.0, Color(0.95, 0.80, 0.42, 0.11))
+
+		# Glass bulbs (upper and lower silhouettes + subtle glass sheen)
+		var glass_fill := Color(0.62, 0.84, 0.96, 0.24)
+		var glass_edge := Color(0.85, 0.94, 1.0, 0.52)
+
+		var upper_bulb := PackedVector2Array([
+			Vector2(cx - 50, cy - 96),
+			Vector2(cx + 50, cy - 96),
+			Vector2(cx + 46, cy - 58),
+			Vector2(cx + 8, cy - 6),
+			Vector2(cx - 8, cy - 6),
+			Vector2(cx - 46, cy - 58),
+		])
+		draw_colored_polygon(upper_bulb, glass_fill)
+		draw_polyline(upper_bulb + PackedVector2Array([upper_bulb[0]]), glass_edge, 1.6, true)
+
+		var lower_bulb := PackedVector2Array([
+			Vector2(cx - 8, cy + 6),
+			Vector2(cx + 8, cy + 6),
+			Vector2(cx + 46, cy + 58),
+			Vector2(cx + 50, cy + 96),
+			Vector2(cx - 50, cy + 96),
+			Vector2(cx - 46, cy + 58),
+		])
+		draw_colored_polygon(lower_bulb, glass_fill)
+		draw_polyline(lower_bulb + PackedVector2Array([lower_bulb[0]]), glass_edge, 1.6, true)
+
+		# Glass specular highlight arcs
+		draw_line(Vector2(cx - 38, cy - 86), Vector2(cx - 18, cy - 28), Color(1, 1, 1, 0.32), 2.0, true)
+		draw_line(Vector2(cx - 18, cy + 28), Vector2(cx - 38, cy + 84), Color(1, 1, 1, 0.22), 2.0, true)
+
+		# Warm gold sand — upper mound + animated falling stream + lower cone
+		var sand_col := Color(0.94, 0.74, 0.30, 0.92)
+		var sand_hi := Color(1.0, 0.88, 0.52, 0.95)
+		var upper_sand := PackedVector2Array([
+			Vector2(cx - 30, cy - 58),
+			Vector2(cx + 30, cy - 58),
+			Vector2(cx + 5, cy - 10),
+			Vector2(cx - 5, cy - 10),
+		])
+		draw_colored_polygon(upper_sand, sand_col)
+
+		# Falling sand stream
+		var stream_w := 2.2 + 0.6 * sin(stream_phase * 8.0)
+		draw_line(Vector2(cx, cy - 8), Vector2(cx, cy + 88), sand_hi, stream_w, true)
+
+		# Lower sand pyramid
+		var lower_sand := PackedVector2Array([
+			Vector2(cx, cy + 52),
+			Vector2(cx + 38, cy + 92),
+			Vector2(cx - 38, cy + 92),
+		])
+		draw_colored_polygon(lower_sand, sand_col)
+		draw_line(Vector2(cx, cy + 52), Vector2(cx + 38, cy + 92), sand_hi, 1.2, true)
+
+		# Brass frame pillars with finials
+		var brass := Color(0.76, 0.60, 0.28, 1.0)
+		var brass_dark := Color(0.42, 0.30, 0.14, 1.0)
+		var brass_hi := Color(0.98, 0.84, 0.45, 0.95)
+
+		for sx in [-62.0, 62.0]:
+			var px: float = cx + float(sx)
+			draw_line(Vector2(px, cy - 106), Vector2(px, cy + 106), brass_dark, 6.0, true)
+			draw_line(Vector2(px, cy - 106), Vector2(px, cy + 106), brass, 3.2, true)
+			draw_circle(Vector2(px, cy - 110), 4.5, brass_hi)
+			draw_circle(Vector2(px, cy + 110), 4.5, brass_hi)
+
+		# Ornate top and bottom brass caps + waist collar
+		draw_rect(Rect2(cx - 72, cy - 112, 144, 14), brass_dark, true)
+		draw_rect(Rect2(cx - 68, cy - 109, 136, 8), brass, true)
+		draw_line(Vector2(cx - 64, cy - 107), Vector2(cx + 64, cy - 107), brass_hi, 1.2, true)
+
+		draw_rect(Rect2(cx - 72, cy + 98, 144, 14), brass_dark, true)
+		draw_rect(Rect2(cx - 68, cy + 101, 136, 8), brass, true)
+		draw_line(Vector2(cx - 64, cy + 103), Vector2(cx + 64, cy + 103), brass_hi, 1.2, true)
+
+		# Waist ring
+		draw_rect(Rect2(cx - 16, cy - 4, 32, 8), brass_dark, true)
+		draw_line(Vector2(cx - 14, cy), Vector2(cx + 14, cy), brass_hi, 2.0, true)
 
 var _root: Control
 var _veil: ColorRect
-var _glass: Control
+var _glass: HourglassCanvas
+var _card: PanelContainer
+var _subtitle: Label
 var _title: Label
 var _busy: bool = false
 var _pending_enter: String = ""
@@ -25,10 +119,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _active or _glass == null:
 		return
-	_spin_deg = fmod(_spin_deg + delta * 140.0, 360.0)
+	_spin_deg = fmod(_spin_deg + delta * 120.0, 360.0)
 	_glass.rotation_degrees = _spin_deg
-	# Soft sand pulse (scale bob on lower bulb glow).
-	var pulse := 1.0 + sin(Time.get_ticks_msec() * 0.008) * 0.04
+	_glass.stream_phase += delta
+	_glass.queue_redraw()
+	var pulse := 1.0 + sin(Time.get_ticks_msec() * 0.006) * 0.035
 	_glass.scale = Vector2.ONE * pulse
 
 func _is_headless() -> bool:
@@ -45,86 +140,65 @@ func _build_ui() -> void:
 	_veil = ColorRect.new()
 	_veil.name = "Veil"
 	_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_veil.color = Color(0.04, 0.02, 0.06, 0.0)
+	_veil.color = Color(0.05, 0.03, 0.07, 0.0)
 	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_veil)
 
-	_glass = Control.new()
+	_glass = HourglassCanvas.new()
 	_glass.name = "Hourglass"
-	_glass.custom_minimum_size = Vector2(220, 320)
-	_glass.size = Vector2(220, 320)
+	_glass.custom_minimum_size = Vector2(220, 260)
+	_glass.size = Vector2(220, 260)
 	_glass.set_anchors_preset(Control.PRESET_CENTER)
 	_glass.offset_left = -110.0
-	_glass.offset_top = -180.0
+	_glass.offset_top = -170.0
 	_glass.offset_right = 110.0
-	_glass.offset_bottom = 140.0
-	_glass.pivot_offset = Vector2(110, 160)
+	_glass.offset_bottom = 90.0
+	_glass.pivot_offset = Vector2(110, 130)
 	_glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_glass)
-	_draw_hourglass(_glass)
+
+	# Storybook Chapter Title Plaque
+	var card_center := CenterContainer.new()
+	card_center.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	card_center.offset_top = -165.0
+	card_center.offset_bottom = -36.0
+	card_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(card_center)
+
+	_card = PanelContainer.new()
+	_card.name = "ChapterCard"
+	_card.custom_minimum_size = Vector2(460, 0)
+	_card.add_theme_stylebox_override("panel", OzThemeFactory.make_panel_style(false, false))
+	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_center.add_child(_card)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_card.add_child(vbox)
+
+	_subtitle = Label.new()
+	_subtitle.text = "OZ: THE ROAD HOME"
+	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_subtitle.add_theme_font_size_override("font_size", 11)
+	_subtitle.add_theme_color_override("font_color", OzThemeFactory.OZ_GOLD_BRIGHT)
+	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_subtitle)
+
+	var top_rule := ColorRect.new()
+	top_rule.custom_minimum_size = Vector2(0, 1)
+	top_rule.color = OzThemeFactory.OZ_BORDER_SUBTLE
+	top_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(top_rule)
 
 	_title = Label.new()
 	_title.name = "Title"
-	_title.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_title.offset_top = -120.0
-	_title.offset_bottom = -40.0
-	_title.offset_left = -400.0
-	_title.offset_right = 400.0
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override("font_size", 28)
-	_title.add_theme_color_override("font_color", Color(0.95, 0.88, 0.72))
-	_title.add_theme_color_override("font_shadow_color", Color(0.15, 0.02, 0.05, 0.9))
-	_title.add_theme_constant_override("shadow_offset_x", 2)
-	_title.add_theme_constant_override("shadow_offset_y", 2)
+	_title.add_theme_font_size_override("font_size", 24)
+	_title.add_theme_color_override("font_color", OzThemeFactory.OZ_TEXT)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_title)
-
-func _draw_hourglass(parent: Control) -> void:
-	# Frame posts
-	_box(parent, Color(0.35, 0.22, 0.12), Rect2(20, 8, 18, 304))
-	_box(parent, Color(0.35, 0.22, 0.12), Rect2(182, 8, 18, 304))
-	# Top / bottom caps
-	_box(parent, Color(0.45, 0.28, 0.14), Rect2(30, 4, 160, 22))
-	_box(parent, Color(0.45, 0.28, 0.14), Rect2(30, 294, 160, 22))
-	# Glass bulbs (diamond-ish via rotated rects + center waist)
-	var upper := _poly(parent, Color(0.55, 0.78, 0.92, 0.45), [
-		Vector2(50, 30), Vector2(170, 30), Vector2(120, 150), Vector2(100, 150)
-	])
-	upper.z_index = 1
-	var lower := _poly(parent, Color(0.55, 0.78, 0.92, 0.45), [
-		Vector2(100, 170), Vector2(120, 170), Vector2(170, 290), Vector2(50, 290)
-	])
-	lower.z_index = 1
-	# Sand — upper pile + falling stream + lower pile (warm gold, original palette)
-	_poly(parent, Color(0.85, 0.65, 0.25, 0.9), [
-		Vector2(70, 55), Vector2(150, 55), Vector2(118, 130), Vector2(102, 130)
-	])
-	_box(parent, Color(0.9, 0.7, 0.3, 0.95), Rect2(106, 140, 8, 40))
-	_poly(parent, Color(0.82, 0.58, 0.2, 0.95), [
-		Vector2(78, 250), Vector2(142, 250), Vector2(155, 285), Vector2(65, 285)
-	])
-	# Rim highlight
-	_box(parent, Color(0.75, 0.55, 0.25, 0.7), Rect2(95, 148, 30, 8))
-
-func _box(parent: Control, color: Color, rect: Rect2) -> ColorRect:
-	var r := ColorRect.new()
-	r.color = color
-	r.position = rect.position
-	r.size = rect.size
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(r)
-	return r
-
-func _poly(parent: Control, color: Color, pts: Array) -> Polygon2D:
-	var p := Polygon2D.new()
-	p.color = color
-	var packed := PackedVector2Array()
-	for v in pts:
-		packed.append(v)
-	p.polygon = packed
-	parent.add_child(p)
-	return p
+	vbox.add_child(_title)
 
 func _hide_now() -> void:
 	_active = false
@@ -138,8 +212,9 @@ func _hide_now() -> void:
 		_glass.modulate.a = 0.0
 		_glass.rotation_degrees = 0.0
 		_glass.scale = Vector2.ONE
+	if _card:
+		_card.modulate.a = 0.0
 	if _title:
-		_title.modulate.a = 0.0
 		_title.text = ""
 
 ## Call from a level's _ready — plays enter sting if a transition just landed, else a short open.
@@ -169,7 +244,6 @@ func go_to(scene_path: String, exit_title: String = "The hourglass turns…", en
 		get_tree().change_scene_to_file(scene_path)
 		return
 	if _busy:
-		# Still transition — queue path without stacking hourglasses.
 		_pending_enter = enter_title
 		get_tree().change_scene_to_file(scene_path)
 		return
@@ -177,7 +251,6 @@ func go_to(scene_path: String, exit_title: String = "The hourglass turns…", en
 	_pending_enter = enter_title if enter_title != "" else "A new country…"
 	await play_exit(exit_title, EXIT_HOLD)
 	get_tree().change_scene_to_file(scene_path)
-	# Enter plays from the new scene's on_level_start; clear busy there.
 	_busy = false
 
 func _run(title: String, hold: float) -> void:
@@ -191,20 +264,21 @@ func _run(title: String, hold: float) -> void:
 	_title.text = title
 	_glass.rotation_degrees = 0.0
 	_spin_deg = 0.0
-	_veil.color = Color(0.05, 0.02, 0.07, 0.0)
+	_veil.color = Color(0.05, 0.03, 0.07, 0.0)
 	_glass.modulate.a = 0.0
-	_title.modulate.a = 0.0
+	_card.modulate.a = 0.0
+
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_veil, "color:a", 0.88, 0.35)
+	tw.tween_property(_veil, "color:a", 0.90, 0.35)
 	tw.tween_property(_glass, "modulate:a", 1.0, 0.4)
-	tw.tween_property(_title, "modulate:a", 1.0, 0.45)
+	tw.tween_property(_card, "modulate:a", 1.0, 0.45)
 	await tw.finished
 	await get_tree().create_timer(hold).timeout
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
 	tw2.tween_property(_veil, "color:a", 0.0, 0.4)
 	tw2.tween_property(_glass, "modulate:a", 0.0, 0.35)
-	tw2.tween_property(_title, "modulate:a", 0.0, 0.3)
+	tw2.tween_property(_card, "modulate:a", 0.0, 0.3)
 	await tw2.finished
 	_hide_now()
