@@ -295,6 +295,8 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 	velocity.y = 1.6
 	_set_state(State.STAGGER)
 	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.7, 0), Color(1.0, 0.5, 0.55), 0.35, 0.12)
+	if CombatFx.has_method("blood_splatter"):
+		CombatFx.blood_splatter(self, global_position, away, Color(0.62, 0.03, 0.06))
 	# Gilded Chain tether mirrors 75% of damage onto bound partner!
 	if not bool(tags.get("chain_echo", false)) and _chain_partner and is_instance_valid(_chain_partner) and _chain_partner.has_method("take_damage"):
 		var echo_dmg := maxi(1, int(float(dmg) * 0.75))

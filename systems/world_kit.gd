@@ -840,20 +840,20 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 	cvis.name = "Visual"
 	chest.add_child(cvis)
 	var brass_m := _mat(gold_c, 0.20, 0.92, gold_c, 0.40)
-	_mi(cvis, _box(Vector3(0.92, 0.46, 0.58)), _mat(wood_c, 0.62), Vector3(0, 0.23, 0))
+	_mi(cvis, _box(Vector3(0.90, 0.44, 0.56)), _mat(wood_c, 0.62), Vector3(0, 0.22, 0))
 	for bx in [-0.42, 0.0, 0.42]:
-		_mi(cvis, _box(Vector3(0.08, 0.48, 0.62)), brass_m, Vector3(float(bx), 0.24, 0))
-	_mi(cvis, _box(Vector3(0.96, 0.07, 0.62)), brass_m, Vector3(0, 0.45, 0))
+		_mi(cvis, _box(Vector3(0.075, 0.47, 0.62)), brass_m, Vector3(float(bx), 0.235, 0))
+	_mi(cvis, _box(Vector3(0.97, 0.06, 0.63)), brass_m, Vector3(0, 0.45, 0))
 	# Glowing jewels inside chest
 	_mi(cvis, _sph(0.18, 0.14, 10), _mat(rose_c, 0.12, 0.3, rose_c, 1.8), Vector3(0, 0.44, 0))
 	var lid := Node3D.new()
 	lid.name = "Lid"
-	lid.position = Vector3(0, 0.46, -0.29)
+	lid.position = Vector3(0, 0.47, -0.28)
 	cvis.add_child(lid)
-	_mi(lid, _cyl(0.28, 0.28, 0.92, 12), _mat(wood_c.lightened(0.08), 0.58), Vector3(0, 0.02, 0.29), Vector3(0, 0, 90))
+	_mi(lid, _cyl(0.26, 0.26, 0.88, 12), _mat(wood_c.lightened(0.08), 0.58), Vector3(0, 0.02, 0.28), Vector3(0, 0, 90))
 	for bx in [-0.42, 0.0, 0.42]:
-		_mi(lid, _cyl(0.295, 0.295, 0.08, 12), brass_m, Vector3(float(bx), 0.02, 0.29), Vector3(0, 0, 90))
-	_mi(lid, _box(Vector3(0.16, 0.16, 0.08)), brass_m, Vector3(0, 0.0, 0.58))
+		_mi(lid, _cyl(0.295, 0.295, 0.075, 12), brass_m, Vector3(float(bx), 0.02, 0.28), Vector3(0, 0, 90))
+	_mi(lid, _box(Vector3(0.16, 0.16, 0.07)), brass_m, Vector3(0, 0.0, 0.59))
 	make_world_badge(chest, Vector3(0, 1.15, 0), "♦  Gilded Treasure Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
 
 	# 2) Floating Shattered Memory Keepsake
@@ -983,12 +983,11 @@ static func build_locasta_visual(parent: Node3D) -> void:
 	var lip := _mat(Color(0.76, 0.34, 0.44), 0.42)
 	var crystal := _mat(Color(1.0, 0.95, 0.68), 0.10, 0.2, Color(1.0, 0.92, 0.55), 1.9)
 
-	# Smooth pleated ballgown skirt (24 segments) + vertical silk pleats + scalloped hem
-	_mi(parent, _cyl(0.16, 0.56, 1.02, 24), gown, Vector3(0, 0.51, 0))
-	for pi in range(8):
-		var pa := float(pi) / 8.0 * TAU
-		_mi(parent, _cyl(0.05, 0.13, 0.98, 10), silk, Vector3(cos(pa) * 0.28, 0.50, sin(pa) * 0.28), Vector3(sin(pa) * 14.0, 0, -cos(pa) * 14.0))
-	_mi(parent, _cyl(0.55, 0.58, 0.05, 24), gold, Vector3(0, 0.04, 0))
+	# Smooth tiered royal ballgown (NO protruding waist-poles!) + gilded scallops & satin sash
+	_mi(parent, _cyl(0.16, 0.62, 1.04, 28), gown, Vector3(0, 0.52, 0))
+	_mi(parent, _cyl(0.19, 0.46, 0.52, 24), silk, Vector3(0, 0.78, 0))
+	_mi(parent, _cyl(0.58, 0.64, 0.06, 28), gold, Vector3(0, 0.04, 0))
+	_mi(parent, _cyl(0.45, 0.48, 0.04, 24), gold, Vector3(0, 0.53, 0))
 
 	# Contoured hourglass corset bodice + bust silhouette + gold waist filigree
 	_mi(parent, _cyl(0.15, 0.12, 0.24, 20), silk, Vector3(0, 1.12, 0))
@@ -1306,14 +1305,44 @@ static func build_chicken_coop(parent: Node3D) -> void:
 	_mi(parent, _box(Vector3(0.65, 0.08, 1.15)), timber, Vector3(0, 0.32, 1.55), Vector3(28, 0, 0))
 	# Side nesting box bay
 	_mi(parent, _box(Vector3(0.65, 0.62, 1.45)), trim, Vector3(1.85, 1.05, 0))
-	# See-through wooden-post & wire-mesh fenced chicken run extending east/south
+	# See-through wooden-post & wire-mesh fenced chicken run + SWINGING ENTRANCE GATE on south face!
 	for px in [-2.6, 0.0, 2.6, 5.2]:
 		_mi(parent, _cyl(0.055, 0.065, 1.25, 8), trim, Vector3(float(px), 0.62, 4.4))
 		_mi(parent, _cyl(0.055, 0.065, 1.25, 8), trim, Vector3(float(px), 0.62, -2.4))
-	_mi(parent, _box(Vector3(7.8, 1.1, 0.04)), wire_m, Vector3(1.3, 0.58, 4.4))
+	# South fence left & right wings with 2.2m gap in center for swinging wooden gate!
+	_mi(parent, _box(Vector3(2.8, 1.1, 0.04)), wire_m, Vector3(-1.2, 0.58, 4.4))
+	_mi(parent, _box(Vector3(2.8, 1.1, 0.04)), wire_m, Vector3(3.8, 0.58, 4.4))
 	_mi(parent, _box(Vector3(7.8, 1.1, 0.04)), wire_m, Vector3(1.3, 0.58, -2.4))
 	_mi(parent, _box(Vector3(0.04, 1.1, 6.8)), wire_m, Vector3(5.2, 0.58, 1.0))
 	_mi(parent, _box(Vector3(0.04, 1.1, 6.8)), wire_m, Vector3(-2.6, 0.58, 1.0))
+	# Hinged swinging chicken-run gate (auto-opens 95 deg when Dorothy walks up!)
+	var gate_piv := Node3D.new()
+	gate_piv.name = "CoopGatePivot"
+	gate_piv.position = Vector3(0.2, 0.0, 4.4)
+	parent.add_child(gate_piv)
+	_mi(gate_piv, _box(Vector3(2.1, 0.08, 0.06)), trim, Vector3(1.05, 1.05, 0))
+	_mi(gate_piv, _box(Vector3(2.1, 0.08, 0.06)), trim, Vector3(1.05, 0.25, 0))
+	_mi(gate_piv, _box(Vector3(2.0, 0.85, 0.03)), wire_m, Vector3(1.05, 0.65, 0))
+	var gate_trig := Area3D.new()
+	gate_trig.collision_layer = 0
+	gate_trig.collision_mask = 2
+	gate_trig.position = Vector3(1.3, 0.6, 4.4)
+	parent.add_child(gate_trig)
+	var gcs := CollisionShape3D.new()
+	var gsh := SphereShape3D.new()
+	gsh.radius = 2.4
+	gcs.shape = gsh
+	gate_trig.add_child(gcs)
+	gate_trig.body_entered.connect(func(b):
+		if b.is_in_group("player"):
+			var tw := parent.create_tween()
+			tw.tween_property(gate_piv, "rotation_degrees:y", 95.0, 0.42).set_trans(Tween.TRANS_CUBIC)
+	)
+	gate_trig.body_exited.connect(func(b):
+		if b.is_in_group("player"):
+			var tw := parent.create_tween()
+			tw.tween_property(gate_piv, "rotation_degrees:y", 0.0, 0.55).set_trans(Tween.TRANS_CUBIC)
+	)
 	make_building_crest_sign(parent, Vector3(0, 2.55, 1.35), "CHICKEN COOP", Color(0.46, 0.46, 0.49), true)
 	# 5 Sculpted 3D prairie chickens scratching & roosting inside the fenced run!
 	build_chicken_visual(parent, Vector3(2.4, 0.0, 2.2), 35.0)
@@ -1339,7 +1368,19 @@ static func build_water_cistern(parent: Node3D) -> void:
 	var wood := _mat(Color(0.38, 0.24, 0.14), 0.85)
 	var water := make_flowing_water_material(Color(0.20, 0.68, 0.98), Color(0.80, 0.96, 1.0), 1.35)
 
-	# Stepped octagonal stone well basin + copper coping rim
+	# Stepped octagonal stone well basin + SOLID COLLIDER so characters NEVER walk through the cistern!
+	var c_body := StaticBody3D.new()
+	c_body.name = "CisternSolidCollider"
+	c_body.collision_layer = 1
+	c_body.collision_mask = 0
+	parent.add_child(c_body)
+	var c_col := CollisionShape3D.new()
+	var c_sh := CylinderShape3D.new()
+	c_sh.radius = 2.05
+	c_sh.height = 1.25
+	c_col.shape = c_sh
+	c_col.position = Vector3(0, 0.62, 0)
+	c_body.add_child(c_col)
 	_mi(parent, _cyl(1.95, 2.15, 0.24, 8), stone, Vector3(0, 0.12, 0))
 	_mi(parent, _cyl(1.75, 1.82, 0.92, 8), stone_hi, Vector3(0, 0.58, 0))
 	_mi(parent, _cyl(1.86, 1.86, 0.12, 8), copper, Vector3(0, 1.08, 0))
@@ -1483,25 +1524,24 @@ static func build_wicker_basket(parent: Node3D) -> void:
 	for c in parent.get_children():
 		if c is MeshInstance3D:
 			(c as MeshInstance3D).visible = false
-	var wicker := _mat(Color(0.52, 0.50, 0.48), 0.92)
-	var wicker_dark := _mat(Color(0.34, 0.33, 0.32), 0.94)
-	var cloth := _mat(Color(0.84, 0.84, 0.86), 0.86)
+	var wicker := _mat(Color(0.56, 0.54, 0.50), 0.90)
+	var wicker_dark := _mat(Color(0.32, 0.31, 0.30), 0.92)
+	var cloth := _mat(Color(0.88, 0.88, 0.90), 0.84)
 
 	var b := Node3D.new()
 	b.name = "WickerBasketVisual"
 	parent.add_child(b)
-	_mi(b, _cyl(0.34, 0.26, 0.36, 16), wicker, Vector3(0, 0.18, 0), Vector3.ZERO, Vector3(1.25, 1.0, 0.88))
-	for ry in [0.09, 0.19, 0.29]:
-		_mi(b, _cyl(0.35, 0.35, 0.03, 16), wicker_dark, Vector3(0, float(ry), 0), Vector3.ZERO, Vector3(1.26, 1.0, 0.90))
-	# Checkered cloth liner peeking over rim + hinged double lids
-	_mi(b, _cyl(0.36, 0.34, 0.06, 16), cloth, Vector3(0, 0.36, 0), Vector3.ZERO, Vector3(1.22, 1.0, 0.86))
-	_mi(b, _box(Vector3(0.38, 0.04, 0.56)), wicker_dark, Vector3(-0.20, 0.40, 0), Vector3(0, 0, 10))
-	_mi(b, _box(Vector3(0.38, 0.04, 0.56)), wicker_dark, Vector3(0.20, 0.40, 0), Vector3(0, 0, -10))
-	# Arched braided carry handle
+	# Tapered oval woven picnic basket + horizontal wicker ribs + folded cloth liner + VERTICAL arched handle!
+	_mi(b, _cyl(0.34, 0.24, 0.38, 20), wicker, Vector3(0, 0.19, 0), Vector3.ZERO, Vector3(1.22, 1.0, 0.88))
+	for ry in [0.09, 0.19, 0.29, 0.36]:
+		_mi(b, _cyl(0.355, 0.355, 0.025, 20), wicker_dark, Vector3(0, float(ry), 0), Vector3.ZERO, Vector3(1.24, 1.0, 0.90))
+	_mi(b, _cyl(0.33, 0.31, 0.06, 20), cloth, Vector3(0, 0.38, 0), Vector3.ZERO, Vector3(1.16, 1.0, 0.82))
+	# Vertical arched carry handle (rotated 90 deg on X so it arches UP over the basket!)
 	var handle := TorusMesh.new()
-	handle.inner_radius = 0.28
-	handle.outer_radius = 0.33
-	_mi(b, handle, wicker_dark, Vector3(0, 0.38, 0), Vector3(0, 0, 0), Vector3(1.0, 1.05, 0.5))
+	handle.inner_radius = 0.26
+	handle.outer_radius = 0.31
+	handle.rings = 18
+	_mi(b, handle, wicker_dark, Vector3(0, 0.38, 0), Vector3(90, 0, 0), Vector3(1.15, 0.95, 1.0))
 
 ## Diegetic Kansas Storm-Lantern Waypoint Stake (replaces bare neon cylinder stick).
 static func build_prairie_lantern_marker() -> Node3D:
@@ -1940,12 +1980,11 @@ static func build_glinda_visual(parent: Node3D) -> void:
 	var veil := _mat(Color(1.0, 0.86, 0.92, 0.52), 0.32, 0.05)
 	veil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
-	# Flowing 24-segment pleated ballgown + rose-silk overskirt + gilded hem
-	_mi(parent, _cyl(0.16, 0.62, 1.06, 24), gown_w, Vector3(0, 0.53, 0))
-	for pi in range(10):
-		var pa := float(pi) / 10.0 * TAU
-		_mi(parent, _cyl(0.05, 0.14, 1.00, 10), rose_silk, Vector3(cos(pa) * 0.31, 0.52, sin(pa) * 0.31), Vector3(sin(pa) * 15.0, 0, -cos(pa) * 15.0))
-	_mi(parent, _cyl(0.61, 0.64, 0.06, 24), gold, Vector3(0, 0.04, 0))
+	# Smooth tiered royal snow-white & rose-silk ballgown (NO protruding waist-poles!)
+	_mi(parent, _cyl(0.16, 0.64, 1.06, 28), gown_w, Vector3(0, 0.53, 0))
+	_mi(parent, _cyl(0.18, 0.48, 0.54, 26), rose_silk, Vector3(0, 0.78, 0))
+	_mi(parent, _cyl(0.61, 0.65, 0.06, 28), gold, Vector3(0, 0.04, 0))
+	_mi(parent, _cyl(0.46, 0.50, 0.04, 26), gold, Vector3(0, 0.52, 0))
 
 	# Contoured bodice + bust silhouette + ruby brooch + gossamer cape
 	_mi(parent, _cyl(0.15, 0.12, 0.26, 20), rose_silk, Vector3(0, 1.15, 0))
@@ -1965,9 +2004,14 @@ static func build_glinda_visual(parent: Node3D) -> void:
 	_mi(parent, _cyl(0.016, 0.022, 1.52, 10), gold, Vector3(0.36, 1.24, -0.22), Vector3(10, 0, -5))
 	_mi(parent, _sph(0.095, 0.18, 14), ruby, Vector3(0.42, 2.02, -0.35))
 
-	# Neck, sculpted head, cascading auburn hair, ruby-star tiara
+	# Neck, sculpted head with expressive eyes & lips, cascading auburn hair, ruby-star tiara
 	_mi(parent, _cyl(0.046, 0.056, 0.12, 14), skin, Vector3(0, 1.50, 0))
 	_mi(parent, _sph(0.135, 0.29, 20), skin, Vector3(0, 1.66, 0))
+	var g_eye := _mat(Color(0.20, 0.52, 0.38), 0.18)
+	var g_lip := _mat(Color(0.84, 0.24, 0.38), 0.38)
+	for ex in [-0.046, 0.046]:
+		_mi(parent, _sph(0.019, 0.036, 10), g_eye, Vector3(float(ex), 1.68, -0.120))
+	_mi(parent, _sph(0.018, 0.012, 10), g_lip, Vector3(0, 1.60, -0.124), Vector3.ZERO, Vector3(1.8, 0.7, 0.8))
 	_mi(parent, _sph(0.148, 0.28, 20), auburn, Vector3(0, 1.70, 0.025))
 	_mi(parent, _cyl(0.09, 0.12, 0.56, 14), auburn, Vector3(0, 1.38, 0.12), Vector3(16, 0, 0))
 	_mi(parent, _cyl(0.15, 0.15, 0.045, 20), gold, Vector3(0, 1.80, 0))

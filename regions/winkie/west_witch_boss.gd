@@ -62,6 +62,8 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 	health -= dmg
 	if CombatFx and CombatFx.has_method("flash_sphere"):
 		CombatFx.flash_sphere(self, global_position + Vector3(0, 1.4, 0), Color(0.7, 0.2, 0.25), 0.5, 0.15)
+	if CombatFx and CombatFx.has_method("blood_splatter"):
+		CombatFx.blood_splatter(self, global_position + Vector3(0, 0.4, 0), global_position - source_position, Color(0.32, 0.04, 0.38))
 	# Ground her after enough pressure or axe hits while low.
 	if health <= 70 or (armor_break and health <= 100):
 		grounded = true

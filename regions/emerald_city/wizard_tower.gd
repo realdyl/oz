@@ -194,12 +194,12 @@ func _build_world() -> void:
 		_add_box(Vector3(2.6, 0.08, z), Vector3(2.0, 0.06, 2.0), Color(0.88, 0.72, 0.18), "Brick")
 	var ybr_sign := WorldKit.make_wooden_signpost(Vector3(-4.2, 0.0, 28.0), "EMERALD CITY", Color(0.35, 0.95, 0.55), gate_pos)
 	add_child(ybr_sign)
-	# City gates — grander arch + sealed double gates
-	_add_box(Vector3(-20, 6, -8), Vector3(14, 14, 5), Color(0.12, 0.42, 0.26), "GateL")
-	_add_box(Vector3(20, 6, -8), Vector3(14, 14, 5), Color(0.12, 0.42, 0.26), "GateR")
-	_add_box(Vector3(0, 11, -8), Vector3(14, 5, 4), Color(0.18, 0.55, 0.34), "GateArch")
-	_add_box(Vector3(-8, 3, -8), Vector3(2.2, 8, 3.2), Color(0.15, 0.5, 0.3), "PillarL")
-	_add_box(Vector3(8, 3, -8), Vector3(2.2, 8, 3.2), Color(0.15, 0.5, 0.3), "PillarR")
+	# City gates — grander arch + sealed double gates + FULL-SPAN WALLS to MapBorder (ZERO gap to sneak around!)
+	_add_box(Vector3(-28.5, 6, -8), Vector3(40, 14, 5), Color(0.12, 0.42, 0.26), "GateL")
+	_add_box(Vector3(28.5, 6, -8), Vector3(40, 14, 5), Color(0.12, 0.42, 0.26), "GateR")
+	_add_box(Vector3(0, 11, -8), Vector3(17, 5, 4), Color(0.18, 0.55, 0.34), "GateArch")
+	_add_box(Vector3(-7.6, 3, -8), Vector3(2.2, 8, 3.2), Color(0.15, 0.5, 0.3), "PillarL")
+	_add_box(Vector3(7.6, 3, -8), Vector3(2.2, 8, 3.2), Color(0.15, 0.5, 0.3), "PillarR")
 	_gate_doors = WorldKit.build_palace_double_doors(self, Vector3(0, 0, -8.0), 13.8, 8.5)
 	_gate_seal = StaticBody3D.new()
 	_gate_seal.name = "EmeraldGateSeal"
@@ -213,12 +213,19 @@ func _build_world() -> void:
 	_gate_seal.add_child(gcs)
 	WorldKit.make_building_crest_sign(self, Vector3(0, 9.6, -5.8), "EMERALD CITY GATES", Color(0.22, 0.78, 0.45), false)
 	WorldKit.make_world_badge(self, gate_pos + Vector3(0, 3.6, 1.2), "✦  Emerald City Gates — Open (E)", Color(0.55, 1.0, 0.72), 14.0)
-	# Plaza
+	# Plaza + Disney-World Fairy-Tale Emerald Boulevard Lanterns & Pennant Flags + Phase P8 Tailor of Vices Boutique!
 	_add_box(Vector3(0, -0.12, -40), Vector3(70, 0.4, 55), Color(0.16, 0.38, 0.26), "Plaza")
-	# Approach stairs up to palace (climbable)
+	for sx in [-1.0, 1.0]:
+		for lz in [-14.0, -21.0, -27.0]:
+			_add_box(Vector3(float(sx) * 9.5, 3.2, lz), Vector3(0.28, 6.4, 0.28), Color(0.88, 0.76, 0.28), "BoulevardPost")
+			_add_box(Vector3(float(sx) * 9.5, 6.6, lz), Vector3(0.85, 0.85, 0.85), Color(0.35, 1.0, 0.65), "BoulevardGem")
+	# Phase P8: The Tailor of Vices Ornate Boutique Pavilion on the Emerald Plaza!
+	_build_tailor_of_vices(Vector3(-16.5, 0.08, -20.0))
+	# Continuous climbable approach stairs culminating in a FLUSH Grand Emerald Marble Landing Terrace (ZERO drop-off!)
 	for s in 5:
-		var t := float(s + 1) / 5.0
-		_add_box(Vector3(0, 0.12 + float(s) * 0.22, -28.0 - float(s) * 1.1), Vector3(14.0 - float(s) * 0.4, 0.24, 1.2), Color(0.2, 0.5, 0.32), "ApproachStep")
+		_add_box(Vector3(0, 0.06 + float(s) * 0.14, -28.0 - float(s) * 1.1), Vector3(14.0 - float(s) * 0.3, 0.16, 1.25), Color(0.20, 0.56, 0.36), "ApproachStep")
+	# Flush top landing terrace connecting stair top directly to the Palace Doors (z = -33.2..-36.8)!
+	_add_box(Vector3(0, 0.36, -35.0), Vector3(13.2, 0.72, 4.2), Color(0.22, 0.62, 0.40), "PalaceLandingTerrace")
 	# Crystalline multi-spire Emerald Palace architecture matching Munchkinland's horizon skyline!
 	WorldKit.build_emerald_palace_facade(self, Vector3(0, 0, -52))
 	WorldKit.dress_ybr_spine(self, -6.0, 42.0, 3.6)
@@ -310,17 +317,18 @@ func _build_wizard_projection() -> void:
 	wizard_head.visible = false
 
 func _build_curtain_and_body() -> void:
+	# Place velvet curtain & Wizard completely clear of ThroneDais & side walls!
 	curtain = Node3D.new()
 	curtain.name = "Curtain"
 	add_child(curtain)
-	curtain.global_position = Vector3(6.2, 0.1, -58.0)
+	curtain.global_position = Vector3(7.2, 0.15, -55.2)
 	_curtain_rig = WorldKit.build_velvet_curtain(curtain, curtain.global_position, 5.4, 6.2)
 	WorldKit.make_world_badge(curtain, Vector3(0, 5.4, 0.4), "✦  Velvet Curtain — Pull (E)", Color(1.0, 0.78, 0.72), 16.0)
 	# Sculpted Omaha Humbug Inventor + Brass Voice-Horn Console right behind the curtain, facing +Z!
 	wizard_body = Node3D.new()
 	wizard_body.name = "WizardBody"
 	add_child(wizard_body)
-	wizard_body.global_position = Vector3(6.2, 0.15, -60.2)
+	wizard_body.global_position = Vector3(7.2, 0.15, -56.4)
 	wizard_body.scale = Vector3(1.18, 1.18, 1.18)
 	wizard_body.visible = false
 	WorldKit.build_humbug_wizard(wizard_body)
@@ -330,7 +338,35 @@ func _build_curtain_and_body() -> void:
 	_wizard_spot.light_energy = 0.0
 	_wizard_spot.omni_range = 14.0
 	add_child(_wizard_spot)
-	_wizard_spot.global_position = Vector3(6.2, 3.8, -56.2)
+	_wizard_spot.global_position = Vector3(7.2, 3.8, -52.5)
+
+func _build_tailor_of_vices(at: Vector3) -> void:
+	## Phase P8: The Tailor of Vices ornate Emerald Plaza Boutique (interactive outfit & Allure blessing!).
+	var shop := Node3D.new()
+	shop.name = "TailorOfVices"
+	add_child(shop)
+	shop.global_position = at
+	_add_box(at + Vector3(0, 2.1, 0), Vector3(5.6, 4.2, 4.6), Color(0.18, 0.06, 0.16), "TailorShopBody")
+	WorldKit.make_building_crest_sign(shop, Vector3(0, 4.45, 2.45), "THE TAILOR OF VICES", Color(0.94, 0.34, 0.62), false)
+	WorldKit.make_world_badge(shop, Vector3(0, 2.9, 2.8), "✦  Boutique · Velvet Blessing (+25 Allure)", Color(1.0, 0.62, 0.84), 14.0)
+	var area := Area3D.new()
+	area.collision_layer = 0
+	area.collision_mask = 2
+	area.position = Vector3(0, 1.0, 3.0)
+	shop.add_child(area)
+	var cs := CollisionShape3D.new()
+	var sph := SphereShape3D.new()
+	sph.radius = 2.6
+	cs.shape = sph
+	area.add_child(cs)
+	area.body_entered.connect(func(b):
+		if b.is_in_group("player") and not shop.has_meta("visited"):
+			shop.set_meta("visited", true)
+			var sm := get_node_or_null("/root/SaveManager")
+			if sm and sm.has_method("add_desire"):
+				sm.add_desire(25, "The Tailor of Vices")
+			_say("Tailor of Vices: \"Welcome to the Emerald Boulevard, darling. Take this velvet shimmer — the Wizard's guards won't know what hit them.\"")
+	)
 
 func _add_limb(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -478,7 +514,7 @@ func _set_beat(next: Beat) -> void:
 			if wizard_body:
 				wizard_body.visible = true
 				var wtw := create_tween()
-				wtw.tween_property(wizard_body, "global_position:z", -57.2, 0.95).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				wtw.tween_property(wizard_body, "global_position:z", -52.8, 0.95).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 			_say("Wizard: \"Pay no attention— I'm a humbug… just a little man from Omaha. Please don't tell anyone.\"")
 		Beat.DONE:
 			hud.set_objective("FINAL STEP (L4): Hourglass turns — Yellow Brick Road to Glinda's court (L5).")

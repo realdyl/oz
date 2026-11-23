@@ -9,6 +9,45 @@ extends StaticBody3D
 var alive: bool = true
 var visual: Node3D
 var body_mat: StandardMaterial3D
+var _pod_cd: float = 2.6
+
+func _physics_process(delta: float) -> void:
+	if not alive:
+		return
+	# Baum-canon Fighting Tree (Ch. 19): periodically whips branches & hurls thorny seed-pods at nearby travelers!
+	_pod_cd -= delta
+	if _pod_cd <= 0.0:
+		_pod_cd = randf_range(2.8, 4.2)
+		var p := get_node_or_null("/root/Party")
+		var lead: Node3D = p.call("leader_body") as Node3D if (p and p.has_method("leader_body")) else null
+		if lead and lead.global_position.distance_to(global_position) < 16.0:
+			_throw_seed_pod(lead.global_position)
+
+func _throw_seed_pod(target_pos: Vector3) -> void:
+	var pod := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 0.22
+	sph.height = 0.42
+	pod.mesh = sph
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = Color(0.45, 0.24, 0.12)
+	pm.emission_enabled = true
+	pm.emission = Color(0.75, 0.35, 0.12)
+	pm.emission_energy_multiplier = 0.7
+	pod.material_override = pm
+	get_parent().add_child(pod)
+	var start_p := global_position + Vector3(0, 3.1, 0)
+	pod.global_position = start_p
+	if visual:
+		var sway := create_tween()
+		sway.tween_property(visual, "rotation_degrees:z", 12.0, 0.14)
+		sway.tween_property(visual, "rotation_degrees:z", 0.0, 0.24)
+	var tw := create_tween()
+	tw.tween_property(pod, "global_position", target_pos + Vector3(0, 0.4, 0), 0.65).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		CombatFx.flash_sphere(self, target_pos + Vector3(0, 0.4, 0), Color(0.65, 0.35, 0.15), 0.55, 0.18)
+		pod.queue_free()
+	)
 
 func _ready() -> void:
 	add_to_group("enemies")

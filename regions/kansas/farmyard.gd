@@ -152,6 +152,14 @@ func _build_farm_layout() -> void:
 	_add_ground_pad(Vector3(0, -0.05, 40), Vector3(90, 0.1, 50))
 	_add_ground_pad(Vector3(-40, -0.05, 0), Vector3(50, 0.1, 90))
 	_add_ground_pad(Vector3(40, -0.05, 0), Vector3(50, 0.1, 90))
+	# Replace sporadic flat baked fence slabs with clean rustic split-rail posts
+	for fn in ["FenceN1", "FenceN2", "FenceE1", "FenceE2", "FenceW1", "FenceS1", "FenceBroken"]:
+		var fnode := get_node_or_null(fn) as Node3D
+		if fnode:
+			fnode.visible = false
+			for fc in fnode.find_children("*", "CollisionShape3D", true, false):
+				if fc is CollisionShape3D:
+					(fc as CollisionShape3D).disabled = true
 	_add_barn(Vector3(-22.0, 0.0, 26.0))
 	_add_fence_ring(Vector3(-22.0, 0.0, 26.0), 8.0, 14)
 	_add_fence_ring(Vector3(24.0, 0.0, -20.0), 6.0, 12)
@@ -590,7 +598,8 @@ func _spawn_basket_marker() -> void:
 	mat.emission_energy_multiplier = 1.4
 	_marker.material_override = mat
 	add_child(_marker)
-	_marker.global_position = basket.global_position + Vector3(0, 1.5, 0)
+	# Place lantern marker 1.4m beside the basket (never stabbing straight through it!)
+	_marker.global_position = basket.global_position + Vector3(1.4, 1.5, 0.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -768,7 +777,7 @@ func _add_kansas_whimsy() -> void:
 	w.call("setup", self, hud, [
 		{"pos": Vector3(14, 0, 14), "kind": "bounce", "name": "Prairie bounce"},
 		{"pos": Vector3(-12, 0, 8), "kind": "giggle", "name": "Dust giggle"},
-		{"pos": Vector3(16, 0, -6), "kind": "chime", "name": "Fence chime"},
+		{"pos": Vector3(13.5, 0, -6), "kind": "chime", "name": "Fence chime"},
 		{"pos": Vector3(-8, 0, 28), "kind": "dance", "name": "Barn dance ring"},
 		{"pos": Vector3(18, 0, 30), "kind": "giggle", "name": "Yard giggle"},
 	], "kansas")
@@ -852,6 +861,16 @@ func _on_basket_taken() -> void:
 	phase = Phase.NEED_TOTO
 	hud.set_objective("Toto is at the chicken run — east past the house (compass). Call him into the basket (E).")
 	_safe_pos = player.global_position
+	# Attach a visible woven wicker basket right to Dorothy's hand!
+	if player:
+		var vis := player.get_node_or_null("Visual") as Node3D
+		if vis and vis.get_node_or_null("CarriedBasket") == null:
+			var cb := Node3D.new()
+			cb.name = "CarriedBasket"
+			cb.position = Vector3(0.32, 0.72, -0.18)
+			cb.scale = Vector3(0.65, 0.65, 0.65)
+			vis.add_child(cb)
+			WorldKit.build_wicker_basket(cb)
 	# Offset lantern marker 2.0m beside Toto so it NEVER impales or overlaps Toto!
 	_retarget_marker(toto.global_position + Vector3(2.0, 0.0, 1.2))
 	_dlg("Dorothy", "There — Toto's basket. Now where's that dog?")
@@ -969,9 +988,19 @@ func _spawn_debris(final_piece: bool) -> void:
 func _on_soft_debris() -> void:
 	if phase != Phase.STORM_RUN:
 		return
+	# Physical knockdown recoil + dust impact so Dorothy must dodge storm debris!
+	if player:
+		player.velocity = Vector3(randf_range(-6.0, 6.0), 3.2, 6.5)
+		var vis := player.get_node_or_null("Visual") as Node3D
+		if vis:
+			var tw := create_tween()
+			tw.tween_property(vis, "rotation_degrees:x", -68.0, 0.16).set_ease(Tween.EASE_OUT)
+			tw.tween_interval(0.32)
+			tw.tween_property(vis, "rotation_degrees:x", 0.0, 0.28).set_ease(Tween.EASE_IN_OUT)
+		CombatFx.label(player, player.global_position, "KNOCKED DOWN!", Color(0.95, 0.95, 1.0))
 	if player.global_position.distance_to(_safe_pos) > 16.0:
 		player.global_position = _safe_pos + Vector3(0, 0.1, 0)
-	hud.set_prompt("Debris! You cannot fail — keep for the house door.")
+	hud.set_prompt("Knocked down by storm debris! Dodge it and run for the farmhouse door!")
 	get_tree().create_timer(1.2).timeout.connect(func():
 		if phase == Phase.STORM_RUN and not _near_door:
 			hud.set_prompt("Run to the glowing farmhouse door — E to enter")

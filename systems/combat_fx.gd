@@ -643,3 +643,77 @@ func gilded_chain(host: Node3D, pos_a: Vector3, pos_b: Vector3) -> void:
 func rapture_burst(host: Node3D, pos: Vector3) -> void:
 	flash_sphere(host, pos + Vector3(0, 1.0, 0), Color(0.98, 0.10, 0.34), 2.8, 0.45)
 	label(host, pos + Vector3(0, 0.6, 0), "✦ RAPTURE MODE ✦", Color(1.0, 0.22, 0.48))
+
+## Rated-M visceral blood / ichor splatter droplets + ground spatter pool on heavy hits!
+func blood_splatter(host: Node3D, pos: Vector3, away_dir: Vector3 = Vector3.FORWARD, col: Color = Color(0.62, 0.03, 0.06)) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var dir := away_dir
+	dir.y = 0.0
+	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
+	var bmat := StandardMaterial3D.new()
+	bmat.albedo_color = col
+	bmat.roughness = 0.22
+	bmat.metallic = 0.12
+	bmat.emission_enabled = true
+	bmat.emission = col * 0.45
+	bmat.emission_energy_multiplier = 0.5
+	for i in range(7):
+		var drop := MeshInstance3D.new()
+		var sph := SphereMesh.new()
+		sph.radius = randf_range(0.055, 0.115)
+		sph.height = sph.radius * 1.9
+		drop.mesh = sph
+		drop.material_override = bmat
+		root.add_child(drop)
+		var start_p := pos + Vector3(randf_range(-0.2, 0.2), randf_range(0.55, 1.15), randf_range(-0.2, 0.2))
+		drop.global_position = start_p
+		var spread := (dir + Vector3(randf_range(-0.85, 0.85), 0.0, randf_range(-0.85, 0.85))).normalized()
+		var end_p := start_p + spread * randf_range(0.85, 2.2)
+		end_p.y = 0.04
+		var tw := host.get_tree().create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(drop, "global_position:x", end_p.x, 0.36).set_ease(Tween.EASE_OUT)
+		tw.tween_property(drop, "global_position:z", end_p.z, 0.36).set_ease(Tween.EASE_OUT)
+		tw.tween_property(drop, "global_position:y", end_p.y, 0.36).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(drop, "scale", Vector3(1.6, 0.18, 1.6), 0.38)
+		tw.chain().tween_interval(1.6)
+		tw.chain().tween_callback(drop.queue_free)
+
+## Sparkling water splash droplets + expanding ripple ring when wading through pools!
+func water_splash(host: Node3D, pos: Vector3) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var ring := MeshInstance3D.new()
+	var t := TorusMesh.new()
+	t.inner_radius = 0.22
+	t.outer_radius = 0.30
+	ring.mesh = t
+	var rmat := StandardMaterial3D.new()
+	rmat.albedo_color = Color(0.82, 0.96, 1.0, 0.80)
+	rmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring.material_override = rmat
+	root.add_child(ring)
+	ring.global_position = Vector3(pos.x, 0.10, pos.z)
+	var tw := host.get_tree().create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3(3.2, 1.0, 3.2), 0.48).set_ease(Tween.EASE_OUT)
+	tw.tween_property(rmat, "albedo_color:a", 0.0, 0.48)
+	tw.chain().tween_callback(ring.queue_free)
+	for i in range(4):
+		var drop := MeshInstance3D.new()
+		var s := SphereMesh.new()
+		s.radius = 0.055
+		s.height = 0.11
+		drop.mesh = s
+		drop.material_override = rmat
+		root.add_child(drop)
+		var ang := float(i) * PI * 0.5 + randf() * 0.6
+		drop.global_position = Vector3(pos.x, 0.14, pos.z)
+		var dtw := host.get_tree().create_tween()
+		dtw.tween_property(drop, "global_position", Vector3(pos.x + cos(ang) * 0.45, 0.52, pos.z + sin(ang) * 0.45), 0.18).set_ease(Tween.EASE_OUT)
+		dtw.tween_property(drop, "global_position", Vector3(pos.x + cos(ang) * 0.72, 0.08, pos.z + sin(ang) * 0.72), 0.20).set_ease(Tween.EASE_IN)
+		dtw.tween_callback(drop.queue_free)

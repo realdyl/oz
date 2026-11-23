@@ -261,14 +261,30 @@ func _drop_dorothy_asleep() -> void:
 		_drop_lion_asleep()
 	if hud and hud.has_method("show_toast"):
 		hud.call("show_toast", "Dorothy & the Lion succumb to the poppies — Scarecrow takes the Lead!", 3.5)
-	var party := get_node_or_null("/root/Party")
-	if party and party.has_method("set_leader"):
-		party.call("set_leader", &"scarecrow")
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
-		d.say("Narrator", "Dorothy and the Lion fall among the poppies. Scarecrow and Tin Man feel nothing — walk SOUTH and collect CLEAR AIR to wake Dorothy.", true, 5.0)
+		d.say("Narrator", "Dorothy and the Lion collapse gently into the scarlet poppies. Scarecrow and Tin Man feel nothing — walk SOUTH for Clear Air.", true, 5.0)
 	_set_beat(Beat.FLESH_DOWN)
 	_set_beat(Beat.GET_CLEAR_AIR)
+	# Smooth visual fall-asleep transition (0.85s) before handing Lead to Scarecrow (instant in headless sim!)
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
+		var party := get_node_or_null("/root/Party")
+		if party and party.has_method("set_leader"):
+			party.call("set_leader", &"scarecrow")
+	else:
+		var vis := player.get_node_or_null("Visual") as Node3D if player else null
+		if vis:
+			var stw := create_tween()
+			stw.tween_property(vis, "rotation_degrees:x", 82.0, 0.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			stw.tween_callback(func():
+				var party := get_node_or_null("/root/Party")
+				if party and party.has_method("set_leader"):
+					party.call("set_leader", &"scarecrow")
+			)
+		else:
+			var party := get_node_or_null("/root/Party")
+			if party and party.has_method("set_leader"):
+				party.call("set_leader", &"scarecrow")
 
 func _drop_lion_asleep() -> void:
 	if lion_asleep or lion_safe:
@@ -560,9 +576,10 @@ func _build_world() -> void:
 	WorldKit.dress_ybr_spine(self, -58.0, 56.0, 2.9)
 	WorldKit.build_poppy_beds(self, POPPY_START_Z, POPPY_END_Z)
 	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.28, 0.45, 0.26))
-	_add_box(Vector3(0, 0.03, 42), Vector3(40, 0.08, 24), Color(0.4, 0.65, 0.38), "SafeMeadow")
-	_add_box(WEST_GATE + Vector3(0, -0.02, 0), Vector3(7.0, 0.08, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
-	_add_box(CLEAR_AIR_POS + Vector3(0, -0.02, 0), Vector3(5.0, 0.08, 5.0), Color(0.35, 0.75, 1.0), "ClearAirPad")
+	# Offset pads cleanly above road surface (y = 0.08m) so there is ZERO Z-fighting/blinking!
+	_add_box(Vector3(0, 0.01, 42), Vector3(40, 0.06, 24), Color(0.4, 0.65, 0.38), "SafeMeadow")
+	_add_box(WEST_GATE + Vector3(0, 0.06, 0), Vector3(7.0, 0.06, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
+	_add_box(CLEAR_AIR_POS + Vector3(0, 0.06, 0), Vector3(5.0, 0.06, 5.0), Color(0.35, 0.75, 1.0), "ClearAirPad")
 	var poppy_sign := WorldKit.make_wooden_signpost(Vector3(-3.8, 0.0, -46.0), "POPPY FIELD", Color(1.0, 0.40, 0.45), WEST_GATE)
 	add_child(poppy_sign)
 	var warn_sign := WorldKit.make_wooden_signpost(Vector3(3.8, 0.0, POPPY_START_Z - 2.0), "DEADLY SCENT", Color(1.0, 0.32, 0.38), WEST_GATE)
@@ -599,6 +616,15 @@ func _spawn_party() -> void:
 	player = PLAYER_SCENE.instantiate()
 	add_child(player)
 	player.global_position = YBR_SPAWN
+	# Face +Z straight down the Poppy Road toward Clear Air & Winkie Castle!
+	var cp := player.get_node_or_null("CameraPivot") as Node3D
+	if cp:
+		cp.rotation.y = PI
+	var pv := player.get_node_or_null("Visual") as Node3D
+	if pv:
+		pv.rotation.y = PI
+	if "_yaw" in player:
+		player.set("_yaw", PI)
 	if player.has_method("empower_shoes"):
 		player.empower_shoes()
 	scarecrow = SCARECROW_SCENE.instantiate()

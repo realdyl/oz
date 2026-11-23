@@ -69,7 +69,8 @@ func _stick_to_basket(delta: float) -> void:
 		global_position.y = 0.0
 		_hop_t += delta * 12.0
 		visual.position.y = absf(sin(_hop_t)) * 0.05
-		visual.rotation.y = atan2(to_t.x, to_t.z)
+		# Godot 3D characters face -Z, so atan2(-x, -z) faces forward!
+		visual.rotation.y = atan2(-to_t.x, -to_t.z)
 	else:
 		global_position.y = 0.0
 		visual.position.y = 0.0

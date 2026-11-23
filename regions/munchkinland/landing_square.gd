@@ -919,8 +919,12 @@ func _spawn_party_world() -> void:
 	_add_way_marker(Vector3(0.0, 0.08, 78.0), Color(0.7, 0.85, 0.95), "YBR → TIN MAN", tinman.global_position)
 	_add_way_marker(Vector3(0.0, 0.08, 88.0), Color(0.7, 0.85, 0.95), "YBR → TIN MAN", tinman.global_position)
 	_add_way_marker(tinman.global_position + Vector3(0.0, 0.0, -3.5), Color(0.7, 0.85, 0.95), "TIN MAN", tinman.global_position)
-	# Tree blocks the road past Tin — axe clears the path south to West.
-	_spawn_tree_gate(YBR_TREE)
+	# Baum-canon Fighting Trees flank the left & right edges of the Yellow Brick Road past Tin Man!
+	_spawn_tree_gate(YBR_TREE + Vector3(-3.6, 0.0, 0.0))
+	var flank_tree := StaticBody3D.new()
+	flank_tree.set_script(TREE_SCRIPT)
+	add_child(flank_tree)
+	flank_tree.global_position = YBR_TREE + Vector3(3.6, 0.0, 1.2)
 	_spawn_story_witches()
 
 func _spawn_story_witches() -> void:

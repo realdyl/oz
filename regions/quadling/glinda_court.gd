@@ -41,6 +41,7 @@ var _near_home: bool = false
 var _glinda_line: int = 0
 var _heel_clicks: int = 0
 var _going_home: bool = false
+var _splash_cd: float = 0.0
 var _glinda_lines: PackedStringArray = PackedStringArray([
 	"Glinda: \"Welcome, Dorothy. I am Glinda, the Good Witch of the South.\"",
 	"Glinda: \"You have walked the Yellow Brick Road with true friends. The West is gone. The Wizard is only a man — his balloon is already his own road.\"",
@@ -78,13 +79,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			_set_beat(Beat.CHOICE)
 			get_viewport().set_input_as_handled()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if player == null or _going_home:
 		return
 	_update_compass()
 	var actor := _lead()
 	if actor == null:
 		return
+	# Splishy-splashy water droplets & ripple rings whenever wading through the reflecting pools!
+	_splash_cd = maxf(_splash_cd - delta, 0.0)
+	var ap := actor.global_position
+	var in_pool := absf(ap.x) >= 8.2 and absf(ap.x) <= 14.8 and ap.z >= -4.8 and ap.z <= 28.8
+	if in_pool and actor.velocity.length() > 0.6 and _splash_cd <= 0.0:
+		_splash_cd = 0.24
+		if CombatFx and CombatFx.has_method("water_splash"):
+			CombatFx.water_splash(self, ap)
 	if beat == Beat.APPROACH and actor.global_position.distance_to(GLINDA_POS) < 10.0:
 		_set_beat(Beat.MEET_GLINDA)
 	# Pad is live from REVEAL onward (don't require a second Glinda click).
@@ -273,6 +282,7 @@ func _spawn_glinda() -> void:
 	glinda.name = "Glinda"
 	add_child(glinda)
 	glinda.global_position = Vector3(GLINDA_POS.x, 0.12, GLINDA_POS.z) # feet squarely on top of collidable marble dais!
+	glinda.rotation.y = PI # Face +Z squarely toward Dorothy as she approaches!
 	WorldKit.build_glinda_visual(glinda)
 	WorldKit.make_world_badge(glinda, Vector3(0, 2.75, 0), "✦  Glinda — Good Witch of the South", Color(1.0, 0.82, 0.94), 14.0)
 	var light := OmniLight3D.new()
