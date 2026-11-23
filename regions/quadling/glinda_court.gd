@@ -10,6 +10,7 @@ const HUD_SCENE := preload("res://ui/play_hud.tscn")
 const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
+const WorldKit := preload("res://systems/world_kit.gd")
 const HOMECOMING_SCENE := "res://regions/kansas/homecoming.tscn"
 
 const PLAY_BOUND_X := 42.0
@@ -174,25 +175,12 @@ func _build_world() -> void:
 	post.material_override = pm
 	add_child(post)
 	post.global_position = ROAD_HOME_PAD + Vector3(0, 2.8, 0)
-	_add_box(Vector3(0, 0.03, -18), Vector3(22, 0.08, 16), Color(0.75, 0.45, 0.6), "Court")
-	for xz in [Vector3(-8, 0, -14), Vector3(8, 0, -14), Vector3(-8, 0, -24), Vector3(8, 0, -24)]:
-		_add_box(xz + Vector3(0, 3, 0), Vector3(1.4, 6, 1.4), Color(0.9, 0.7, 0.85), "Pillar")
-	_add_box(Vector3(0, 6.5, -19), Vector3(20, 0.6, 14), Color(0.85, 0.55, 0.75), "Canopy")
-	var ybr := Label3D.new()
-	ybr.text = "YELLOW BRICK ROAD\n→ Glinda · Road Home"
-	ybr.font_size = 44
-	ybr.pixel_size = 0.013
-	ybr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	ybr.modulate = Color(1.0, 0.9, 0.4)
-	add_child(ybr)
-	ybr.global_position = Vector3(0, 3.5, 24)
-	var home_lab := Label3D.new()
-	home_lab.text = "ROAD HOME\nFINAL STEP · E ×3 heels"
-	home_lab.font_size = 48
-	home_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	home_lab.modulate = Color(1.0, 0.7, 0.9)
-	add_child(home_lab)
-	home_lab.global_position = ROAD_HOME_PAD + Vector3(0, 4.2, 0)
+	# Royal Quadling Alabaster Rotunda, Reflecting Pools, Rose Trees, Lanterns & Horizon Hills
+	WorldKit.dress_ybr_spine(self, -38.0, 34.0, 2.9)
+	WorldKit.dress_glinda_court(self, GLINDA_POS, ROAD_HOME_PAD)
+	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 12), 34.0, 130, 5.2)
+	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.46, 0.28, 0.42))
+	WorldKit.make_world_badge(self, ROAD_HOME_PAD + Vector3(0, 3.6, 0), "✦  Road Home — Click Heels ×3 (E)", Color(1.0, 0.80, 0.94), 16.0)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.9, 0.95)
 	sun.light_energy = 1.1
@@ -290,41 +278,12 @@ func _spawn_glinda() -> void:
 	glinda.name = "Glinda"
 	add_child(glinda)
 	glinda.global_position = GLINDA_POS
-	var body := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.35
-	cyl.bottom_radius = 0.7
-	cyl.height = 1.6
-	body.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.95, 0.55, 0.8)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.6, 0.85)
-	mat.emission_energy_multiplier = 0.7
-	body.material_override = mat
-	body.position = Vector3(0, 0.9, 0)
-	glinda.add_child(body)
-	var head := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	sph.radius = 0.28
-	sph.height = 0.56
-	head.mesh = sph
-	var hm := StandardMaterial3D.new()
-	hm.albedo_color = Color(0.95, 0.85, 0.78)
-	head.material_override = hm
-	head.position = Vector3(0, 1.95, 0)
-	glinda.add_child(head)
-	var lab := Label3D.new()
-	lab.text = "GLINDA\nGood Witch of the South"
-	lab.font_size = 40
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(1.0, 0.8, 0.95)
-	lab.position = Vector3(0, 3.2, 0)
-	glinda.add_child(lab)
+	WorldKit.build_glinda_visual(glinda)
+	WorldKit.make_world_badge(glinda, Vector3(0, 2.75, 0), "✦  Glinda — Good Witch of the South", Color(1.0, 0.82, 0.94), 14.0)
 	var light := OmniLight3D.new()
 	light.light_color = Color(1.0, 0.75, 0.95)
-	light.light_energy = 2.5
-	light.omni_range = 12.0
+	light.light_energy = 2.8
+	light.omni_range = 14.0
 	glinda.add_child(light)
 	light.position = Vector3(0, 2.5, 0)
 

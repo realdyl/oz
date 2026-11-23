@@ -1,39 +1,33 @@
 extends Node
 
-## Shared step-up + wall-steer for party, allies, and rogues.
-## Stairs: multi-probe climb up to ~1.15m so every Lead walks Tin's terrace without blink.
-## Walls: if straight path is blocked (tall obstacle), try left/right arcs instead of moonwalking into the wall.
+## Shared natural stair step-up + wall-steer for party, allies, and rogues.
+## Smooth hills are climbed naturally by CharacterBody3D.move_and_slide() (NO 25m/s hill teleport!).
+## Vertical stair/terrace risers step cleanly upward with a natural per-step rhythm.
 
 const DEFAULT_STEP := 1.15
+const STEP_COOLDOWN_MS := 110
 
 func try_step(body: CharacterBody3D, dir: Vector3, step_height: float = DEFAULT_STEP) -> bool:
 	if body == null or not body.is_on_floor() or dir.length() < 0.05:
+		return false
+	var now_ms := Time.get_ticks_msec()
+	if body.has_meta("_last_step_ms") and (now_ms - int(body.get_meta("_last_step_ms"))) < STEP_COOLDOWN_MS:
 		return false
 	var space: PhysicsDirectSpaceState3D = body.get_world_3d().direct_space_state
 	if space == null:
 		return false
 	var d: Vector3 = dir.normalized()
 	var rid: RID = body.get_rid()
-	for dist_mul in [0.42, 0.58, 0.75]:
-		var feet: Vector3 = body.global_position + Vector3(0, 0.12, 0)
+	for dist_mul in [0.42, 0.62]:
+		var feet: Vector3 = body.global_position + Vector3(0, 0.10, 0)
 		var ahead: Vector3 = feet + d * float(dist_mul)
 		var hit_wall: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(feet, ahead, 1, [rid]))
+		# Only step up when an actual VERTICAL riser wall blocks feet (normal.y < 0.35).
+		# Smooth grassy hills (hit_wall.is_empty() or normal.y >= 0.35) are walked naturally!
 		if hit_wall.is_empty():
-			var down: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(
-				ahead + Vector3(0, step_height + 0.2, 0),
-				ahead + Vector3(0, -0.35, 0),
-				1,
-				[rid]
-			))
-			if down.is_empty():
-				continue
-			var ly: float = down.position.y
-			if ly <= body.global_position.y + 0.06 or ly > body.global_position.y + step_height + 0.2:
-				continue
-			if _head_clear(space, rid, ahead.x, ly, ahead.z):
-				body.global_position = Vector3(ahead.x, ly + 0.03, ahead.z)
-				body.velocity.y = 0.0
-				return true
+			continue
+		var norm: Vector3 = hit_wall.get("normal", Vector3.UP)
+		if norm.y >= 0.35:
 			continue
 		var hit_top: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(
 			ahead + Vector3(0, step_height + 0.45, 0),
@@ -44,12 +38,15 @@ func try_step(body: CharacterBody3D, dir: Vector3, step_height: float = DEFAULT_
 		if hit_top.is_empty():
 			continue
 		var land_y: float = hit_top.position.y
-		if land_y <= body.global_position.y + 0.05 or land_y > body.global_position.y + step_height + 0.22:
+		if land_y <= body.global_position.y + 0.06 or land_y > body.global_position.y + step_height + 0.22:
 			continue
 		if not _head_clear(space, rid, ahead.x, land_y, ahead.z):
 			continue
-		body.global_position = Vector3(ahead.x, land_y + 0.03, ahead.z)
+		# Smoothly lift onto the stair tread with minimal horizontal clearance (no sudden forward launch)
+		var micro_fwd: Vector3 = body.global_position + d * 0.14
+		body.global_position = Vector3(micro_fwd.x, land_y + 0.02, micro_fwd.z)
 		body.velocity.y = 0.0
+		body.set_meta("_last_step_ms", now_ms)
 		return true
 	return false
 

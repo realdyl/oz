@@ -9,6 +9,7 @@ const HUD_SCENE := preload("res://ui/play_hud.tscn")
 const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
+const WorldKit := preload("res://systems/world_kit.gd")
 const GLINDA_SCENE := "res://regions/quadling/glinda_court.tscn"
 enum Beat {
 	APPROACH,
@@ -189,23 +190,11 @@ func _build_world() -> void:
 	for s in 5:
 		var t := float(s + 1) / 5.0
 		_add_box(Vector3(0, 0.12 + float(s) * 0.22, -28.0 - float(s) * 1.1), Vector3(14.0 - float(s) * 0.4, 0.24, 1.2), Color(0.2, 0.5, 0.32), "ApproachStep")
-	# Green glass spires
-	for xz in [Vector3(-14, 0, -42), Vector3(14, 0, -42), Vector3(-12, 0, -62), Vector3(12, 0, -62), Vector3(0, 0, -70)]:
-		var sp := MeshInstance3D.new()
-		var cone := CylinderMesh.new()
-		cone.top_radius = 0.15
-		cone.bottom_radius = 1.6
-		cone.height = 18.0
-		sp.mesh = cone
-		var sm := StandardMaterial3D.new()
-		sm.albedo_color = Color(0.2, 0.75, 0.4, 0.7)
-		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		sm.emission_enabled = true
-		sm.emission = Color(0.15, 0.6, 0.3)
-		sm.emission_energy_multiplier = 0.85
-		sp.material_override = sm
-		add_child(sp)
-		sp.global_position = xz + Vector3(0, 9, 0)
+	# Crystalline multi-spire Emerald Palace architecture matching Munchkinland's horizon skyline!
+	WorldKit.build_emerald_palace_facade(self, Vector3(0, 0, -52))
+	WorldKit.dress_ybr_spine(self, -6.0, 42.0, 3.6)
+	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 18), 36.0, 110, 5.2)
+	WorldKit.add_horizon_hills(self, 48.0, 58.0, Color(0.14, 0.36, 0.22))
 	_build_palace_hall()
 	_build_wizard_projection()
 	_build_curtain_and_body()
@@ -308,78 +297,12 @@ func _build_palace_hall() -> void:
 	lamp2.global_position = Vector3(0, 6, -58)
 
 func _build_wizard_projection() -> void:
-	## Book/vault: terrifying head/face of Oz as projected spectacle (not a real giant).
+	## Sculpted 3D holographic visage of OZ THE GREAT AND POWERFUL (replaces flat green sphere).
 	wizard_head = Node3D.new()
 	wizard_head.name = "WizardProjection"
 	add_child(wizard_head)
-	wizard_head.global_position = Vector3(0, 7.5, -64.5)
-	# Glow plate / screen
-	var screen := MeshInstance3D.new()
-	var sq := BoxMesh.new()
-	sq.size = Vector3(12, 10, 0.4)
-	screen.mesh = sq
-	var sm := StandardMaterial3D.new()
-	sm.albedo_color = Color(0.05, 0.2, 0.12, 0.85)
-	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.emission_enabled = true
-	sm.emission = Color(0.1, 0.45, 0.25)
-	sm.emission_energy_multiplier = 1.2
-	screen.material_override = sm
-	wizard_head.add_child(screen)
-	screen.position = Vector3(0, 0, -0.5)
-	# Face sphere
-	var head := MeshInstance3D.new()
-	head.name = "Face"
-	var hs := SphereMesh.new()
-	hs.radius = 3.4
-	hs.height = 6.8
-	head.mesh = hs
-	var hm := StandardMaterial3D.new()
-	hm.albedo_color = Color(0.25, 0.85, 0.4, 0.55)
-	hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	hm.emission_enabled = true
-	hm.emission = Color(0.2, 0.95, 0.4)
-	hm.emission_energy_multiplier = 1.8
-	head.material_override = hm
-	wizard_head.add_child(head)
-	# Eyes
-	for ex in [-1.1, 1.1]:
-		var eye := MeshInstance3D.new()
-		var es := SphereMesh.new()
-		es.radius = 0.45
-		es.height = 0.9
-		eye.mesh = es
-		var em := StandardMaterial3D.new()
-		em.albedo_color = Color(0.05, 0.05, 0.05)
-		em.emission_enabled = true
-		em.emission = Color(0.9, 0.2, 0.15)
-		em.emission_energy_multiplier = 3.0
-		eye.material_override = em
-		wizard_head.add_child(eye)
-		eye.position = Vector3(ex, 0.6, 3.0)
-	# Mouth
-	var mouth := MeshInstance3D.new()
-	mouth.name = "Mouth"
-	var mb := BoxMesh.new()
-	mb.size = Vector3(2.2, 0.55, 0.35)
-	mouth.mesh = mb
-	var mm := StandardMaterial3D.new()
-	mm.albedo_color = Color(0.1, 0.02, 0.02)
-	mm.emission_enabled = true
-	mm.emission = Color(0.8, 0.15, 0.1)
-	mm.emission_energy_multiplier = 1.5
-	mouth.material_override = mm
-	wizard_head.add_child(mouth)
-	mouth.position = Vector3(0, -1.2, 3.1)
-	var hlab := Label3D.new()
-	hlab.text = "O Z"
-	hlab.font_size = 110
-	hlab.pixel_size = 0.022
-	hlab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	hlab.modulate = Color(0.75, 1.0, 0.8)
-	hlab.outline_size = 12
-	wizard_head.add_child(hlab)
-	hlab.position = Vector3(0, 4.2, 2.0)
+	wizard_head.global_position = Vector3(0, 7.2, -64.0)
+	WorldKit.build_oz_projection_head(wizard_head)
 	wizard_head.visible = false
 
 func _build_curtain_and_body() -> void:
@@ -388,38 +311,15 @@ func _build_curtain_and_body() -> void:
 	add_child(curtain)
 	curtain.global_position = Vector3(7.5, 0.1, -58)
 	_add_box(curtain.global_position + Vector3(0, 3.5, 0), Vector3(0.35, 7, 5), Color(0.55, 0.08, 0.12), "CurtainMesh")
-	var clab := Label3D.new()
-	clab.text = "CURTAIN\n(E — pull)"
-	clab.font_size = 40
-	clab.pixel_size = 0.012
-	clab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	clab.modulate = Color(1.0, 0.7, 0.7)
-	curtain.add_child(clab)
-	clab.position = Vector3(0, 6, 0)
-	# Humbug body — hidden until curtain
+	WorldKit.make_world_badge(curtain, Vector3(0, 5.2, 0), "✦  Velvet Curtain — Pull (E)", Color(1.0, 0.78, 0.72), 14.0)
+	# Sculpted Omaha Humbug Inventor + Brass Voice-Horn Console
 	wizard_body = Node3D.new()
 	wizard_body.name = "WizardBody"
 	add_child(wizard_body)
 	wizard_body.global_position = Vector3(7.5, 0.1, -60.5)
 	wizard_body.visible = false
-	# Simple man silhouette: legs, torso, head, coat
-	_add_limb(wizard_body, Vector3(-0.22, 0.55, 0), Vector3(0.22, 1.1, 0.22), Color(0.2, 0.18, 0.25))
-	_add_limb(wizard_body, Vector3(0.22, 0.55, 0), Vector3(0.22, 1.1, 0.22), Color(0.2, 0.18, 0.25))
-	_add_limb(wizard_body, Vector3(0, 1.45, 0), Vector3(0.7, 0.95, 0.4), Color(0.45, 0.2, 0.15))
-	_add_limb(wizard_body, Vector3(0, 2.15, 0), Vector3(0.38, 0.4, 0.38), Color(0.92, 0.78, 0.65))
-	_add_limb(wizard_body, Vector3(0, 2.45, 0), Vector3(0.55, 0.22, 0.55), Color(0.15, 0.12, 0.1))
-	# Lever / machine
-	_add_limb(wizard_body, Vector3(-0.9, 1.0, -0.3), Vector3(0.8, 1.6, 0.5), Color(0.35, 0.35, 0.4))
-	var blab := Label3D.new()
-	blab.name = "HumbugLabel"
-	blab.text = "A SMALL MAN\n\"I'm a humbug…\""
-	blab.font_size = 36
-	blab.pixel_size = 0.011
-	blab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	blab.modulate = Color(0.95, 0.9, 0.75)
-	blab.outline_size = 8
-	wizard_body.add_child(blab)
-	blab.position = Vector3(0, 3.2, 0)
+	WorldKit.build_humbug_wizard(wizard_body)
+	WorldKit.make_world_badge(wizard_body, Vector3(0, 2.55, 0), "✦  A Small Man — \"I'm a humbug…\"", Color(0.98, 0.90, 0.65), 14.0)
 
 func _add_limb(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -439,10 +339,12 @@ func _pulse_projection(delta: float) -> void:
 	_head_pulse += delta
 	var s := 1.0 + sin(_head_pulse * 2.2) * 0.04
 	wizard_head.scale = Vector3(s, s, s)
-	var mouth := wizard_head.get_node_or_null("Mouth") as MeshInstance3D
+	var halo := wizard_head.get_node_or_null("HaloOuter") as Node3D
+	if halo:
+		halo.rotation.z = _head_pulse * 0.35
+	var mouth := wizard_head.get_node_or_null("Mouth") as Node3D
 	if mouth:
-		var open := 0.55 + absf(sin(_head_pulse * 6.0)) * 0.55
-		mouth.scale = Vector3(1.0, open, 1.0)
+		mouth.position.y = -1.25 - absf(sin(_head_pulse * 5.5)) * 0.35
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	var h := 3.0

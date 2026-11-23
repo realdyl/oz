@@ -99,6 +99,9 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= gravity * delta
 	else:
 		velocity.y = -0.5
+	if global_position.y < -3.5:
+		global_position = Vector3(clampf(global_position.x, -30.0, 30.0), 0.25, clampf(global_position.z, -50.0, 120.0))
+		velocity = Vector3.ZERO
 	if leading:
 		if kit_lock <= 0.0:
 			_move_as_lead(delta)
@@ -169,12 +172,13 @@ func _move_as_lead(delta: float) -> void:
 		if wish.length() > 0.01:
 			wish = wish.normalized()
 			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-wish.x, -wish.z), 12.0 * delta)
+	var cur_speed := move_speed * (1.75 if Input.is_action_pressed("blink") else 1.0)
 	if wish.length() > 0.05:
 		var steered: Vector3 = Locomotion.steer(self, wish)
 		if steered.length() < 0.05:
 			steered = wish
-		velocity.x = move_toward(velocity.x, steered.x * move_speed, acceleration * delta * move_speed)
-		velocity.z = move_toward(velocity.z, steered.z * move_speed, acceleration * delta * move_speed)
+		velocity.x = move_toward(velocity.x, steered.x * cur_speed, acceleration * delta * cur_speed)
+		velocity.z = move_toward(velocity.z, steered.z * cur_speed, acceleration * delta * cur_speed)
 		_try_step(steered)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, acceleration * delta * move_speed)

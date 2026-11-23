@@ -146,13 +146,8 @@ func _fix_world_text() -> void:
 			lab.outline_modulate = Color(0.25, 0.08, 0.14, 1)
 
 func _expand_world() -> void:
-	# Vast YBR corridor — pads only (never scale primary Ground).
-	_add_ground_pad(Vector3(0, -0.05, 0), Vector3(140, 0.1, 160), Color(0.4, 0.6, 0.32))
-	_add_ground_pad(Vector3(0, -0.05, -80), Vector3(120, 0.1, 90), Color(0.42, 0.62, 0.34))
-	_add_ground_pad(Vector3(0, -0.05, 70), Vector3(120, 0.1, 100), Color(0.4, 0.58, 0.3))
-	_add_ground_pad(Vector3(0, -0.05, 130), Vector3(100, 0.1, 60), Color(0.38, 0.56, 0.28))
-	_add_ground_pad(Vector3(-40, -0.05, 40), Vector3(50, 0.1, 120), Color(0.38, 0.58, 0.3))
-	_add_ground_pad(Vector3(40, -0.05, 40), Vector3(50, 0.1, 120), Color(0.38, 0.58, 0.3))
+	# Single seamless collidable ground slab covering well past the 85x150 MapBorder (zero invisible ledges!)
+	_add_ground_pad(Vector3(0, -0.06, 20), Vector3(220, 0.14, 360), Color(0.40, 0.60, 0.32))
 	# Bound walls pushed far out so they don't seal the spine.
 	for wname in ["WallWest", "WallEast", "WallSouth", "ContentGate"]:
 		var w := get_node_or_null(wname) as Node3D
@@ -191,7 +186,8 @@ func _expand_world() -> void:
 	# Soft story border — thicket + solid rails + distant skyline + walkable meadow hills + YBR street lanterns.
 	_add_map_border(85.0, 150.0)
 	WorldKit.add_horizon_hills(self, 85.0, 150.0, Color(0.28, 0.48, 0.30))
-	WorldKit.add_emerald_skyline(self, Vector3(0.0, 0.0, -195.0))
+	# Emerald City skyline stands AHEAD down the Yellow Brick Road (+Z) so you walk TOWARD it!
+	WorldKit.add_emerald_skyline(self, Vector3(0.0, 0.0, 195.0))
 	WorldKit.add_walkable_meadow_hills(self, [
 		{"pos": Vector3(-28.0, 0.0, -4.0), "radius": 11.0, "height": 2.4},
 		{"pos": Vector3(32.0, 0.0, 62.0), "radius": 12.0, "height": 2.6},
@@ -919,7 +915,7 @@ func _spawn_story_witches() -> void:
 	# Dorothy spawns further north and must walk the brick to reach her.
 	var greet_at := YBR_LOCASTA
 	_spawn_locasta(greet_at)
-	_spawn_west_omen(Vector3(-36.0, 0.5, 100.0))
+	# Legacy floating dark-sphere WestWitchOmen placeholder removed (L4 Winkie Castle is live).
 	_add_way_marker(YBR_SPAWN + Vector3(0.0, 0.0, 8.0), Color(0.55, 0.75, 1.0), "YBR → LOCASTA", greet_at)
 	_add_way_marker(Vector3(0.0, 0.08, -40.0), Color(0.55, 0.75, 1.0), "YBR → LOCASTA", greet_at)
 	_add_way_marker(greet_at + Vector3(0.0, 0.0, 3.0), Color(0.55, 0.75, 1.0), "LOCASTA", greet_at)
@@ -1505,25 +1501,12 @@ func _build_oil_can(at: Vector3) -> void:
 	oil_can.monitoring = true
 	var col := CollisionShape3D.new()
 	var sph := SphereShape3D.new()
-	sph.radius = 1.2
+	sph.radius = 1.35
 	col.shape = sph
 	oil_can.add_child(col)
-	var mesh := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.12
-	cyl.bottom_radius = 0.14
-	cyl.height = 0.28
-	mesh.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.55, 0.35, 0.15)
-	mat.metallic = 0.6
-	mat.emission_enabled = true
-	mat.emission = Color(0.8, 0.5, 0.1)
-	mat.emission_energy_multiplier = 0.8
-	mesh.material_override = mat
-	oil_can.add_child(mesh)
+	WorldKit.build_oil_can_visual(oil_can)
 	add_child(oil_can)
-	oil_can.global_position = at + Vector3(0, 0.2, 0)
+	oil_can.global_position = at
 	oil_can.body_entered.connect(_on_oil_body_entered)
 	oil_can.body_exited.connect(_on_oil_body_exited)
 

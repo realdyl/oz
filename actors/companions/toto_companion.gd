@@ -175,25 +175,44 @@ func _physics_process(delta: float) -> void:
 	var spd := 0.0
 	var vis := get_node_or_null("Visual") as Node3D
 
+	if global_position.y < -3.5:
+		global_position = Vector3(clampf(global_position.x, -30.0, 30.0), 0.2, clampf(global_position.z, -50.0, 120.0))
+		velocity = Vector3.ZERO
+
 	if leading:
 		if not is_on_floor():
 			velocity.y -= gravity * delta
 		elif velocity.y < 0.0:
 			velocity.y = -1.0
 		var move_dir := Vector3.ZERO
-		var loco := get_node_or_null("/root/Locomotion")
-		var party := get_node_or_null("/root/Party")
-		var basis_node: Node3D = party.call("camera_basis_node") as Node3D if (party and party.has_method("camera_basis_node")) else self
-		if loco and loco.has_method("camera_relative_move"):
-			move_dir = loco.call("camera_relative_move", basis_node)
+		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			var inp := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+			if inp.length() > 0.05:
+				var party := get_node_or_null("/root/Party")
+				var basis_node: Node3D = party.call("camera_basis_node") as Node3D if (party and party.has_method("camera_basis_node")) else self
+				var basis: Basis = basis_node.global_transform.basis if basis_node else global_transform.basis
+				move_dir = basis * Vector3(inp.x, 0.0, inp.y)
+				move_dir.y = 0.0
+				if move_dir.length() > 0.01:
+					move_dir = move_dir.normalized()
+		var sprint_mult := 1.75 if Input.is_action_pressed("blink") else 1.0
+		var target_spd := move_speed * sprint_mult
 		if move_dir.length() > 0.05:
-			velocity.x = move_toward(velocity.x, move_dir.x * move_speed, 22.0 * delta)
-			velocity.z = move_toward(velocity.z, move_dir.z * move_speed, 22.0 * delta)
+			var loco := get_node_or_null("/root/Locomotion")
+			var steered := move_dir
+			if loco and loco.has_method("steer"):
+				var s: Vector3 = loco.call("steer", self, move_dir)
+				if s.length() > 0.05:
+					steered = s
+			velocity.x = move_toward(velocity.x, steered.x * target_spd, 24.0 * delta)
+			velocity.z = move_toward(velocity.z, steered.z * target_spd, 24.0 * delta)
 			if vis:
-				vis.rotation.y = lerp_angle(vis.rotation.y, atan2(-move_dir.x, -move_dir.z), 12.0 * delta)
+				vis.rotation.y = lerp_angle(vis.rotation.y, atan2(-steered.x, -steered.z), 12.0 * delta)
+			if loco and loco.has_method("try_step"):
+				loco.call("try_step", self, steered, 1.15)
 		else:
-			velocity.x = move_toward(velocity.x, 0.0, 18.0 * delta)
-			velocity.z = move_toward(velocity.z, 0.0, 18.0 * delta)
+			velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
+			velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
 		move_and_slide()
 		spd = Vector2(velocity.x, velocity.z).length()
 

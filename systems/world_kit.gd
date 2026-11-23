@@ -246,6 +246,10 @@ static func make_wooden_signpost(at: Vector3, label_text: String, accent: Color,
 	var tip := PrismMesh.new()
 	tip.size = Vector3(0.42, 0.36, 0.10)
 	_mi(plank_holder, tip, wood_dark, Vector3(1.25, 0, 0), Vector3(0, 0, -90))
+	# Hammered brass arrowhead cap on the 3D pointed tip so direction is unmistakable!
+	var tip_cap := PrismMesh.new()
+	tip_cap.size = Vector3(0.32, 0.24, 0.12)
+	_mi(plank_holder, tip_cap, brass, Vector3(1.30, 0, 0), Vector3(0, 0, -90))
 	# Brass corner rivets
 	for rx in [-0.46, 0.96]:
 		for ry in [-0.12, 0.12]:
@@ -255,12 +259,13 @@ static func make_wooden_signpost(at: Vector3, label_text: String, accent: Color,
 	_mi(plank_holder, _cyl(0.015, 0.015, 0.18, 6), brass, Vector3(-0.52, -0.10, 0))
 	_mi(plank_holder, _sph(0.085, 0.15, 10), glow, Vector3(-0.52, -0.24, 0))
 
-	# Double-sided engraved parchment lettering mounted FLUSH onto the arrow board
+	# Double-sided engraved parchment lettering: BOTH faces point their arrow toward the +X wooden tip!
 	var clean_txt := label_text.replace("YBR → ", "").replace("YBR -> ", "").strip_edges()
 	for face_z in [0.062, -0.062]:
 		var lab := Label3D.new()
 		lab.set_meta("styled_plaque", true)
-		lab.text = "✦  %s  ➔" % clean_txt
+		var is_front := float(face_z) > 0.0
+		lab.text = ("✦  %s  ➔" % clean_txt) if is_front else ("⬅  %s  ✦" % clean_txt)
 		lab.font_size = 28
 		lab.pixel_size = 0.0046
 		lab.billboard = BaseMaterial3D.BILLBOARD_DISABLED
@@ -272,7 +277,7 @@ static func make_wooden_signpost(at: Vector3, label_text: String, accent: Color,
 		lab.visibility_range_end_margin = 3.5
 		lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		lab.position = Vector3(0.24, 0.0, float(face_z))
-		if float(face_z) < 0.0:
+		if not is_front:
 			lab.rotation_degrees.y = 180.0
 		plank_holder.add_child(lab)
 	return root
@@ -347,20 +352,30 @@ static func make_world_badge(parent: Node3D, local_pos: Vector3, text: String, a
 # CONTINUOUS GROUND APRON, WALKABLE HILLS, HORIZON SKYLINE & SWAYING GRASS
 # ============================================================================
 
-## Adds a vast continuous under-meadow slab so no sky-void drop-off is ever visible at map borders.
-static func add_ground_apron(parent: Node3D, width: float, depth: float, grass_col: Color, y_pos: float = -0.10) -> void:
-	var apron := _mi(parent, _box(Vector3(width, 0.14, depth)), _mat(grass_col, 0.96), Vector3(0, y_pos, 0))
-	apron.name = "HorizonGroundApron"
+## Adds a vast SOLID COLLIDABLE under-meadow slab (100% WYSIWYG — zero invisible ledge drop-offs!).
+static func add_ground_apron(parent: Node3D, width: float, depth: float, grass_col: Color, y_pos: float = -0.08) -> void:
+	var body := StaticBody3D.new()
+	body.name = "HorizonGroundApron"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.position = Vector3(0, y_pos, 0)
+	parent.add_child(body)
+	var apron := _mi(body, _box(Vector3(width, 0.16, depth)), _mat(grass_col, 0.96), Vector3.ZERO)
 	apron.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var cs := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = Vector3(width, 0.16, depth)
+	cs.shape = sh
+	body.add_child(cs)
 
-## Outer horizon hills placed cleanly just outside the MapBorder tree line (zero void gap, never inside playable rim).
+## Outer horizon hills placed cleanly outside the MapBorder tree line WITH solid WYSIWYG colliders.
 static func add_horizon_hills(parent: Node3D, half_x: float, half_z: float, hill_col: Color) -> void:
 	var hroot := Node3D.new()
 	hroot.name = "HorizonHills"
 	parent.add_child(hroot)
 
-	# Seamless ground apron under the entire horizon ring so the sky never peeks underneath
-	add_ground_apron(hroot, (half_x + 140.0) * 2.0, (half_z + 140.0) * 2.0, hill_col.darkened(0.06), -0.12)
+	# Seamless SOLID collidable ground apron under the entire world + horizon ring!
+	add_ground_apron(hroot, (half_x + 140.0) * 2.0, (half_z + 140.0) * 2.0, hill_col.darkened(0.04), -0.09)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 777
@@ -375,7 +390,17 @@ static func add_horizon_hills(parent: Node3D, half_x: float, half_z: float, hill
 		var rz := (half_z + margin + rng.randf_range(0.0, 10.0)) * sin(ang)
 		var ht := rng.randf_range(14.0, 26.0)
 		var mat := m_near if i % 2 == 0 else m_far
-		_mi(hroot, _sph(rad, ht, 16), mat, Vector3(rx, -ht * 0.16, rz), Vector3.ZERO, Vector3(1.35, 0.72, 1.35))
+		var hbody := StaticBody3D.new()
+		hbody.collision_layer = 1
+		hbody.collision_mask = 0
+		hbody.position = Vector3(rx, -ht * 0.16, rz)
+		hroot.add_child(hbody)
+		_mi(hbody, _sph(rad, ht, 16), mat, Vector3.ZERO, Vector3.ZERO, Vector3(1.35, 0.72, 1.35))
+		var hcs := CollisionShape3D.new()
+		var hsh := SphereShape3D.new()
+		hsh.radius = rad * 0.88
+		hcs.shape = hsh
+		hbody.add_child(hcs)
 
 ## Walkable, COLLIDABLE gentle grassy hills in the side meadows (characters physically climb up them!).
 static func add_walkable_meadow_hills(parent: Node3D, specs: Array, grass_col: Color) -> void:
@@ -1390,3 +1415,289 @@ static func build_mice_cart_visual(parent: Node3D) -> void:
 			_mi(mnode, _sph(0.055, 0.09, 8), mouse_ear, Vector3(0.07, 0.12, 0.14))
 			_mi(mnode, _cyl(0.012, 0.022, 0.34, 6), mouse_ear, Vector3(0, 0.0, -0.24), Vector3(78, 0, 0))
 			_mi(mnode, _cyl(0.12, 0.12, 0.04, 10), rope, Vector3(0, 0.02, 0.04), Vector3(90, 0, 0))
+
+# ============================================================================
+# PHASE P4: VINTAGE OIL CAN, EMERALD PALACE & OZ PROJECTION, GLINDA'S COURT
+# ============================================================================
+
+## Sculpted vintage polished-brass & copper oiler can on a carved stone plinth.
+static func build_oil_can_visual(parent: Node3D) -> void:
+	var stone := _mat(Color(0.42, 0.40, 0.44), 0.90)
+	var brass := _mat(Color(0.88, 0.70, 0.28), 0.24, 0.88)
+	var copper := _mat(Color(0.76, 0.42, 0.22), 0.30, 0.82)
+	var oil_drop := _mat(Color(1.0, 0.82, 0.24), 0.12, 0.1, Color(1.0, 0.78, 0.18), 1.8)
+
+	# Carved stone garden plinth
+	_mi(parent, _cyl(0.32, 0.38, 0.14, 12), stone, Vector3(0, 0.07, 0))
+	_mi(parent, _cyl(0.24, 0.28, 0.24, 12), stone, Vector3(0, 0.26, 0))
+	# Domed brass oil reservoir + knurled copper collar + flared base rim
+	var can := Node3D.new()
+	can.position = Vector3(0, 0.38, 0)
+	parent.add_child(can)
+	_mi(can, _cyl(0.20, 0.23, 0.06, 18), copper, Vector3(0, 0.03, 0))
+	_mi(can, _cyl(0.16, 0.21, 0.24, 18), brass, Vector3(0, 0.16, 0))
+	_mi(can, _sph(0.165, 0.20, 18), brass, Vector3(0, 0.28, 0))
+	_mi(can, _cyl(0.065, 0.075, 0.07, 14), copper, Vector3(0, 0.39, 0)) # knurled cap collar
+	# Long graceful tapered swan-neck oiler spout + glowing golden oil droplet at tip
+	_mi(can, _cyl(0.014, 0.048, 0.46, 12), brass, Vector3(0.12, 0.56, 0), Vector3(0, 0, -28))
+	_mi(can, _sph(0.034, 0.062, 10), oil_drop, Vector3(0.24, 0.78, 0))
+	# Curved thumb-pump handle on back
+	var handle := TorusMesh.new()
+	handle.inner_radius = 0.085
+	handle.outer_radius = 0.115
+	_mi(can, handle, copper, Vector3(-0.18, 0.20, 0))
+	make_world_badge(parent, Vector3(0, 1.48, 0), "✦  Tin Man's Oil Can (E)", Color(1.0, 0.88, 0.42), 12.0)
+
+## Crystalline multi-spire Emerald Palace architecture matching Munchkinland's horizon skyline!
+static func build_emerald_palace_facade(parent: Node3D, at: Vector3) -> void:
+	var root := Node3D.new()
+	root.name = "EmeraldPalaceFacade"
+	root.position = at
+	parent.add_child(root)
+
+	var glass := _mat(Color(0.12, 0.68, 0.40), 0.16, 0.45, Color(0.10, 0.78, 0.42), 0.65)
+	var spire_hi := _mat(Color(0.30, 0.96, 0.60), 0.10, 0.55, Color(0.24, 1.0, 0.58), 1.15)
+	var gold := _mat(Color(0.94, 0.78, 0.34), 0.22, 0.88, Color(0.90, 0.72, 0.24), 0.25)
+
+	# Clustered crystalline spires rising from the palace roof matching add_emerald_skyline
+	var spires := [
+		{"x": 0.0, "z": -6.0, "r": 4.4, "h": 34.0},
+		{"x": -10.5, "z": -2.0, "r": 2.9, "h": 24.0},
+		{"x": 10.5, "z": -2.0, "r": 2.9, "h": 24.0},
+		{"x": -15.0, "z": 6.0, "r": 2.2, "h": 18.0},
+		{"x": 15.0, "z": 6.0, "r": 2.2, "h": 18.0},
+	]
+	for sp in spires:
+		var sx: float = float(sp["x"])
+		var sz: float = float(sp["z"])
+		var sr: float = float(sp["r"])
+		var sh: float = float(sp["h"])
+		_mi(root, _cyl(sr * 0.52, sr, sh * 0.65, 10), glass, Vector3(sx, 11.0 + sh * 0.32, sz))
+		_mi(root, _cyl(0.18, sr * 0.55, sh * 0.38, 10), spire_hi, Vector3(sx, 11.0 + sh * 0.82, sz))
+		# Gilded filigree collar rings around each emerald crystal spire
+		_mi(root, _cyl(sr * 0.82, sr * 0.82, 0.45, 12), gold, Vector3(sx, 11.0 + sh * 0.34, sz))
+		_mi(root, _cyl(sr * 0.56, sr * 0.56, 0.38, 12), gold, Vector3(sx, 11.0 + sh * 0.64, sz))
+		_mi(root, _sph(0.55, 1.1, 10), gold, Vector3(sx, 11.0 + sh + 0.6, sz))
+
+	# Grand gilded archway crest over the Palace entrance (+Z face)
+	_mi(root, _cyl(0.42, 0.52, 9.5, 12), gold, Vector3(-4.2, 4.75, 15.8))
+	_mi(root, _cyl(0.42, 0.52, 9.5, 12), gold, Vector3(4.2, 4.75, 15.8))
+	var arch_ring := TorusMesh.new()
+	arch_ring.inner_radius = 3.8
+	arch_ring.outer_radius = 4.5
+	_mi(root, arch_ring, gold, Vector3(0, 7.2, 15.8))
+
+## Badass towering 3D sculpted holographic visage of OZ THE GREAT AND POWERFUL!
+static func build_oz_projection_head(parent: Node3D) -> void:
+	var plasma := _mat(Color(0.16, 0.88, 0.46, 0.72), 0.18, 0.25, Color(0.14, 0.96, 0.48), 1.65)
+	plasma.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var plasma_deep := _mat(Color(0.06, 0.42, 0.24, 0.85), 0.25, 0.35, Color(0.08, 0.62, 0.32), 1.0)
+	plasma_deep.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var fire_eye := _mat(Color(1.0, 0.76, 0.16), 0.1, 0.0, Color(1.0, 0.52, 0.08), 3.6)
+	var pupil := _mat(Color(0.06, 0.02, 0.02), 0.1)
+	var gold := _mat(Color(0.95, 0.78, 0.28), 0.22, 0.88, Color(0.95, 0.72, 0.20), 0.8)
+	var flame := _mat(Color(0.32, 1.0, 0.62, 0.68), 0.15, 0.0, Color(0.28, 1.0, 0.58), 2.2)
+	flame.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+	# Orbiting concentric brass-and-emerald arcane astrolabe halo rings behind the head
+	var halo_outer := Node3D.new()
+	halo_outer.name = "HaloOuter"
+	parent.add_child(halo_outer)
+	var r1 := TorusMesh.new()
+	r1.inner_radius = 4.6
+	r1.outer_radius = 4.88
+	_mi(halo_outer, r1, gold, Vector3(0, 0, -0.6))
+	var r2 := TorusMesh.new()
+	r2.inner_radius = 3.85
+	r2.outer_radius = 4.08
+	_mi(halo_outer, r2, flame, Vector3(0, 0, -0.2), Vector3(16, 12, 0))
+
+	# Sculpted towering angular holographic cranium, cheekbones, brow ridge & aquiline nose
+	_mi(parent, _sph(2.65, 6.0, 20), plasma, Vector3(0, 0.35, 0), Vector3.ZERO, Vector3(0.96, 1.15, 0.88))
+	_mi(parent, _box(Vector3(3.8, 0.68, 1.4)), plasma_deep, Vector3(0, 1.45, 1.95), Vector3(12, 0, 0)) # severe furrowed brow
+	# Cheekbone plates
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(parent, _sph(1.05, 1.8, 12), plasma, Vector3(s * 1.45, -0.15, 1.55), Vector3(0, s * -18, 0), Vector3(0.9, 1.1, 0.8))
+	# Aquiline holographic nose bridge
+	var nose := PrismMesh.new()
+	nose.size = Vector3(0.82, 1.75, 1.15)
+	_mi(parent, nose, plasma, Vector3(0, 0.18, 2.45), Vector3(-12, 0, 0))
+
+	# Radiant crown of 7 floating emerald flame shards above brow
+	for ci in range(7):
+		var a := -0.78 + float(ci) / 6.0 * 1.56
+		var sh := 1.45 if ci == 3 else (1.05 if (ci == 2 or ci == 4) else 0.78)
+		_mi(parent, _cyl(0.06, 0.28, sh, 6), flame, Vector3(sin(a) * 2.45, 3.15 + cos(a) * 0.55, 0.65), Vector3(0, 0, -rad_to_deg(a) * 0.45))
+
+	# Deep orbital sockets + blazing golden-amber iris eyes with vertical slit pupils
+	for ex in [-0.96, 0.96]:
+		var x: float = float(ex)
+		_mi(parent, _sph(0.62, 1.0, 12), _mat(Color(0.02, 0.08, 0.05), 0.9), Vector3(x, 0.72, 2.08))
+		_mi(parent, _sph(0.42, 0.72, 14), fire_eye, Vector3(x, 0.72, 2.38))
+		_mi(parent, _box(Vector3(0.10, 0.54, 0.16)), pupil, Vector3(x, 0.72, 2.74))
+
+	# Articulated Lower Jaw ("Mouth") with spectral beard shards & glowing rune teeth
+	var jaw := Node3D.new()
+	jaw.name = "Mouth"
+	jaw.position = Vector3(0, -1.25, 1.65)
+	parent.add_child(jaw)
+	_mi(jaw, _box(Vector3(2.35, 0.34, 1.15)), plasma_deep, Vector3(0, 0.18, 0.35))
+	_mi(jaw, _box(Vector3(2.05, 0.58, 1.25)), plasma, Vector3(0, -0.45, 0.40))
+	# Glowing upper & lower rune teeth bars
+	for ti in range(5):
+		var tx := -0.76 + float(ti) * 0.38
+		_mi(jaw, _box(Vector3(0.22, 0.18, 0.18)), flame, Vector3(tx, -0.02, 0.98))
+		_mi(jaw, _box(Vector3(0.22, 0.18, 0.18)), flame, Vector3(tx, -0.24, 0.98))
+	# Flowing pharaonic beard of floating emerald flame shards
+	for bi in range(5):
+		var bx := -0.85 + float(bi) * 0.425
+		var blen := 1.85 if bi == 2 else (1.40 if (bi == 1 or bi == 3) else 0.95)
+		_mi(jaw, _cyl(0.22, 0.04, blen, 6), flame, Vector3(bx, -0.85 - blen * 0.45, 0.32))
+
+## Sculpted 19th-century Omaha Humbug Inventor + Brass Voice-Horn & Geared Projector Console.
+static func build_humbug_wizard(parent: Node3D) -> void:
+	var coat := _mat(Color(0.24, 0.16, 0.22), 0.78)
+	var vest := _mat(Color(0.56, 0.38, 0.14), 0.65)
+	var skin := _mat(Color(0.92, 0.76, 0.65), 0.48)
+	var hair := _mat(Color(0.84, 0.84, 0.88), 0.72)
+	var brass := _mat(Color(0.86, 0.68, 0.28), 0.26, 0.85)
+	var iron := _mat(Color(0.22, 0.24, 0.28), 0.45, 0.75)
+
+	# Small dapper man: trousers, vest, tailcoat, white-tufted bald head, spectacles
+	for sx in [-0.10, 0.10]:
+		_mi(parent, _cyl(0.068, 0.075, 0.74, 10), coat, Vector3(float(sx), 0.37, 0))
+	_mi(parent, _cyl(0.18, 0.20, 0.58, 16), vest, Vector3(0, 1.02, 0))
+	_mi(parent, _cyl(0.22, 0.24, 0.66, 14), coat, Vector3(0, 1.00, 0.06))
+	for sx in [-1.0, 1.0]:
+		_mi(parent, _cyl(0.045, 0.04, 0.46, 10), coat, Vector3(float(sx) * 0.24, 1.08, -0.12), Vector3(38, 0, -float(sx) * 14))
+	_mi(parent, _sph(0.145, 0.30, 16), skin, Vector3(0, 1.50, 0))
+	_mi(parent, _sph(0.15, 0.12, 14), hair, Vector3(0, 1.48, 0.04)) # fringe of white hair around bald crown
+	# Brass & Iron Wizard Projector Console + Speaking Trumpet + Control Levers
+	_mi(parent, _box(Vector3(1.15, 1.35, 0.65)), iron, Vector3(-0.95, 0.68, -0.35))
+	_mi(parent, _cyl(0.22, 0.22, 0.08, 14), brass, Vector3(-0.95, 1.10, -0.02), Vector3(90, 0, 0)) # spinning gear dial
+	_mi(parent, _cyl(0.28, 0.06, 0.75, 14), brass, Vector3(-0.55, 1.52, -0.35), Vector3(0, 0, 52)) # voice megaphone horn
+	for lx in [-1.20, -0.95, -0.70]:
+		_mi(parent, _cyl(0.02, 0.02, 0.42, 6), brass, Vector3(float(lx), 1.52, -0.25), Vector3(18, 0, 0))
+
+## Sculpted 24-segment high-fashion Glinda, Good Witch of the South (Baum canon: auburn braids, snow-white & ruby silk, ruby-star crown).
+static func build_glinda_visual(parent: Node3D) -> void:
+	var gown_w := _mat(Color(0.98, 0.95, 0.96), 0.36, 0.08, Color(0.95, 0.72, 0.85), 0.16)
+	var rose_silk := _mat(Color(0.92, 0.34, 0.56), 0.38, 0.12, Color(0.95, 0.32, 0.54), 0.20)
+	var gold := _mat(Color(0.96, 0.82, 0.38), 0.22, 0.90, Color(0.96, 0.78, 0.32), 0.24)
+	var skin := _mat(Color(0.96, 0.82, 0.73), 0.42)
+	var auburn := _mat(Color(0.62, 0.18, 0.10), 0.52, 0.12)
+	var ruby := _mat(Color(0.98, 0.16, 0.34), 0.12, 0.25, Color(1.0, 0.22, 0.42), 2.1)
+	var veil := _mat(Color(1.0, 0.86, 0.92, 0.52), 0.32, 0.05)
+	veil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+	# Flowing 24-segment pleated ballgown + rose-silk overskirt + gilded hem
+	_mi(parent, _cyl(0.16, 0.62, 1.06, 24), gown_w, Vector3(0, 0.53, 0))
+	for pi in range(10):
+		var pa := float(pi) / 10.0 * TAU
+		_mi(parent, _cyl(0.05, 0.14, 1.00, 10), rose_silk, Vector3(cos(pa) * 0.31, 0.52, sin(pa) * 0.31), Vector3(sin(pa) * 15.0, 0, -cos(pa) * 15.0))
+	_mi(parent, _cyl(0.61, 0.64, 0.06, 24), gold, Vector3(0, 0.04, 0))
+
+	# Contoured bodice + bust silhouette + ruby brooch + gossamer cape
+	_mi(parent, _cyl(0.15, 0.12, 0.26, 20), rose_silk, Vector3(0, 1.15, 0))
+	_mi(parent, _cyl(0.17, 0.15, 0.22, 20), gown_w, Vector3(0, 1.36, 0))
+	_mi(parent, _sph(0.09, 0.16, 14), gown_w, Vector3(-0.072, 1.34, -0.075))
+	_mi(parent, _sph(0.09, 0.16, 14), gown_w, Vector3(0.072, 1.34, -0.075))
+	_mi(parent, _sph(0.045, 0.07, 10), ruby, Vector3(0, 1.32, -0.14))
+	_mi(parent, _cyl(0.16, 0.52, 1.08, 16), veil, Vector3(0, 1.08, 0.18), Vector3(16, 0, 0))
+
+	# Slender articulated arms + golden ruby-star scepter
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(parent, _sph(0.08, 0.15, 12), gown_w, Vector3(s * 0.21, 1.42, 0))
+		_mi(parent, _cyl(0.044, 0.035, 0.32, 12), gown_w, Vector3(s * 0.25, 1.26, -0.02), Vector3(12, 0, -s * 14))
+		_mi(parent, _cyl(0.034, 0.028, 0.28, 12), skin, Vector3(s * 0.30, 1.04, -0.10), Vector3(28, 0, -s * 8))
+		_mi(parent, _sph(0.038, 0.076, 10), skin, Vector3(s * 0.32, 0.94, -0.16))
+	_mi(parent, _cyl(0.016, 0.022, 1.52, 10), gold, Vector3(0.36, 1.24, -0.22), Vector3(10, 0, -5))
+	_mi(parent, _sph(0.095, 0.18, 14), ruby, Vector3(0.42, 2.02, -0.35))
+
+	# Neck, sculpted head, cascading auburn hair, ruby-star tiara
+	_mi(parent, _cyl(0.046, 0.056, 0.12, 14), skin, Vector3(0, 1.50, 0))
+	_mi(parent, _sph(0.135, 0.29, 20), skin, Vector3(0, 1.66, 0))
+	_mi(parent, _sph(0.148, 0.28, 20), auburn, Vector3(0, 1.70, 0.025))
+	_mi(parent, _cyl(0.09, 0.12, 0.56, 14), auburn, Vector3(0, 1.38, 0.12), Vector3(16, 0, 0))
+	_mi(parent, _cyl(0.15, 0.15, 0.045, 20), gold, Vector3(0, 1.80, 0))
+	_mi(parent, _sph(0.055, 0.10, 12), ruby, Vector3(0, 1.94, -0.13))
+
+## Royal Quadling Country beautification: 8-column Alabaster Rotunda, Reflecting Pools, Rose Trees & Compass Altar.
+static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Vector3) -> void:
+	var root := Node3D.new()
+	root.name = "GlindaCourtDecor"
+	parent.add_child(root)
+
+	var marble := _mat(Color(0.96, 0.92, 0.94), 0.32, 0.06)
+	var rose_marble := _mat(Color(0.86, 0.44, 0.62), 0.36, 0.10)
+	var gold := _mat(Color(0.94, 0.78, 0.34), 0.24, 0.88, Color(0.90, 0.72, 0.24), 0.22)
+	var water := _mat(Color(0.42, 0.74, 0.96, 0.85), 0.08, 0.20, Color(0.45, 0.72, 0.98), 0.55)
+	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var lotus := _mat(Color(1.0, 0.58, 0.78), 0.45, 0.0, Color(1.0, 0.55, 0.76), 0.55)
+	var star_glow := _mat(Color(1.0, 0.92, 0.72), 0.15, 0.0, Color(1.0, 0.88, 0.62), 2.2)
+
+	# 1) 8-Column Alabaster & Rose-Gold Temple Rotunda around Glinda
+	var pav := Node3D.new()
+	pav.position = glinda_pos
+	root.add_child(pav)
+	_mi(pav, _cyl(9.2, 9.8, 0.22, 24), marble, Vector3(0, 0.11, 0))
+	_mi(pav, _cyl(7.6, 8.0, 0.26, 24), rose_marble, Vector3(0, 0.26, 0))
+	_mi(pav, _cyl(8.6, 8.6, 0.45, 24), gold, Vector3(0, 6.85, 0)) # crown cornice ring
+	_mi(pav, _sph(8.4, 5.2, 24), rose_marble, Vector3(0, 7.1, 0), Vector3.ZERO, Vector3(1.0, 0.55, 1.0)) # ribbed rose dome
+	_mi(pav, _cyl(0.12, 0.42, 2.2, 12), gold, Vector3(0, 10.6, 0)) # golden temple finial
+	for ci in range(8):
+		var a := float(ci) / 8.0 * TAU + PI * 0.125
+		var cx := cos(a) * 8.1
+		var cz := sin(a) * 8.1
+		_mi(pav, _cyl(0.46, 0.56, 0.42, 14), gold, Vector3(cx, 0.42, cz))
+		_mi(pav, _cyl(0.34, 0.38, 6.2, 16), marble, Vector3(cx, 3.55, cz))
+		_mi(pav, _cyl(0.54, 0.38, 0.42, 14), gold, Vector3(cx, 6.55, cz))
+	# Hanging crystal star-chandelier
+	_mi(pav, _cyl(0.04, 0.04, 1.8, 8), gold, Vector3(0, 6.2, 0))
+	_mi(pav, _sph(0.45, 0.9, 12), star_glow, Vector3(0, 5.2, 0))
+	# Ornate Ruby-Filigree Throne behind Glinda
+	_mi(pav, _box(Vector3(2.2, 0.45, 1.6)), gold, Vector3(0, 0.52, -2.4))
+	_mi(pav, _box(Vector3(1.9, 3.2, 0.28)), rose_marble, Vector3(0, 2.1, -3.05))
+	_mi(pav, _sph(0.55, 0.55, 14), gold, Vector3(0, 3.75, -3.05))
+
+	# 2) Mirror-water Reflecting Pools with floating 3D lotus blossoms flanking the YBR approach
+	for sx in [-1.0, 1.0]:
+		var px := float(sx) * 11.5
+		_mi(root, _box(Vector3(6.8, 0.35, 34.0)), marble, Vector3(px, 0.16, 12.0))
+		_mi(root, _box(Vector3(5.8, 0.12, 33.0)), water, Vector3(px, 0.32, 12.0))
+		for li in range(7):
+			var lz := -2.0 + float(li) * 4.8
+			_mi(root, _cyl(0.42, 0.42, 0.04, 10), _mat(Color(0.22, 0.58, 0.32), 0.8), Vector3(px + sin(lz) * 1.4, 0.40, lz))
+			_mi(root, _sph(0.22, 0.24, 8), lotus, Vector3(px + sin(lz) * 1.4, 0.48, lz))
+
+	# 3) Wind-swaying Rose-Blossom Trees & Golden-Rose Meadow Grass
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 606
+	var rose_leaf_a := make_leaf_wind_material(Color(0.92, 0.48, 0.68))
+	var rose_leaf_b := make_leaf_wind_material(Color(0.84, 0.32, 0.52))
+	var bark := _mat(Color(0.44, 0.34, 0.38), 0.88)
+	for ti in range(18):
+		var side: float = -1.0 if ti % 2 == 0 else 1.0
+		var tx := side * rng.randf_range(18.5, 34.0)
+		var tz := rng.randf_range(-38.0, 36.0)
+		var tr := Node3D.new()
+		tr.position = Vector3(tx, 0.0, tz)
+		root.add_child(tr)
+		_mi(tr, _cyl(0.18, 0.30, 3.2, 10), bark, Vector3(0, 1.6, 0))
+		_mi(tr, _sph(1.65, 2.2, 14), rose_leaf_a if ti % 2 == 0 else rose_leaf_b, Vector3(0, 3.8, 0))
+		_mi(tr, _sph(1.15, 1.5, 12), rose_leaf_b if ti % 2 == 0 else rose_leaf_a, Vector3(0.9, 3.2, 0.4))
+
+	# 4) Sculpted Silver-Shoe Compass Rose Altar at RoadHomePad
+	var altar := Node3D.new()
+	altar.position = home_pad
+	root.add_child(altar)
+	var compass_ring := TorusMesh.new()
+	compass_ring.inner_radius = 3.2
+	compass_ring.outer_radius = 3.65
+	_mi(altar, compass_ring, gold, Vector3(0, 0.14, 0), Vector3(90, 0, 0))
+	for ai in range(4):
+		var aa := float(ai) * PI * 0.5
+		_mi(altar, _cyl(0.14, 0.18, 2.8, 10), marble, Vector3(cos(aa) * 3.5, 1.4, sin(aa) * 3.5))
+		_mi(altar, _sph(0.24, 0.36, 10), star_glow, Vector3(cos(aa) * 3.5, 2.95, sin(aa) * 3.5))

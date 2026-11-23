@@ -25,6 +25,8 @@ extends CharacterBody3D
 @export var step_height: float = 1.15
 
 var blink_timer: float = 0.0
+var _sprint_surge_t: float = 0.0
+var _sprint_surge_dir: Vector3 = Vector3.ZERO
 var kick_timer: float = 0.0
 var kick_active: float = 0.0
 var iframe_timer: float = 0.0
@@ -91,10 +93,16 @@ func wants_look_hint() -> bool:
 
 func _physics_process(delta: float) -> void:
 	blink_timer = maxf(blink_timer - delta, 0.0)
+	_sprint_surge_t = maxf(_sprint_surge_t - delta, 0.0)
 	kick_timer = maxf(kick_timer - delta, 0.0)
 	kick_active = maxf(kick_active - delta, 0.0)
 	iframe_timer = maxf(iframe_timer - delta, 0.0)
 	stun_timer = maxf(stun_timer - delta, 0.0)
+
+	# Anti-oblivion safety net
+	if global_position.y < -3.5:
+		global_position = Vector3(clampf(global_position.x, -30.0, 30.0), 0.25, clampf(global_position.z, -50.0, 120.0))
+		velocity = Vector3.ZERO
 
 	if parked:
 		global_position = Vector3(park_pos.x, global_position.y, park_pos.z)
@@ -226,12 +234,20 @@ func _move(delta: float) -> void:
 			wish = wish.normalized()
 			var face := atan2(-wish.x, -wish.z)
 			visual.rotation.y = lerp_angle(visual.rotation.y, face, 12.0 * delta)
+	var cur_speed := move_speed * (1.80 if Input.is_action_pressed("blink") else 1.0)
+	if _sprint_surge_t > 0.0:
+		# Smooth high-speed sprint burst via move_and_slide() (never a single-frame teleport!)
+		var surge_spd := maxf(blink_distance / 0.10, 34.0)
+		velocity.x = _sprint_surge_dir.x * surge_spd
+		velocity.z = _sprint_surge_dir.z * surge_spd
+		Locomotion.try_step(self, _sprint_surge_dir, step_height)
+		return
 	if wish.length() > 0.05:
 		var steered: Vector3 = Locomotion.steer(self, wish)
 		if steered.length() < 0.05:
 			steered = wish
-		velocity.x = move_toward(velocity.x, steered.x * move_speed, acceleration * delta * move_speed)
-		velocity.z = move_toward(velocity.z, steered.z * move_speed, acceleration * delta * move_speed)
+		velocity.x = move_toward(velocity.x, steered.x * cur_speed, acceleration * delta * cur_speed)
+		velocity.z = move_toward(velocity.z, steered.z * cur_speed, acceleration * delta * cur_speed)
 		Locomotion.try_step(self, steered, step_height)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, acceleration * delta * move_speed)
@@ -256,8 +272,12 @@ func _blink() -> void:
 		if dir.length() < 0.01:
 			return
 		dir = dir.normalized()
-	global_position = _blink_destination(dir)
-	visual.scale = Vector3(0.86, 1.12, 0.86)
+	_sprint_surge_dir = dir
+	_sprint_surge_t = 0.10
+	var burst_spd := maxf(blink_distance / 0.10, 34.0)
+	velocity.x = dir.x * burst_spd
+	velocity.z = dir.z * burst_spd
+	visual.rotation.y = atan2(-dir.x, -dir.z)
 
 func _blink_destination(dir: Vector3) -> Vector3:
 	var space := get_world_3d().direct_space_state

@@ -298,17 +298,35 @@ func _collect_clear_air() -> void:
 	dorothy_asleep = false
 	dorothy_safe = true
 	var safe_pos := SAFE_SOUTH + Vector3(-2.0, 0, 0)
-	if player:
-		player.visible = true
-		if player.has_method("set_sleeping"):
-			player.call("set_sleeping", false)
-		if player.has_method("set_parked"):
-			player.call("set_parked", true, safe_pos)
-		else:
-			player.global_position = safe_pos
 	if has_node("DorothyAsleepLab"):
 		get_node("DorothyAsleepLab").queue_free()
-	_ensure_asleep_marker("SafeDorothyLab", safe_pos, "DOROTHY — SAFE\n(waits here · will not follow)", Color(0.75, 0.95, 1.0))
+	if player:
+		player.visible = true
+		if DisplayServer.get_name() in ["headless", "Dummy"]:
+			if player.has_method("set_sleeping"):
+				player.call("set_sleeping", false)
+			if player.has_method("set_parked"):
+				player.call("set_parked", true, safe_pos)
+			else:
+				player.global_position = safe_pos
+		else:
+			# Smooth cooperative carry out of the scarlet poppies instead of snapping!
+			var start_p := player.global_position
+			var lift_p := start_p + Vector3(0, 0.65, 0)
+			var carry_dest := safe_pos + Vector3(0, 0.65, 0)
+			if player.has_method("set_parked"):
+				player.call("set_parked", true, safe_pos)
+			player.global_position = start_p
+			var tw := create_tween()
+			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_property(player, "global_position", lift_p, 0.35)
+			tw.tween_property(player, "global_position", carry_dest, 1.35)
+			tw.tween_property(player, "global_position", safe_pos, 0.30)
+			tw.tween_callback(func():
+				if player and player.has_method("set_sleeping"):
+					player.call("set_sleeping", false)
+			)
+	_ensure_asleep_marker("SafeDorothyLab", safe_pos, "✦ Dorothy — Safe in Clear Air", Color(0.75, 0.95, 1.0))
 	if not lion_safe:
 		lion_asleep = true
 		if lion:
@@ -495,15 +513,22 @@ func _ensure_asleep_marker(node_name: String, pos: Vector3, text: String, col: C
 func _ensure_cart_label() -> void:
 	if cart == null:
 		return
+	var badge := cart.get_node_or_null("WorldBadge")
+	if badge:
+		for c in badge.get_children():
+			if c is Label3D:
+				var lab := c as Label3D
+				lab.text = "✦  Mice Cart — Walk to Lion (E)" if cart_owned else "✦  Mice Cart — Hitch (E)"
+				return
 	for c in cart.get_children():
 		if c is Label3D:
 			var lab := c as Label3D
-			if cart_owned:
-				lab.text = "MICE CART — yours\n(walk to Lion · E)"
-			else:
-				lab.text = "MICE CART — E to take\n(required for Lion)"
-			lab.font_size = 40
-			lab.modulate = Color(1.0, 0.95, 0.4)
+			lab.text = "✦  Mice Cart — Walk to Lion (E)" if cart_owned else "✦  Mice Cart — Hitch (E)"
+			lab.font_size = 28
+			lab.pixel_size = 0.0050
+			lab.modulate = Color(0.99, 0.94, 0.80)
+			lab.outline_size = 9
+			lab.outline_modulate = Color(0.09, 0.06, 0.08, 0.96)
 
 func _hide_node(n: Node3D) -> void:
 	if n and is_instance_valid(n):
@@ -630,13 +655,7 @@ func _spawn_set_pieces() -> void:
 	orb.material_override = om
 	orb.position = Vector3(0, 1.2, 0)
 	clear_air.add_child(orb)
-	var olab := Label3D.new()
-	olab.text = "CLEAR AIR\nE as Scarecrow or Tin Man\n(wakes Dorothy)"
-	olab.font_size = 40
-	olab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	olab.modulate = Color(0.7, 0.95, 1.0)
-	olab.position = Vector3(0, 3.2, 0)
-	clear_air.add_child(olab)
+	WorldKit.make_world_badge(clear_air, Vector3(0, 2.8, 0), "✦  Clear Air — Wakes Dorothy (E)", Color(0.65, 0.95, 1.0), 14.0)
 	var olight := OmniLight3D.new()
 	olight.light_color = Color(0.5, 0.85, 1.0)
 	olight.light_energy = 4.0
@@ -649,14 +668,7 @@ func _spawn_set_pieces() -> void:
 	add_child(cart)
 	cart.global_position = CART_POS
 	WorldKit.build_mice_cart_visual(cart)
-	var clab := Label3D.new()
-	clab.text = "Mice Cart — E to hitch"
-	clab.font_size = 30
-	clab.pixel_size = 0.006
-	clab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	clab.modulate = Color(1.0, 0.95, 0.45)
-	clab.position = Vector3(0, 2.0, 0)
-	cart.add_child(clab)
+	WorldKit.make_world_badge(cart, Vector3(0, 2.1, 0), "✦  Mice Cart — Hitch (E)", Color(0.98, 0.88, 0.52), 14.0)
 	cart.visible = false
 
 func _add_poppy_whimsy() -> void:
