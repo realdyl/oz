@@ -35,6 +35,8 @@ var door_seal: StaticBody3D
 var _gate_seal: StaticBody3D
 var _gate_doors: Dictionary = {}
 var _palace_doors: Dictionary = {}
+var _curtain_rig: Dictionary = {}
+var _wizard_spot: OmniLight3D = null
 var _projection_dismissed: bool = false
 var gate_pos: Vector3 = Vector3(0, 0.08, -8)
 var door_pos: Vector3 = Vector3(0, 0.08, -38)
@@ -311,17 +313,24 @@ func _build_curtain_and_body() -> void:
 	curtain = Node3D.new()
 	curtain.name = "Curtain"
 	add_child(curtain)
-	curtain.global_position = Vector3(7.5, 0.1, -58)
-	_add_box(curtain.global_position + Vector3(0, 3.5, 0), Vector3(0.35, 7, 5), Color(0.55, 0.08, 0.12), "CurtainMesh")
-	WorldKit.make_world_badge(curtain, Vector3(0, 5.2, 0), "✦  Velvet Curtain — Pull (E)", Color(1.0, 0.78, 0.72), 14.0)
-	# Sculpted Omaha Humbug Inventor + Brass Voice-Horn Console
+	curtain.global_position = Vector3(6.2, 0.1, -58.0)
+	_curtain_rig = WorldKit.build_velvet_curtain(curtain, curtain.global_position, 5.4, 6.2)
+	WorldKit.make_world_badge(curtain, Vector3(0, 5.4, 0.4), "✦  Velvet Curtain — Pull (E)", Color(1.0, 0.78, 0.72), 16.0)
+	# Sculpted Omaha Humbug Inventor + Brass Voice-Horn Console right behind the curtain, facing +Z!
 	wizard_body = Node3D.new()
 	wizard_body.name = "WizardBody"
 	add_child(wizard_body)
-	wizard_body.global_position = Vector3(7.5, 0.1, -60.5)
+	wizard_body.global_position = Vector3(6.2, 0.15, -60.2)
+	wizard_body.scale = Vector3(1.18, 1.18, 1.18)
 	wizard_body.visible = false
 	WorldKit.build_humbug_wizard(wizard_body)
-	WorldKit.make_world_badge(wizard_body, Vector3(0, 2.55, 0), "✦  A Small Man — \"I'm a humbug…\"", Color(0.98, 0.90, 0.65), 14.0)
+	WorldKit.make_world_badge(wizard_body, Vector3(0, 2.55, 0), "✦  Oscar Diggs — \"I'm a humbug…\"", Color(0.98, 0.90, 0.65), 16.0)
+	_wizard_spot = OmniLight3D.new()
+	_wizard_spot.light_color = Color(1.0, 0.88, 0.62)
+	_wizard_spot.light_energy = 0.0
+	_wizard_spot.omni_range = 14.0
+	add_child(_wizard_spot)
+	_wizard_spot.global_position = Vector3(6.2, 3.8, -56.2)
 
 func _add_limb(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -454,14 +463,23 @@ func _set_beat(next: Beat) -> void:
 			hud.set_objective("The Wizard is only a man. E — take the Yellow Brick Road south to Glinda.")
 			hud.set_prompt("E  —  \"I want to go home\" → Glinda / Road Home (L5)")
 			_projection_dismissed = true
-			if wizard_body:
-				wizard_body.visible = true
-			if curtain:
-				var tw2 := create_tween()
-				tw2.tween_property(curtain, "position:x", curtain.position.x + 4.5, 0.7)
 			if wizard_head:
 				wizard_head.visible = false
-			_say("Wizard: \"I'm a humbug… Please don't tell anyone.\"")
+			# Draw both pleated crimson-velvet drapes apart to reveal the little man & brass projector!
+			var l_drape := _curtain_rig.get("left") as Node3D
+			var r_drape := _curtain_rig.get("right") as Node3D
+			if l_drape and r_drape:
+				var ctw := create_tween().set_parallel(true)
+				ctw.tween_property(l_drape, "scale:x", 0.22, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				ctw.tween_property(r_drape, "scale:x", 0.22, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			if _wizard_spot:
+				var ltw := create_tween()
+				ltw.tween_property(_wizard_spot, "light_energy", 4.2, 0.7)
+			if wizard_body:
+				wizard_body.visible = true
+				var wtw := create_tween()
+				wtw.tween_property(wizard_body, "global_position:z", -57.2, 0.95).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			_say("Wizard: \"Pay no attention— I'm a humbug… just a little man from Omaha. Please don't tell anyone.\"")
 		Beat.DONE:
 			hud.set_objective("FINAL STEP (L4): Hourglass turns — Yellow Brick Road to Glinda's court (L5).")
 			hud.set_prompt("Curtain falls. The road continues south…")

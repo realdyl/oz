@@ -1645,30 +1645,93 @@ static func build_palace_double_doors(parent: Node3D, at: Vector3, total_w: floa
 
 	return {"root": root, "left": piv_l, "right": piv_r}
 
-## Sculpted 19th-century Omaha Humbug Inventor + Brass Voice-Horn & Geared Projector Console.
+## Theatrical crimson-velvet parting curtain on gilded brass rod with pleated folds, rings & gold tassels.
+## Returns {"root": Node3D, "left": Node3D, "right": Node3D} so callers can animate both drapes drawing back!
+static func build_velvet_curtain(parent: Node3D, pos: Vector3, width: float = 5.4, height: float = 6.2) -> Dictionary:
+	var root := Node3D.new()
+	root.name = "VelvetCurtainRig"
+	parent.add_child(root)
+	root.global_position = pos
+
+	var velvet := _mat(Color(0.54, 0.05, 0.10), 0.88, 0.04, Color(0.28, 0.02, 0.04), 0.14)
+	var velvet_hi := _mat(Color(0.68, 0.08, 0.14), 0.82, 0.06, Color(0.32, 0.03, 0.05), 0.16)
+	var gold := _mat(Color(0.92, 0.74, 0.26), 0.24, 0.88, Color(0.85, 0.65, 0.18), 0.22)
+	var dark_wood := _mat(Color(0.18, 0.12, 0.09), 0.78)
+
+	# Supporting side posts + gilded overhead brass rod + finials + valance
+	for sx in [-1.0, 1.0]:
+		_mi(root, _cyl(0.10, 0.12, height + 0.4, 12), dark_wood, Vector3(float(sx) * (width * 0.5 + 0.15), (height + 0.4) * 0.5, 0))
+		_mi(root, _sph(0.20, 0.36, 12), gold, Vector3(float(sx) * (width * 0.5 + 0.25), height + 0.15, 0))
+	_mi(root, _cyl(0.065, 0.065, width + 0.45, 14), gold, Vector3(0, height + 0.15, 0), Vector3(0, 0, 90))
+	# Pelmet / scalloped valance across top
+	_mi(root, _box(Vector3(width + 0.3, 0.55, 0.38)), velvet_hi, Vector3(0, height - 0.05, 0.12))
+	_mi(root, _box(Vector3(width + 0.32, 0.09, 0.40)), gold, Vector3(0, height - 0.34, 0.12))
+
+	# Two parting drape panels (left & right), each pivoted at its outer edge so scaling X compresses folds!
+	var half_w := width * 0.5
+	var left_drape := Node3D.new()
+	left_drape.name = "LeftDrape"
+	left_drape.position = Vector3(-half_w, 0.0, 0.0)
+	root.add_child(left_drape)
+
+	var right_drape := Node3D.new()
+	right_drape.name = "RightDrape"
+	right_drape.position = Vector3(half_w, 0.0, 0.0)
+	root.add_child(right_drape)
+
+	var folds := 6
+	var fold_w := half_w / float(folds)
+	for side_idx in range(2):
+		var drape: Node3D = left_drape if side_idx == 0 else right_drape
+		var dir: float = 1.0 if side_idx == 0 else -1.0
+		for fi in range(folds):
+			var fx := dir * (float(fi) + 0.5) * fold_w
+			var fz := 0.10 if (fi % 2 == 0) else -0.08
+			var m: StandardMaterial3D = velvet if (fi % 2 == 0) else velvet_hi
+			_mi(drape, _cyl(fold_w * 0.56, fold_w * 0.62, height, 12), m, Vector3(fx, height * 0.5, fz))
+			# Brass curtain ring at top of each pleat
+			_mi(drape, _cyl(0.09, 0.09, 0.05, 10), gold, Vector3(fx, height + 0.12, 0.0), Vector3(90, 0, 0))
+		# Gold braided hem & tieback tassel
+		_mi(drape, _box(Vector3(half_w, 0.12, 0.28)), gold, Vector3(dir * half_w * 0.5, 0.10, 0.02))
+		_mi(drape, _cyl(0.08, 0.14, 0.52, 10), gold, Vector3(dir * (half_w - 0.18), height * 0.42, 0.18))
+
+	return {"root": root, "left": left_drape, "right": right_drape}
+
+## Sculpted 19th-century Omaha Humbug Inventor + Brass Voice-Horn & Geared Projector Console (facing +Z).
 static func build_humbug_wizard(parent: Node3D) -> void:
 	var coat := _mat(Color(0.24, 0.16, 0.22), 0.78)
-	var vest := _mat(Color(0.56, 0.38, 0.14), 0.65)
-	var skin := _mat(Color(0.92, 0.76, 0.65), 0.48)
-	var hair := _mat(Color(0.84, 0.84, 0.88), 0.72)
-	var brass := _mat(Color(0.86, 0.68, 0.28), 0.26, 0.85)
-	var iron := _mat(Color(0.22, 0.24, 0.28), 0.45, 0.75)
+	var vest := _mat(Color(0.62, 0.44, 0.16), 0.58)
+	var shirt := _mat(Color(0.94, 0.92, 0.88), 0.72)
+	var skin := _mat(Color(0.94, 0.78, 0.66), 0.46)
+	var hair := _mat(Color(0.88, 0.88, 0.92), 0.72)
+	var brass := _mat(Color(0.90, 0.72, 0.28), 0.24, 0.88, Color(0.85, 0.65, 0.20), 0.22)
+	var iron := _mat(Color(0.24, 0.26, 0.30), 0.42, 0.75)
+	var eye_m := _mat(Color(0.10, 0.10, 0.14), 0.2)
 
-	# Small dapper man: trousers, vest, tailcoat, white-tufted bald head, spectacles
-	for sx in [-0.10, 0.10]:
-		_mi(parent, _cyl(0.068, 0.075, 0.74, 10), coat, Vector3(float(sx), 0.37, 0))
-	_mi(parent, _cyl(0.18, 0.20, 0.58, 16), vest, Vector3(0, 1.02, 0))
-	_mi(parent, _cyl(0.22, 0.24, 0.66, 14), coat, Vector3(0, 1.00, 0.06))
+	# Small dapper bald inventor: boots, trousers, embroidered vest, coat, arms, sculpted face + spectacles
+	for sx in [-0.11, 0.11]:
+		_mi(parent, _cyl(0.072, 0.080, 0.74, 12), coat, Vector3(float(sx), 0.37, 0))
+		_mi(parent, _box(Vector3(0.14, 0.10, 0.24)), iron, Vector3(float(sx), 0.05, 0.06))
+	_mi(parent, _cyl(0.20, 0.22, 0.58, 16), vest, Vector3(0, 1.02, 0.03))
+	_mi(parent, _cyl(0.08, 0.10, 0.24, 12), shirt, Vector3(0, 1.24, 0.14))
+	_mi(parent, _cyl(0.24, 0.26, 0.70, 16), coat, Vector3(0, 0.98, -0.05))
 	for sx in [-1.0, 1.0]:
-		_mi(parent, _cyl(0.045, 0.04, 0.46, 10), coat, Vector3(float(sx) * 0.24, 1.08, -0.12), Vector3(38, 0, -float(sx) * 14))
-	_mi(parent, _sph(0.145, 0.30, 16), skin, Vector3(0, 1.50, 0))
-	_mi(parent, _sph(0.15, 0.12, 14), hair, Vector3(0, 1.48, 0.04)) # fringe of white hair around bald crown
-	# Brass & Iron Wizard Projector Console + Speaking Trumpet + Control Levers
-	_mi(parent, _box(Vector3(1.15, 1.35, 0.65)), iron, Vector3(-0.95, 0.68, -0.35))
-	_mi(parent, _cyl(0.22, 0.22, 0.08, 14), brass, Vector3(-0.95, 1.10, -0.02), Vector3(90, 0, 0)) # spinning gear dial
-	_mi(parent, _cyl(0.28, 0.06, 0.75, 14), brass, Vector3(-0.55, 1.52, -0.35), Vector3(0, 0, 52)) # voice megaphone horn
-	for lx in [-1.20, -0.95, -0.70]:
-		_mi(parent, _cyl(0.02, 0.02, 0.42, 6), brass, Vector3(float(lx), 1.52, -0.25), Vector3(18, 0, 0))
+		_mi(parent, _cyl(0.048, 0.042, 0.48, 10), coat, Vector3(float(sx) * 0.27, 1.06, 0.12), Vector3(-34, 0, -float(sx) * 14))
+		_mi(parent, _sph(0.048, 0.095, 10), skin, Vector3(float(sx) * 0.30, 0.88, 0.26))
+	# Head + bald crown + white side tufts + moustache + spectacles facing +Z
+	_mi(parent, _sph(0.165, 0.34, 18), skin, Vector3(0, 1.54, 0))
+	_mi(parent, _sph(0.17, 0.13, 14), hair, Vector3(0, 1.52, -0.05)) # white hair fringe around bald crown
+	_mi(parent, _sph(0.035, 0.06, 10), skin, Vector3(0, 1.52, 0.165)) # nose
+	_mi(parent, _box(Vector3(0.14, 0.04, 0.04)), hair, Vector3(0, 1.46, 0.155)) # white moustache
+	for sx in [-0.055, 0.055]:
+		_mi(parent, _sph(0.022, 0.044, 10), eye_m, Vector3(float(sx), 1.56, 0.148))
+		_mi(parent, _cyl(0.042, 0.042, 0.015, 12), brass, Vector3(float(sx), 1.56, 0.162), Vector3(90, 0, 0)) # gold spectacles
+	# Brass & Iron Wizard Projector Console + Speaking Trumpet + Control Levers (beside him)
+	_mi(parent, _box(Vector3(1.25, 1.35, 0.70)), iron, Vector3(-1.10, 0.68, -0.25))
+	_mi(parent, _cyl(0.24, 0.24, 0.08, 14), brass, Vector3(-1.10, 1.10, 0.12), Vector3(90, 0, 0)) # spinning gear dial
+	_mi(parent, _cyl(0.30, 0.06, 0.80, 14), brass, Vector3(-0.68, 1.56, -0.25), Vector3(0, 0, 52)) # voice megaphone horn
+	for lx in [-1.35, -1.10, -0.85]:
+		_mi(parent, _cyl(0.022, 0.022, 0.44, 6), brass, Vector3(float(lx), 1.54, -0.15), Vector3(-18, 0, 0))
 
 ## Sculpted 24-segment high-fashion Glinda, Good Witch of the South (Baum canon: auburn braids, snow-white & ruby silk, ruby-star crown).
 static func build_glinda_visual(parent: Node3D) -> void:
@@ -1772,15 +1835,28 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 	_mi(pav, _box(Vector3(1.9, 3.2, 0.28)), rose_marble, Vector3(0, 2.1, -3.05))
 	_mi(pav, _sph(0.55, 0.55, 14), gold, Vector3(0, 3.75, -3.05))
 
-	# 2) Mirror-water Reflecting Pools with floating 3D lotus blossoms flanking the YBR approach
+	# 2) Mirror-water Reflecting Pools with SOLID COLLIDABLE surfaces (feet NEVER clip inside!)
 	for sx in [-1.0, 1.0]:
 		var px := float(sx) * 11.5
-		_mi(root, _box(Vector3(6.8, 0.35, 34.0)), marble, Vector3(px, 0.16, 12.0))
-		_mi(root, _box(Vector3(5.8, 0.12, 33.0)), water, Vector3(px, 0.32, 12.0))
+		var pool_body := StaticBody3D.new()
+		pool_body.name = "ReflectingPool_%s" % ("L" if sx < 0 else "R")
+		pool_body.collision_layer = 1
+		pool_body.collision_mask = 0
+		root.add_child(pool_body)
+		pool_body.position = Vector3(px, 0.0, 12.0)
+		# Flush shallow marble curb + mirror-glass water surface (top y = 0.08m — cleanly steppable & solid!)
+		_mi(pool_body, _box(Vector3(6.8, 0.07, 34.0)), marble, Vector3(0, 0.035, 0))
+		_mi(pool_body, _box(Vector3(5.8, 0.02, 33.0)), water, Vector3(0, 0.072, 0))
+		var pcol := CollisionShape3D.new()
+		var psh := BoxShape3D.new()
+		psh.size = Vector3(6.8, 0.08, 34.0)
+		pcol.shape = psh
+		pcol.position = Vector3(0, 0.04, 0)
+		pool_body.add_child(pcol)
 		for li in range(7):
-			var lz := -2.0 + float(li) * 4.8
-			_mi(root, _cyl(0.42, 0.42, 0.04, 10), _mat(Color(0.22, 0.58, 0.32), 0.8), Vector3(px + sin(lz) * 1.4, 0.40, lz))
-			_mi(root, _sph(0.22, 0.24, 8), lotus, Vector3(px + sin(lz) * 1.4, 0.48, lz))
+			var lz := -14.0 + float(li) * 4.8
+			_mi(pool_body, _cyl(0.42, 0.42, 0.02, 10), _mat(Color(0.22, 0.58, 0.32), 0.8), Vector3(sin(lz) * 1.4, 0.088, lz))
+			_mi(pool_body, _sph(0.20, 0.16, 8), lotus, Vector3(sin(lz) * 1.4, 0.15, lz))
 
 	# 3) Wind-swaying Rose-Blossom Trees & Golden-Rose Meadow Grass
 	var rng := RandomNumberGenerator.new()

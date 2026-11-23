@@ -61,6 +61,12 @@ var _near_build_door: Area3D = null
 var _inside_building: bool = false
 var _door_busy: bool = false
 var _active_build_door: Area3D = null
+var _cam_out_len: float = 5.5
+var _cam_out_fov: float = 65.0
+var _cam_out_pitch: float = -18.0
+var _cyclone_rings: Array = []
+var _lightning_cd: float = 1.8
+var _lightning_flash: float = 0.0
 var whimsy_score: int = 0
 
 # Spoken AFTER Toto is already in the basket — never "go get Toto" again.
@@ -149,6 +155,19 @@ func _build_farm_layout() -> void:
 	_add_barn(Vector3(-22.0, 0.0, 26.0))
 	_add_fence_ring(Vector3(-22.0, 0.0, 26.0), 8.0, 14)
 	_add_fence_ring(Vector3(24.0, 0.0, -20.0), 6.0, 12)
+	# Dress Gale Farmhouse identically to L7 Kansas Homecoming (hide bare flat-slab .tscn roof!)
+	if farmhouse:
+		var old_roof := farmhouse.get_node_or_null("Roof") as Node3D
+		if old_roof:
+			old_roof.visible = false
+		var old_body := farmhouse.get_node_or_null("Body/Mesh") as MeshInstance3D
+		if old_body:
+			var fm := StandardMaterial3D.new()
+			fm.albedo_color = Color(0.48, 0.48, 0.50)
+			fm.roughness = 0.88
+			old_body.material_override = fm
+		WorldKit.dress_cottage_exterior(farmhouse, 3.5, 2.75, 4.2, Color(0.48, 0.48, 0.50), Color(0.28, 0.28, 0.31))
+		WorldKit.make_building_crest_sign(farmhouse, Vector3(0, 4.35, 3.1), "GALE FARMHOUSE", Color(0.55, 0.55, 0.58), true)
 	# Shutter / cellar / door relative to Farmhouse node at (-2,0,-8)
 	var hx := -2.0
 	var hz := -8.0
@@ -156,14 +175,15 @@ func _build_farm_layout() -> void:
 	_add_cellar_door(Vector3(hx - 4.2, 0.0, hz + 1.5))
 	_add_house_door(Vector3(hx, 0.0, hz + 3.6))
 	# Aunt on porch east — keep clear of the enterable farmhouse door (south face).
-	_add_aunt_em(Vector3(hx + 3.0, 0.0, hz + 4.8))
+	_add_aunt_em(Vector3(hx + 3.2, 0.0, hz + 4.8))
 	_add_uncle_henry(Vector3(-16.0, 0.0, 18.0))
 	_add_clothesline(Vector3(8.0, 0.0, 4.0))
 	_add_windmill_ghost(Vector3(-32.0, 0.0, -10.0))
 	_add_cyclone_funnel(Vector3(12.0, 0.0, -36.0))
-	# Enterable Kansas buildings (E door enter/exit). Exterior door farther south than porch NPCs.
-	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 8.2), Vector3(5.5, 3.6, 4.2))
-	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 31.2), Vector3(5.5, 3.8, 4.5))
+	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 4), 36.0, 120, 4.8)
+	# Enterable Kansas buildings (E door enter/exit with full Munchkinland-grade 4-wall interior + indoor camera!).
+	_make_enterable_box(farmhouse, "Farmhouse", Vector3(hx, 0.12, hz + 0.2), Vector3(hx, 0.12, hz + 4.8), Vector3(5.5, 3.6, 4.2))
+	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 30.6), Vector3(5.5, 3.8, 4.5))
 	_make_enterable_simple(Vector3(24.0, 0.0, -20.0), "Chicken coop", Vector3(2.6, 1.4, 2.0), Color(0.4, 0.4, 0.42))
 	_add_map_border(56.0, 54.0)
 	WorldKit.add_horizon_hills(self, 56.0, 54.0, Color(0.32, 0.32, 0.35))
@@ -313,13 +333,7 @@ func _add_chicken_coop(at: Vector3) -> void:
 	col.shape = sh
 	col.position = Vector3(0, 0.8, 0)
 	coop.add_child(col)
-	var lab := Label3D.new()
-	lab.text = "Chicken run"
-	lab.font_size = 48
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 2.2, 0)
-	lab.modulate = Color(0.85, 0.85, 0.88)
-	coop.add_child(lab)
+	WorldKit.make_world_badge(coop, Vector3(0, 2.1, 0), "✦  Chicken Run", Color(0.90, 0.90, 0.94), 10.0)
 
 func _add_fence_ring(center: Vector3, radius: float, posts: int) -> void:
 	for i in posts:
@@ -483,14 +497,7 @@ func _add_house_door(at: Vector3) -> void:
 	door.material_override = mat
 	door.position = Vector3(0, 1.05, 0)
 	house_door.add_child(door)
-	var lab := Label3D.new()
-	lab.name = "DoorLabel"
-	lab.text = "Farmhouse door"
-	lab.font_size = 44
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 2.4, 0)
-	lab.modulate = Color(0.95, 0.95, 0.98)
-	house_door.add_child(lab)
+	WorldKit.make_world_badge(house_door, Vector3(0, 2.45, 0), "✦  Farmhouse Shelter (E)", Color(0.98, 0.98, 1.0), 14.0)
 	add_child(house_door)
 	house_door.global_position = at
 	house_door.body_entered.connect(func(b): if b.is_in_group("player"): _near_door = true)
@@ -504,29 +511,60 @@ func _add_windmill_ghost(at: Vector3) -> void:
 	_windmill_rotor = WorldKit.build_lattice_windmill(self, at)
 
 func _add_cyclone_funnel(at: Vector3) -> void:
-	## Distant B&W funnel — grey only (no rainbow; vault B&W + IP).
+	## Dramatic multi-tier twisting B&W prairie cyclone with anvil storm cloud & orbiting wind debris!
 	cyclone = Node3D.new()
 	cyclone.name = "Cyclone"
 	add_child(cyclone)
 	cyclone.global_position = at
 	cyclone.visible = false
-	var funnel := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 1.2
-	cyl.bottom_radius = 6.0
-	cyl.height = 22.0
-	funnel.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.35, 0.35, 0.38, 0.55)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.roughness = 1.0
-	mat.emission_enabled = true
-	mat.emission = Color(0.4, 0.4, 0.42)
-	mat.emission_energy_multiplier = 0.35
-	funnel.material_override = mat
-	funnel.position = Vector3(0, 11.0, 0)
-	cyclone.add_child(funnel)
-	funnel.set_meta("spin", true)
+	_cyclone_rings.clear()
+	for i in range(9):
+		var t := float(i) / 8.0
+		var ring_piv := Node3D.new()
+		ring_piv.position = Vector3(0.0, 1.4 + float(i) * 3.2, 0.0)
+		cyclone.add_child(ring_piv)
+		var seg := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.radial_segments = 20
+		cyl.bottom_radius = lerpf(1.1, 9.5, pow(t, 1.35))
+		cyl.top_radius = lerpf(1.8, 12.2, pow(t, 1.35))
+		cyl.height = 3.8
+		seg.mesh = cyl
+		var mat := StandardMaterial3D.new()
+		var shade := lerpf(0.24, 0.14, t)
+		mat.albedo_color = Color(shade, shade, shade + 0.02, lerpf(0.62, 0.88, t))
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.roughness = 0.95
+		mat.emission_enabled = true
+		mat.emission = Color(0.28, 0.28, 0.32)
+		mat.emission_energy_multiplier = 0.22
+		seg.material_override = mat
+		ring_piv.add_child(seg)
+		# Orbiting storm debris planks & dust streaks around each vortex tier
+		for d in range(3):
+			var da := float(d) / 3.0 * TAU + float(i) * 0.7
+			var dr := cyl.top_radius + 1.4 + float(d) * 0.6
+			var plank := MeshInstance3D.new()
+			var pb := BoxMesh.new()
+			pb.size = Vector3(1.6, 0.16, 0.34)
+			plank.mesh = pb
+			plank.material_override = _grey_mat(Color(0.18, 0.18, 0.20))
+			plank.position = Vector3(cos(da) * dr, 0.0, sin(da) * dr)
+			plank.rotation_degrees = Vector3(25.0 * float(d), rad_to_deg(-da), 18.0)
+			ring_piv.add_child(plank)
+		_cyclone_rings.append(ring_piv)
+	# Churning overhead storm anvil cloud
+	var anvil := MeshInstance3D.new()
+	var asph := SphereMesh.new()
+	asph.radius = 18.0
+	asph.height = 7.0
+	anvil.mesh = asph
+	var amat := StandardMaterial3D.new()
+	amat.albedo_color = Color(0.14, 0.14, 0.16, 0.90)
+	amat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	anvil.material_override = amat
+	anvil.position = Vector3(0, 31.0, 0)
+	cyclone.add_child(anvil)
 
 func _ensure_compass() -> void:
 	compass = hud.get_node_or_null("Compass") as Label
@@ -593,15 +631,20 @@ func _process(delta: float) -> void:
 		_storm_time += delta
 		_spawn_cd -= delta
 		if _spawn_cd <= 0.0:
-			_spawn_cd = maxf(0.5, 1.0 - _storm_time * 0.025)
+			_spawn_cd = maxf(0.45, 0.95 - _storm_time * 0.025)
 			_spawn_debris(false)
+		# Dynamic storm lightning flashes + approaching funnel
+		_lightning_cd -= delta
+		if _lightning_cd <= 0.0:
+			_lightning_cd = randf_range(1.6, 3.8)
+			_lightning_flash = 0.65
+		_lightning_flash = maxf(0.0, _lightning_flash - delta * 2.4)
 		if world_env and world_env.environment:
-			world_env.environment.adjustment_brightness = 0.7 - minf(_storm_time, 12.0) * 0.015
-		# Soft nudge: after long storm, still need door — flash door label
-		if _storm_time > 20.0 and house_door:
-			var dl := house_door.get_node_or_null("DoorLabel") as Label3D
-			if dl:
-				dl.modulate = Color(1, 1, 1, 0.6 + 0.4 * sin(_storm_time * 4.0))
+			var base_b := 0.66 - minf(_storm_time, 12.0) * 0.016
+			world_env.environment.adjustment_brightness = base_b + _lightning_flash * 0.55
+		if cyclone:
+			var target_c := Vector3(4.0, 0.0, -22.0)
+			cyclone.global_position = cyclone.global_position.lerp(target_c, 1.0 - exp(-0.35 * delta))
 		# Henry runs toward barn during storm
 		if uncle_henry and _storm_time < 8.0:
 			var dest := Vector3(-14.0, 0.0, 18.0)
@@ -609,22 +652,37 @@ func _process(delta: float) -> void:
 
 	if phase == Phase.HOUSE_LIFT:
 		_lift_t += delta
-		var rise := ease(_lift_t / 3.2, 1.6) * 14.0
+		var p_norm := clampf(_lift_t / 4.2, 0.0, 1.0)
+		var rise := ease(p_norm, 1.65) * 22.0
+		var swirl_r := ease(p_norm, 1.4) * 4.5
+		var swirl_ang := _lift_t * 2.2
+		_lightning_cd -= delta
+		if _lightning_cd <= 0.0:
+			_lightning_cd = randf_range(0.7, 1.5)
+			_lightning_flash = 0.85
+		_lightning_flash = maxf(0.0, _lightning_flash - delta * 3.0)
 		if farmhouse:
 			farmhouse.global_position.y = _house_base_y + rise
-			farmhouse.rotation_degrees.y = sin(_lift_t * 1.4) * 8.0
-			farmhouse.rotation_degrees.z = cos(_lift_t * 1.1) * 4.0
+			farmhouse.global_position.x = -2.0 + cos(swirl_ang) * swirl_r
+			farmhouse.global_position.z = -8.0 + sin(swirl_ang) * swirl_r
+			farmhouse.rotation_degrees.y = _lift_t * 24.0
+			farmhouse.rotation_degrees.z = sin(_lift_t * 2.6) * (6.0 + p_norm * 10.0)
+			farmhouse.rotation_degrees.x = cos(_lift_t * 2.1) * (4.0 + p_norm * 7.0)
 		if player:
-			player.global_position.y = 0.9 + rise * 0.92
-		if cyclone:
-			cyclone.global_position = farmhouse.global_position + Vector3(2.0, 0, -6.0) if farmhouse else cyclone.global_position
+			player.global_position = (farmhouse.global_position if farmhouse else Vector3(-2.0, rise, -8.0)) + Vector3(0, 1.1, 2.0)
+			var cam_piv := player.get_node_or_null("CameraPivot") as Node3D
+			if cam_piv:
+				var shake := (0.14 + p_norm * 0.22)
+				cam_piv.position = Vector3(sin(_lift_t * 31.0) * shake, 1.6 + cos(_lift_t * 27.0) * shake, 0.0)
+		if cyclone and farmhouse:
+			cyclone.global_position = Vector3(farmhouse.global_position.x, 0.0, farmhouse.global_position.z - 2.0)
 		if world_env and world_env.environment:
-			world_env.environment.adjustment_brightness = 0.55 + _lift_t * 0.08
-		if _lift_t >= 3.2:
+			world_env.environment.adjustment_brightness = 0.52 + p_norm * 0.28 + _lightning_flash * 0.65
+		if _lift_t >= 4.2:
 			phase = Phase.FADE
 			_fade_t = 0.0
 			hud.set_objective("")
-			_dlg("Narrator", "The house is carried over the prairie…")
+			_dlg("Narrator", "The cyclone tears the farmhouse from the Kansas prairie and carries it skyward…")
 
 	if phase == Phase.FADE:
 		_fade_t += delta * 0.5
@@ -655,12 +713,18 @@ func _try_interact() -> void:
 	if _near_uncle:
 		_talk_uncle()
 		return
-	if _near_shutter and not shutter_done and phase == Phase.NEED_SHUTTER:
+	if _near_shutter and not shutter_done and phase in [Phase.NEED_SHUTTER, Phase.NEED_CELLAR]:
 		_close_shutter()
 		return
-	if _near_cellar and not cellar_touched and phase == Phase.NEED_CELLAR:
-		_touch_cellar()
-		return
+	if _near_cellar and not cellar_touched:
+		if phase in [Phase.NEED_SHUTTER, Phase.NEED_CELLAR]:
+			if not shutter_done:
+				shutter_done = true
+			_touch_cellar()
+			return
+		elif phase == Phase.NEED_AUNT:
+			_dlg("Narrator", "Speak with Aunt Em on the porch first — she's calling for you!")
+			return
 	# Optional enterable shells only when not doing story talk.
 	if _near_build_door != null:
 		if _try_build_door():
@@ -722,10 +786,14 @@ func _wind_props(delta: float) -> void:
 			cl.rotation.x = sin(wind_t * 2.8 + float(ci) * 0.9) * cloth_amp
 	if _windmill_rotor and is_instance_valid(_windmill_rotor):
 		_windmill_rotor.rotate_z(delta * spin_mul * 1.4)
-	if cyclone:
-		for c in cyclone.get_children():
-			if c is MeshInstance3D:
-				(c as MeshInstance3D).rotate_y(delta * spin_mul * 0.8)
+	if cyclone and cyclone.visible:
+		for ri in range(_cyclone_rings.size()):
+			var rp := _cyclone_rings[ri] as Node3D
+			if rp and is_instance_valid(rp):
+				var t := float(ri) / maxf(1.0, float(_cyclone_rings.size() - 1))
+				rp.rotate_y(delta * spin_mul * (2.6 - t * 1.1))
+				rp.position.x = sin(wind_t * 2.4 + float(ri) * 0.65) * (0.4 + t * 2.6)
+				rp.position.z = cos(wind_t * 2.0 + float(ri) * 0.55) * (0.4 + t * 2.2)
 
 func _update_compass() -> void:
 	if compass == null or player == null:
@@ -797,26 +865,29 @@ func _on_toto_joined() -> void:
 	_dlg("Toto", "*yip*")
 
 func _talk_aunt() -> void:
-	# After her quest lines, idle chat only — never teleport / never re-enter building.
+	# If Dorothy hasn't found Toto & his basket yet, give a clear reminder without burning Aunt Em's quest state!
+	if phase < Phase.NEED_AUNT:
+		_dlg("Aunt Em", "Find Toto and his wicker basket first, Dorothy — the wind's turning mean!")
+		return
+	# After her quest lines, idle chat only — and guarantee phase never stays stuck in NEED_AUNT!
 	if aunt_talked or _aunt_line >= AUNT_LINES.size():
 		_dlg("Aunt Em", AUNT_IDLE)
-		if not aunt_talked:
-			aunt_talked = true
-			if phase == Phase.NEED_AUNT:
-				phase = Phase.NEED_SHUTTER
-				hud.set_objective("Latch the glowing shutter on the farmhouse wall (E).")
-				if shutter:
-					_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
+		aunt_talked = true
+		if phase == Phase.NEED_AUNT:
+			phase = Phase.NEED_SHUTTER
+			hud.set_objective("Latch the glowing shutter on the farmhouse wall (E) — or check the storm cellar.")
+			if shutter:
+				_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
 		return
 	_dlg("Aunt Em", AUNT_LINES[_aunt_line])
 	_aunt_line += 1
 	if _aunt_line >= AUNT_LINES.size():
 		aunt_talked = true
 		phase = Phase.NEED_SHUTTER
-		hud.set_objective("Latch the glowing shutter on the farmhouse wall (E).")
+		hud.set_objective("Latch the glowing shutter on the farmhouse wall (E) — or check the storm cellar.")
 		if shutter:
 			_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
-		hud.set_prompt("Shutter — east wall of the house")
+		hud.set_prompt("Shutter — east wall of the house (or Storm Cellar on the west)")
 
 func _close_shutter() -> void:
 	shutter_done = true
@@ -981,46 +1052,73 @@ func _make_enterable_simple(at: Vector3, title: String, size: Vector3, col: Colo
 	c.shape = sh
 	c.position = Vector3(0, size.y * 0.5, 0)
 	body.add_child(c)
-	var lab := Label3D.new()
-	lab.text = title
-	lab.font_size = 40
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, size.y + 0.6, 0)
-	lab.modulate = Color(0.9, 0.9, 0.92)
-	body.add_child(lab)
+	WorldKit.make_world_badge(body, Vector3(0, size.y + 0.65, 0), "✦  %s" % title, Color(0.92, 0.92, 0.96), 10.0)
 	_make_enterable_box(body, title, at + Vector3(0, 0.12, 0), at + Vector3(0, 0.12, size.z * 0.5 + 1.6), size)
 
 func _add_kansas_interior(fit: Node3D, title: String) -> void:
-	# Enclosed monochrome prairie interior with clear center floor (never clips Dorothy's legs!)
-	var hw := 2.6
-	var hd := 2.2
-	var wh := 3.2
-	var floor_m := _grey_mat(Color(0.30, 0.30, 0.33))
-	var wall_m := _grey_mat(Color(0.50, 0.50, 0.54))
-	var wood_m := _grey_mat(Color(0.24, 0.24, 0.27))
-	# Floor + 4 walls (including front wall with exit door) + ceiling
-	_ks_prop(fit, Vector3(0, 0.03, 0), Vector3(hw * 2.0, 0.06, hd * 2.0), Color(0.30, 0.30, 0.33))
-	_ks_prop(fit, Vector3(0, wh * 0.5, -hd), Vector3(hw * 2.0, wh, 0.12), Color(0.50, 0.50, 0.54))
-	_ks_prop(fit, Vector3(-hw, wh * 0.5, 0), Vector3(0.12, wh, hd * 2.0), Color(0.46, 0.46, 0.50))
-	_ks_prop(fit, Vector3(hw, wh * 0.5, 0), Vector3(0.12, wh, hd * 2.0), Color(0.46, 0.46, 0.50))
-	_ks_prop(fit, Vector3(0, wh * 0.5, hd), Vector3(hw * 2.0, wh, 0.12), Color(0.48, 0.48, 0.52))
-	_ks_prop(fit, Vector3(0, 1.05, hd - 0.08), Vector3(1.15, 2.1, 0.08), Color(0.24, 0.24, 0.27)) # interior exit door
-	_ks_prop(fit, Vector3(0, wh, 0), Vector3(hw * 2.0, 0.12, hd * 2.0), Color(0.28, 0.28, 0.31))
+	# Spacious 4-wall monochrome prairie interior with warm lantern lighting + Exit Door (Munchkinland-grade!).
+	var hw := 3.8
+	var hd := 3.4
+	var wh := 3.6
+	# Floor + 4 walls (including front +Z wall with framed Exit Door) + ceiling
+	_ks_prop(fit, Vector3(0, 0.03, 0), Vector3(hw * 2.0, 0.06, hd * 2.0), Color(0.32, 0.32, 0.35))
+	_ks_prop(fit, Vector3(0, wh * 0.5, -hd), Vector3(hw * 2.0, wh, 0.14), Color(0.54, 0.54, 0.58))
+	_ks_prop(fit, Vector3(-hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.48, 0.48, 0.52))
+	_ks_prop(fit, Vector3(hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.48, 0.48, 0.52))
+	_ks_prop(fit, Vector3(0, wh * 0.5, hd), Vector3(hw * 2.0, wh, 0.14), Color(0.50, 0.50, 0.54))
+	# Framed interior Exit Door on +Z wall
+	_ks_prop(fit, Vector3(0, 1.12, hd - 0.10), Vector3(1.42, 2.26, 0.10), Color(0.36, 0.36, 0.39))
+	_ks_prop(fit, Vector3(0, 1.08, hd - 0.14), Vector3(1.18, 2.12, 0.08), Color(0.22, 0.22, 0.25))
+	WorldKit.make_world_badge(fit, Vector3(0, 2.45, hd - 0.24), "✦  Exit %s (E)" % title, Color(0.96, 0.96, 1.0), 10.0)
+	_ks_prop(fit, Vector3(0, wh, 0), Vector3(hw * 2.0, 0.14, hd * 2.0), Color(0.30, 0.30, 0.33))
+	# Overhead interior lantern + OmniLight so Dorothy and furnishings are crisp and bright!
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(0.95, 0.95, 1.0)
+	lamp.light_energy = 2.8
+	lamp.omni_range = 12.0
+	lamp.position = Vector3(0, wh - 0.65, 0)
+	fit.add_child(lamp)
 	var t := title.to_lower()
 	if "farm" in t:
-		# Furniture pushed cleanly against perimeter walls so center walking space is 100% clear
-		_ks_prop(fit, Vector3(-1.45, 0.42, -1.45), Vector3(1.4, 0.84, 0.72), Color(0.26, 0.26, 0.29)) # kitchen counter
-		_ks_prop(fit, Vector3(1.65, 0.55, -1.35), Vector3(0.85, 1.1, 0.75), Color(0.18, 0.18, 0.21)) # cast-iron stove
-		_ks_prop(fit, Vector3(-1.75, 0.35, 0.65), Vector3(0.75, 0.70, 1.35), Color(0.36, 0.36, 0.40)) # cot
-		WorldKit.make_world_badge(fit, Vector3(0, 2.25, -hd + 0.2), "✦  Gale Farmhouse Kitchen", Color(0.92, 0.92, 0.96), 10.0)
+		# Woven floor rug (flush at y = 0.06m) + perimeter kitchen counter, cast-iron stove, table & cot
+		_ks_prop(fit, Vector3(0, 0.065, -0.2), Vector3(2.8, 0.02, 2.2), Color(0.42, 0.42, 0.46))
+		_ks_prop(fit, Vector3(-2.4, 0.45, -2.6), Vector3(2.2, 0.90, 0.85), Color(0.28, 0.28, 0.31)) # kitchen counter
+		_ks_prop(fit, Vector3(2.5, 0.58, -2.5), Vector3(1.05, 1.16, 0.90), Color(0.18, 0.18, 0.21)) # cast-iron stove
+		_ks_prop(fit, Vector3(2.5, 2.20, -2.5), Vector3(0.26, 2.40, 0.26), Color(0.16, 0.16, 0.19)) # stove chimney pipe
+		_ks_prop(fit, Vector3(-2.7, 0.36, 0.8), Vector3(1.15, 0.72, 1.95), Color(0.38, 0.38, 0.42)) # Dorothy's bed/cot
+		_ks_prop(fit, Vector3(2.4, 0.40, 0.9), Vector3(1.45, 0.80, 1.15), Color(0.34, 0.34, 0.37)) # dining table
+		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Farmhouse Interior", Color(0.96, 0.96, 1.0), 12.0)
 	elif "barn" in t:
-		_ks_prop(fit, Vector3(-1.65, 0.55, -1.1), Vector3(1.1, 1.1, 1.4), Color(0.34, 0.34, 0.36))
-		_ks_prop(fit, Vector3(1.65, 0.45, -1.1), Vector3(1.1, 0.9, 1.2), Color(0.42, 0.42, 0.44))
-		WorldKit.make_world_badge(fit, Vector3(0, 2.25, -hd + 0.2), "✦  Gale Barn & Hayloft", Color(0.92, 0.92, 0.96), 10.0)
+		_ks_prop(fit, Vector3(-2.5, 0.65, -2.2), Vector3(1.5, 1.3, 1.8), Color(0.38, 0.38, 0.41)) # stacked hay bales
+		_ks_prop(fit, Vector3(2.5, 0.55, -2.2), Vector3(1.4, 1.1, 1.6), Color(0.44, 0.44, 0.47)) # hay bales
+		_ks_prop(fit, Vector3(-2.7, 0.60, 1.0), Vector3(1.2, 1.2, 2.2), Color(0.28, 0.28, 0.31)) # horse stall partition
+		_ks_prop(fit, Vector3(2.6, 0.48, 1.1), Vector3(1.2, 0.96, 1.8), Color(0.30, 0.30, 0.33)) # workbench
+		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Barn & Hayloft", Color(0.96, 0.96, 1.0), 12.0)
 	else:
-		_ks_prop(fit, Vector3(-1.2, 0.25, -1.0), Vector3(0.9, 0.5, 0.8), Color(0.45, 0.45, 0.48))
-		WorldKit.make_world_badge(fit, Vector3(0, 1.85, -hd + 0.2), "✦  Chicken Coop", Color(0.92, 0.92, 0.96), 10.0)
-	var _unused_refs := [floor_m, wall_m, wood_m]
+		_ks_prop(fit, Vector3(-1.4, 0.28, -1.4), Vector3(1.2, 0.56, 1.0), Color(0.45, 0.45, 0.48))
+		WorldKit.make_world_badge(fit, Vector3(0, 2.35, -hd + 0.22), "✦  Chicken Coop", Color(0.96, 0.96, 1.0), 10.0)
+
+func _set_indoor_camera(inside: bool) -> void:
+	if player == null:
+		return
+	var pivot := player.find_child("CameraPivot", true, false) as Node3D
+	if pivot == null:
+		return
+	var arm := pivot.find_child("SpringArm3D", true, false) as SpringArm3D
+	var cam := pivot.find_child("Camera3D", true, false) as Camera3D
+	if arm == null or cam == null:
+		return
+	if inside:
+		_cam_out_len = arm.spring_length
+		_cam_out_fov = cam.fov
+		_cam_out_pitch = arm.rotation_degrees.x
+		arm.spring_length = 2.45
+		arm.rotation_degrees = Vector3(-12.0, 0.0, 0.0)
+		cam.fov = 72.0
+	else:
+		arm.spring_length = _cam_out_len
+		arm.rotation_degrees = Vector3(_cam_out_pitch, 0.0, 0.0)
+		cam.fov = _cam_out_fov
 
 func _ks_prop(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -1071,6 +1169,7 @@ func _enter_building(door: Area3D) -> void:
 				continue
 			if n is MeshInstance3D:
 				(n as MeshInstance3D).visible = false
+	_set_indoor_camera(true)
 	hud.set_prompt("E  —  Exit %s" % str(door.get_meta("title")))
 	_dlg("Narrator", "Inside the %s. Press E to step back outside." % str(door.get_meta("title")))
 	get_tree().create_timer(0.25).timeout.connect(func(): _door_busy = false)
@@ -1085,6 +1184,7 @@ func _exit_building() -> void:
 	var ep: Vector3 = door.get_meta("exterior_pos")
 	player.global_position = ep + Vector3(0, 0.08, 0.5)
 	player.velocity = Vector3.ZERO
+	_set_indoor_camera(false)
 	var fit = door.get_meta("fitout") if door.has_meta("fitout") else null
 	if fit:
 		fit.visible = false
@@ -1094,6 +1194,9 @@ func _exit_building() -> void:
 		for n in host.find_children("*", "MeshInstance3D", true, false):
 			if n is MeshInstance3D:
 				(n as MeshInstance3D).visible = true
+		var old_roof := host.get_node_or_null("Roof") as Node3D
+		if old_roof and host == farmhouse:
+			old_roof.visible = false
 		if fit:
 			fit.visible = false
 	_inside_building = false
