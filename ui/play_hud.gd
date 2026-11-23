@@ -52,6 +52,7 @@ const LEAD_DEFS := [
 	{"id": &"scarecrow", "key": "2", "name": "Scarecrow", "verb": "CAW"},
 	{"id": &"tinman", "key": "3", "name": "Tin Man", "verb": "AXE"},
 	{"id": &"lion", "key": "4", "name": "Lion", "verb": "ROAR"},
+	{"id": &"toto", "key": "5", "name": "Toto", "verb": "BARK"},
 ]
 
 func _ready() -> void:

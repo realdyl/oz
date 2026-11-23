@@ -1058,80 +1058,9 @@ func _add_way_marker(at: Vector3, col: Color, label: String, toward: Vector3 = V
 	add_child(post)
 
 func _add_building_sign(parent: Node3D, local_pos: Vector3, title: String, accent: Color) -> void:
-	# Thematic hanging sign: post arm + painted board + readable Label3D.
-	var root := Node3D.new()
-	root.name = "BuildingSign"
-	parent.add_child(root)
-	root.position = local_pos
-	var arm := MeshInstance3D.new()
-	var arm_box := BoxMesh.new()
-	arm_box.size = Vector3(0.12, 0.12, 0.9)
-	arm.mesh = arm_box
-	var arm_m := StandardMaterial3D.new()
-	arm_m.albedo_color = Color(0.35, 0.22, 0.12)
-	arm.material_override = arm_m
-	root.add_child(arm)
-	arm.position = Vector3(0, 0.35, -0.2)
-	var board := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(2.4, 0.95, 0.12)
-	board.mesh = box
-	var bm := StandardMaterial3D.new()
-	bm.albedo_color = Color(0.48, 0.3, 0.16)
-	bm.roughness = 0.8
-	board.material_override = bm
-	root.add_child(board)
-	board.position = Vector3(0, 0.0, 0.35)
+	# Tier 2 architectural walnut & brass crest plaque (Typography & Signpost Style Guide)
+	var board := WorldKit.make_building_crest_sign(parent, local_pos, title, accent, false)
 	_sign_sway.append(board)
-	var plate := MeshInstance3D.new()
-	var pbox := BoxMesh.new()
-	pbox.size = Vector3(2.15, 0.72, 0.05)
-	plate.mesh = pbox
-	var pm := StandardMaterial3D.new()
-	pm.albedo_color = accent.lerp(Color(0.95, 0.88, 0.75), 0.35)
-	pm.emission_enabled = true
-	pm.emission = accent.lightened(0.2)
-	pm.emission_energy_multiplier = 0.35
-	plate.material_override = pm
-	board.add_child(plate)
-	plate.position = Vector3(0, 0, 0.08)
-	# Corner bolts
-	for ox in [-0.95, 0.95]:
-		for oy in [-0.28, 0.28]:
-			var bolt := MeshInstance3D.new()
-			var sph := SphereMesh.new()
-			sph.radius = 0.04
-			sph.height = 0.08
-			bolt.mesh = sph
-			var bolt_m := StandardMaterial3D.new()
-			bolt_m.albedo_color = Color(0.75, 0.65, 0.35)
-			bolt_m.metallic = 0.7
-			bolt.material_override = bolt_m
-			board.add_child(bolt)
-			bolt.position = Vector3(ox, oy, 0.1)
-	var lab := Label3D.new()
-	lab.text = title
-	lab.font_size = 72
-	lab.pixel_size = 0.012
-	lab.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	lab.modulate = Color(0.14, 0.06, 0.1)
-	lab.outline_size = 14
-	lab.outline_modulate = Color(0.98, 0.93, 0.8)
-	board.add_child(lab)
-	lab.position = Vector3(0, 0.02, 0.14)
-	# Small hanging chain links look
-	var chain := MeshInstance3D.new()
-	var cc := CylinderMesh.new()
-	cc.top_radius = 0.03
-	cc.bottom_radius = 0.03
-	cc.height = 0.35
-	chain.mesh = cc
-	var cm := StandardMaterial3D.new()
-	cm.albedo_color = Color(0.55, 0.5, 0.4)
-	cm.metallic = 0.5
-	chain.material_override = cm
-	root.add_child(chain)
-	chain.position = Vector3(0, 0.55, 0.2)
 
 func _ensure_compass() -> void:
 	if hud == null:
@@ -1523,79 +1452,8 @@ func _build_cornfield(at: Vector3) -> void:
 			post.position = Vector3(side * 6.5, 0.45, -5.0 + float(i) * 1.3)
 
 func _build_lion_den(at: Vector3) -> void:
-	# Afraid hide that still reads: open south alcove, lion visible in the hollow.
-	# Never a solid fill over the character (that looked like a wedge).
-	var root := Node3D.new()
-	root.name = "LionDen"
-	add_child(root)
-	root.global_position = at
-	var leaf := Color(0.28, 0.52, 0.26)
-	var leaf_dark := Color(0.18, 0.36, 0.18)
-	# Soft ground patch (no collision — walkable)
-	_add_decor_box(root, Vector3(0, 0.04, 0.2), Vector3(4.2, 0.08, 3.6), Color(0.32, 0.48, 0.28))
-	# Horseshoe thicket: back (north) + flanks; mouth open toward approach (+Z / south).
-	_add_hedge_wall(root, Vector3(0.0, 0.85, -1.55), Vector3(3.6, 1.7, 0.55), leaf_dark) # back
-	_add_hedge_wall(root, Vector3(-1.85, 0.75, 0.15), Vector3(0.55, 1.5, 2.8), leaf) # west
-	_add_hedge_wall(root, Vector3(1.85, 0.75, 0.15), Vector3(0.55, 1.5, 2.8), leaf) # east
-	# Corner clumps for silhouette (no full roof)
-	_add_hedge_wall(root, Vector3(-1.4, 1.35, -1.2), Vector3(1.0, 0.9, 0.9), leaf)
-	_add_hedge_wall(root, Vector3(1.4, 1.35, -1.2), Vector3(1.0, 0.9, 0.9), leaf)
-	# Tall grass blades at the mouth — partial cover without swallowing the body
-	for i in range(7):
-		var blade := MeshInstance3D.new()
-		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.02
-		cyl.bottom_radius = 0.04
-		cyl.height = 0.7 + float(i % 3) * 0.15
-		blade.mesh = cyl
-		var bm := StandardMaterial3D.new()
-		bm.albedo_color = leaf.lightened(0.1 * float(i % 2))
-		bm.roughness = 0.95
-		blade.material_override = bm
-		root.add_child(blade)
-		blade.position = Vector3(-1.2 + float(i) * 0.4, cyl.height * 0.5, 1.35)
-		blade.rotation_degrees = Vector3(8.0 * (1 if i % 2 == 0 else -1), 12.0 * float(i), 0)
-	# Broken candy fence post (story beat prop)
-	var post := MeshInstance3D.new()
-	var pc := CylinderMesh.new()
-	pc.top_radius = 0.08
-	pc.bottom_radius = 0.1
-	pc.height = 1.4
-	post.mesh = pc
-	var pm := StandardMaterial3D.new()
-	pm.albedo_color = Color(0.85, 0.55, 0.65)
-	post.material_override = pm
-	root.add_child(post)
-	post.position = Vector3(-2.4, 0.7, 0.8)
-	post.rotation_degrees = Vector3(0, 0, 18)
-	# Fear halo ring on ground — reads "something cowers here"
-	var ring := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.85
-	torus.outer_radius = 1.05
-	ring.mesh = torus
-	var rm := StandardMaterial3D.new()
-	rm.albedo_color = Color(0.95, 0.55, 0.2, 0.55)
-	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	rm.emission_enabled = true
-	rm.emission = Color(1.0, 0.45, 0.15)
-	rm.emission_energy_multiplier = 0.6
-	ring.material_override = rm
-	root.add_child(ring)
-	ring.position = Vector3(0, 0.06, 0.15)
-	ring.rotation_degrees.x = 90
-	# Soft label — readable without spoiling the find
-	var lab := Label3D.new()
-	lab.text = "a trembling thicket"
-	lab.font_size = 36
-	lab.pixel_size = 0.01
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.95, 0.85, 0.7)
-	lab.outline_size = 6
-	lab.outline_modulate = Color(0.15, 0.1, 0.08)
-	root.add_child(lab)
-	lab.position = Vector3(0, 2.35, 0.2)
-	# Keep lion slightly inset so he peeks from the hollow (not buried in mesh)
+	# Sculpted mossy boulder & twisted-root forest sanctuary (replaces blocky green cubes)
+	WorldKit.build_lion_sanctuary(self, at)
 	if lion:
 		lion.global_position = at + Vector3(0.0, 0.08, -0.35)
 		if lion.get_node_or_null("Visual"):
@@ -2219,6 +2077,8 @@ func _on_leader_changed(id: StringName, _body: Node3D) -> void:
 			hud.set_prompt("Lion Leads. Whole party follows. F = ROAR.")
 		Party.ID_TINMAN:
 			hud.set_prompt("Tin Man Leads. Whole party follows. F = AXE.")
+		Party.ID_TOTO:
+			hud.set_prompt("Toto Leads! Whole party follows. F = BARK.")
 		_:
 			hud.set_prompt("")
 	_refresh_roster()

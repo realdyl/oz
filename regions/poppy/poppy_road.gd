@@ -69,6 +69,10 @@ var _near_cart: bool = false
 var _near_lion: bool = false
 var _near_gate: bool = false
 var _going: bool = false
+var _dorothy_sleepy_said: bool = false
+var _lion_yawn_said: bool = false
+var _zzz_timer: float = 0.0
+var _loading_lion: bool = false
 
 func _enter_tree() -> void:
 	var p := get_node_or_null("/root/Party")
@@ -198,6 +202,11 @@ func _tick_flesh_sleep(delta: float) -> void:
 	if player and not dorothy_asleep and not dorothy_safe:
 		if _in_poppy(player.global_position):
 			dorothy_sleep = minf(dorothy_sleep + delta * SLEEP_RATE, SLEEP_MAX)
+			if dorothy_sleep >= 35.0 and not _dorothy_sleepy_said:
+				_dorothy_sleepy_said = true
+				var d1 := get_node_or_null("/root/DialogueUI")
+				if d1 and d1.has_method("say"):
+					d1.say("Dorothy", "I'm getting so sleepy… the scent of these scarlet flowers is so heavy…", true, 3.2)
 		else:
 			dorothy_sleep = maxf(dorothy_sleep - delta * 40.0, 0.0)
 		if dorothy_sleep >= SLEEP_MAX:
@@ -205,10 +214,26 @@ func _tick_flesh_sleep(delta: float) -> void:
 	if lion and not lion_asleep and not lion_safe:
 		if _in_poppy(lion.global_position):
 			lion_sleep = minf(lion_sleep + delta * SLEEP_RATE, SLEEP_MAX)
+			if lion_sleep >= 65.0 and not _lion_yawn_said:
+				_lion_yawn_said = true
+				var d2 := get_node_or_null("/root/DialogueUI")
+				if d2 and d2.has_method("say"):
+					d2.say("Lion", "*Yaaawn*… my paws feel like lead, Dorothy… I just need to close my eyes…", true, 3.2)
 		else:
 			lion_sleep = maxf(lion_sleep - delta * 40.0, 0.0)
 		if lion_sleep >= SLEEP_MAX:
 			_drop_lion_asleep()
+	# Spawn rising "Z · z" slumber particles above sleeping Dorothy and Lion
+	if dorothy_asleep or lion_asleep:
+		_zzz_timer -= delta
+		if _zzz_timer <= 0.0:
+			_zzz_timer = 0.95
+			var fx := get_node_or_null("/root/CombatFx")
+			if fx and fx.has_method("spawn_sleep_zzz"):
+				if dorothy_asleep and player:
+					fx.call("spawn_sleep_zzz", self, player.global_position)
+				if lion_asleep and lion:
+					fx.call("spawn_sleep_zzz", self, lion.global_position)
 	# Dorothy down → Lion cannot finish the crossing
 	if dorothy_asleep and not dorothy_safe and not lion_asleep and lion:
 		if lion.global_position.z >= POPPY_START_Z - 2.0:
@@ -229,9 +254,13 @@ func _drop_dorothy_asleep() -> void:
 		player.call("set_parked", true, drop)
 	elif player:
 		player.global_position = drop
-	_ensure_asleep_marker("DorothyAsleepLab", drop, "DOROTHY — ASLEEP\n(needs CLEAR AIR south)", Color(1.0, 0.7, 0.85))
+	if player and player.has_method("set_sleeping"):
+		player.call("set_sleeping", true)
+	_ensure_asleep_marker("DorothyAsleepLab", drop, "✦ Dorothy — Asleep (needs Clear Air south)", Color(1.0, 0.78, 0.88))
 	if not lion_asleep and not lion_safe:
 		_drop_lion_asleep()
+	if hud and hud.has_method("show_toast"):
+		hud.call("show_toast", "Dorothy & the Lion succumb to the poppies — Scarecrow takes the Lead!", 3.5)
 	var party := get_node_or_null("/root/Party")
 	if party and party.has_method("set_leader"):
 		party.call("set_leader", &"scarecrow")
@@ -251,7 +280,9 @@ func _drop_lion_asleep() -> void:
 			lion.call("set_parked", true, LION_FALL)
 		else:
 			lion.global_position = LION_FALL
-	_ensure_asleep_marker("LionAsleepLab", LION_FALL, "LION — ASLEEP\n(too heavy · need CART)", Color(1.0, 0.85, 0.35))
+		if lion.has_method("set_sleeping"):
+			lion.call("set_sleeping", true)
+	_ensure_asleep_marker("LionAsleepLab", LION_FALL, "✦ Lion — Asleep (too heavy · need Mice Cart)", Color(1.0, 0.88, 0.45))
 	var party := get_node_or_null("/root/Party")
 	if party and party.has_method("set_leader"):
 		var lid: StringName = _lead_id()
@@ -269,6 +300,8 @@ func _collect_clear_air() -> void:
 	var safe_pos := SAFE_SOUTH + Vector3(-2.0, 0, 0)
 	if player:
 		player.visible = true
+		if player.has_method("set_sleeping"):
+			player.call("set_sleeping", false)
 		if player.has_method("set_parked"):
 			player.call("set_parked", true, safe_pos)
 		else:
@@ -307,33 +340,49 @@ func _start_haul() -> void:
 	if hauling or lion_safe or not lion_asleep or not cart_owned:
 		return
 	hauling = true
+	_loading_lion = true
 	if lion and lion.has_method("set_parked"):
 		lion.call("set_parked", false)
+	if lion and lion.has_method("set_sleeping"):
+		lion.call("set_sleeping", true) # stays visibly curled asleep on top of the cart bed!
 	if has_node("LionAsleepLab"):
 		get_node("LionAsleepLab").queue_free()
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
-		d.say("Narrator", "The mice pull. Hold SOUTH on the Yellow Brick Road until the Lion wakes in clear air.", true, 3.5)
+		d.say("Narrator", "Scarecrow and Tin Man hoist the sleeping Lion gently onto the wooden cart bed. The field mice lean into their harnesses — walk SOUTH!", true, 4.0)
 	hud.set_objective("HAULING Lion — walk SOUTH on the YBR until you leave the red field.")
-	hud.set_prompt("Hold SOUTH — cart + Lion follow you out")
+	hud.set_prompt("Hold SOUTH — the Mice Cart rolls the sleeping Lion to clear air")
+	# Choreographed parabolic lift-and-place onto the cart bed (never clips wheels!)
+	if lion and cart and DisplayServer.get_name() not in ["headless", "Dummy"]:
+		var bed_pos := cart.global_position + Vector3(0.0, 0.72, -0.15)
+		var peak_pos := lion.global_position.lerp(bed_pos, 0.5) + Vector3(0.0, 1.35, 0.0)
+		var tw := create_tween()
+		tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(lion, "global_position", peak_pos, 0.35)
+		tw.tween_property(lion, "global_position", bed_pos, 0.35)
+		tw.tween_callback(func(): _loading_lion = false)
+	else:
+		_loading_lion = false
 
 func _tick_haul(delta: float) -> void:
 	var actor := _lead()
 	if actor == null:
 		return
 	if cart_owned and cart and not lion_safe:
-		var side := Vector3(1.5, 0, 0.2)
-		if hauling:
-			side = Vector3(1.5, 0, -0.2)
+		# Trail cleanly behind the Lead on the road so the cart & Lion never overlap Scarecrow or Tin Man
+		var offset := Vector3(0.0, 0.0, -3.2) if hauling else Vector3(2.2, 0.0, -1.6)
 		cart.global_position = cart.global_position.lerp(
-			actor.global_position + side, 1.0 - exp(-4.0 * delta)
+			actor.global_position + offset, 1.0 - exp(-4.2 * delta)
 		)
 		cart.visible = true
 	if not hauling or lion == null:
 		return
-	if cart:
-		lion.global_position = cart.global_position + Vector3(-1.2, 0.1, 0)
-	else:
+	if cart and not _loading_lion:
+		# Seated seamlessly ON TOP of the wooden wagon bed planks (y = +0.72 above cart origin)
+		lion.global_position = cart.global_position + Vector3(0.0, 0.72, -0.15)
+		if lion.has_method("set_sleeping"):
+			lion.call("set_sleeping", true)
+	elif not cart:
 		lion.global_position = lion.global_position.lerp(
 			actor.global_position + Vector3(-1.2, 0, -0.5), 1.0 - exp(-2.5 * delta)
 		)
@@ -348,6 +397,8 @@ func _finish_haul() -> void:
 	lion_safe = true
 	var lion_safe_pos := SAFE_SOUTH + Vector3(2.0, 0, 0)
 	if lion:
+		if lion.has_method("set_sleeping"):
+			lion.call("set_sleeping", false)
 		if lion.has_method("set_parked"):
 			lion.call("set_parked", false)
 		lion.global_position = lion_safe_pos

@@ -1,4 +1,4 @@
-extends Control
+extends PanelContainer
 
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 
@@ -19,25 +19,15 @@ var _tts_check: CheckButton
 var _back_btn: Button
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(460, 480)
+	custom_minimum_size = Vector2(480, 460)
+	_card = self
 	_build_ui()
 	apply_theme_mode(kansas_mode)
 
 func _build_ui() -> void:
-	# Centered card
-	_card = PanelContainer.new()
-	_card.name = "Card"
-	_card.set_anchors_preset(PRESET_CENTER)
-	_card.custom_minimum_size = Vector2(460, 460)
-	_card.offset_left = -230.0
-	_card.offset_top = -230.0
-	_card.offset_right = 230.0
-	_card.offset_bottom = 230.0
-	add_child(_card)
-
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
-	_card.add_child(vbox)
+	add_child(vbox)
 
 	# Title
 	_title = Label.new()

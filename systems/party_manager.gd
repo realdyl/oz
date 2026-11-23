@@ -11,6 +11,7 @@ const ID_DOROTHY := &"dorothy"
 const ID_SCARECROW := &"scarecrow"
 const ID_TINMAN := &"tinman"
 const ID_LION := &"lion"
+const ID_TOTO := &"toto"
 
 var _members: Dictionary = {} # StringName -> CharacterBody3D
 var _unlocked: Dictionary = {ID_DOROTHY: true}
@@ -99,6 +100,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if pk == KEY_4 or event.is_action_pressed("switch_lion"):
 			_try_set(ID_LION)
+			get_viewport().set_input_as_handled()
+			return
+		if pk == KEY_5:
+			_try_set(ID_TOTO)
 			get_viewport().set_input_as_handled()
 			return
 
@@ -275,11 +280,13 @@ func _display_name(id: StringName) -> String:
 			return "Tin Man"
 		ID_LION:
 			return "Lion"
+		ID_TOTO:
+			return "Toto"
 	return String(id)
 
 func cycle_leader() -> void:
-	# Order matches vault join order once present: Dorothy → Scarecrow → Lion → Tin Man
-	var order: Array[StringName] = [ID_DOROTHY, ID_SCARECROW, ID_LION, ID_TINMAN]
+	# Order matches vault join order once present: Dorothy → Scarecrow → Lion → Tin Man → Toto
+	var order: Array[StringName] = [ID_DOROTHY, ID_SCARECROW, ID_LION, ID_TINMAN, ID_TOTO]
 	var start := order.find(_leader_id)
 	if start < 0:
 		start = 0

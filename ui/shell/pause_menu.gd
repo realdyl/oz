@@ -97,15 +97,16 @@ func _build_ui() -> void:
 	_backdrop.color = Color(0.04, 0.03, 0.05, 0.72)
 	_root.add_child(_backdrop)
 
+	# Full-screen CenterContainer guarantees dead-center modals at any resolution / UI scale
+	var center := CenterContainer.new()
+	center.name = "ModalCenter"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(center)
+
 	# Main card container
 	_main_card = PanelContainer.new()
-	_main_card.custom_minimum_size = Vector2(480, 460)
-	_main_card.set_anchors_preset(Control.PRESET_CENTER)
-	_main_card.offset_left = -240.0
-	_main_card.offset_top = -230.0
-	_main_card.offset_right = 240.0
-	_main_card.offset_bottom = 230.0
-	_root.add_child(_main_card)
+	_main_card.custom_minimum_size = Vector2(480, 440)
+	center.add_child(_main_card)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
@@ -161,12 +162,11 @@ func _build_ui() -> void:
 	_quit_btn.pressed.connect(func(): get_tree().quit())
 	vbox.add_child(_quit_btn)
 
-	# Embedded Settings View
+	# Embedded Settings View (inside the same CenterContainer so it is always dead-center)
 	_settings_view = SettingsMenuScript.new()
 	_settings_view.visible = false
 	_settings_view.connect("back_pressed", _show_main_card)
-	_settings_view.set_anchors_preset(Control.PRESET_CENTER)
-	_root.add_child(_settings_view)
+	center.add_child(_settings_view)
 
 func _show_settings() -> void:
 	_main_card.visible = false

@@ -355,46 +355,7 @@ func _spawn_cistern() -> void:
 	cistern.name = "Cistern"
 	add_child(cistern)
 	cistern.global_position = Vector3(-12, 0, 4)
-	_add_box(cistern.global_position + Vector3(0, 0.4, 0), Vector3(3.5, 0.8, 3.5), Color(0.25, 0.28, 0.32), "CisternRim")
-	var water := MeshInstance3D.new()
-	var wm := CylinderMesh.new()
-	wm.top_radius = 1.4
-	wm.bottom_radius = 1.4
-	wm.height = 0.25
-	water.mesh = wm
-	var wmat := StandardMaterial3D.new()
-	wmat.albedo_color = Color(0.25, 0.55, 0.9, 0.9)
-	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	wmat.emission_enabled = true
-	wmat.emission = Color(0.3, 0.55, 1.0)
-	wmat.emission_energy_multiplier = 1.2
-	water.material_override = wmat
-	cistern.add_child(water)
-	water.position = Vector3(0, 0.35, 0)
-	# Tall beacon so water is obvious in the courtyard
-	var beacon := MeshInstance3D.new()
-	var bc := CylinderMesh.new()
-	bc.top_radius = 0.12
-	bc.bottom_radius = 0.18
-	bc.height = 5.5
-	beacon.mesh = bc
-	var bm := StandardMaterial3D.new()
-	bm.albedo_color = Color(0.4, 0.7, 1.0)
-	bm.emission_enabled = true
-	bm.emission = Color(0.35, 0.65, 1.0)
-	bm.emission_energy_multiplier = 1.8
-	beacon.material_override = bm
-	cistern.add_child(beacon)
-	beacon.position = Vector3(0, 2.8, 0)
-	var lab := Label3D.new()
-	lab.text = "RUPTURED CISTERN\nWATER = her undoing\n(E to draw)"
-	lab.font_size = 44
-	lab.pixel_size = 0.014
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.55, 0.85, 1.0)
-	lab.outline_size = 10
-	cistern.add_child(lab)
-	lab.position = Vector3(0, 5.2, 0)
+	WorldKit.build_water_cistern(cistern)
 	bucket = Area3D.new()
 	bucket.name = "WaterBucket"
 	bucket.collision_layer = 0
@@ -402,19 +363,11 @@ func _spawn_cistern() -> void:
 	bucket.monitoring = true
 	var bcol := CollisionShape3D.new()
 	var sph := SphereShape3D.new()
-	sph.radius = 2.6
+	sph.radius = 2.8
 	bcol.shape = sph
 	bucket.add_child(bcol)
 	cistern.add_child(bucket)
 	bucket.position = Vector3(0, 0.5, 0)
-	var blab := Label3D.new()
-	blab.text = "WATER"
-	blab.font_size = 48
-	blab.pixel_size = 0.014
-	blab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	blab.modulate = Color(0.5, 0.85, 1.0)
-	bucket.add_child(blab)
-	blab.position = Vector3(0, 1.4, 0)
 
 func on_enemy_down(who: Node) -> void:
 	if who == null:
@@ -493,11 +446,15 @@ func _melt_west() -> void:
 	melt_done = true
 	_set_beat(Beat.MELTING)
 	hud.set_prompt("\"You cursed — wretched — girl…!\" — she melts.")
+	var actor := _lead()
+	var fx := get_node_or_null("/root/CombatFx")
+	if fx and fx.has_method("water_splash_and_melt") and actor:
+		fx.call("water_splash_and_melt", self, actor.global_position, west.global_position)
 	if west.has_method("begin_melt"):
 		west.call("begin_melt")
 	else:
 		west.queue_free()
-	await get_tree().create_timer(2.2).timeout
+	await get_tree().create_timer(2.4).timeout
 	_set_beat(Beat.ROAD_OPEN)
 
 func _go_emerald(msg: String) -> void:

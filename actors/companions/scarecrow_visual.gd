@@ -114,6 +114,12 @@ func _build() -> void:
 	_mi(_hip, _cyl(0.20, 0.28, 0.26), burlap, Vector3(0, -0.08, 0)) # ragged coat tail
 	_mi(_hip, _cyl(0.18, 0.21, 0.42), burlap, Vector3(0, 0.26, 0))
 	_mi(_hip, _cyl(0.205, 0.205, 0.06), pole, Vector3(0, 0.06, 0)) # knotted rope belt
+	# Coat lapels & brass buttons
+	var brass_btn := _mat(Color(0.84, 0.68, 0.28), 0.35)
+	_mi(_hip, _box(Vector3(0.07, 0.24, 0.04)), patch, Vector3(-0.07, 0.34, -0.19))
+	_mi(_hip, _box(Vector3(0.07, 0.24, 0.04)), patch, Vector3(0.07, 0.34, -0.19))
+	for by in [0.18, 0.28, 0.38]:
+		_mi(_hip, _sph(0.022), brass_btn, Vector3(0.0, float(by), -0.205))
 	_mi(_hip, _box(Vector3(0.18, 0.18, 0.05)), patch, Vector3(0.10, 0.30, -0.18))
 	_mi(_hip, _box(Vector3(0.16, 0.16, 0.05)), patch, Vector3(-0.11, 0.18, 0.18))
 	# Pole scar through chest
@@ -162,7 +168,10 @@ func _limb(parent: Node3D, left: bool, is_arm: bool, cloth: Material, straw: Mat
 		root.position = Vector3(0.1 * sign, -0.12, 0)
 	parent.add_child(root)
 	var len := 0.55 if is_arm else 0.7
-	var rad := 0.05 if is_arm else 0.07
-	_mi(root, _cyl(rad, rad * 0.85, len), cloth, Vector3(0, -len * 0.5, 0))
-	_mi(root, _cyl(0.02, 0.035, 0.1), straw, Vector3(0, -len - 0.02, 0))
+	var rad := 0.055 if is_arm else 0.075
+	_mi(root, _sph(rad * 1.15), cloth, Vector3(0, -0.02, 0)) # shoulder / hip joint
+	_mi(root, _cyl(rad, rad * 0.88, len * 0.52), cloth, Vector3(0, -len * 0.26, 0))
+	_mi(root, _sph(rad * 0.98), cloth, Vector3(0, -len * 0.52, 0)) # elbow / knee joint
+	_mi(root, _cyl(rad * 0.88, rad * 0.75, len * 0.48), cloth, Vector3(0, -len * 0.76, 0))
+	_mi(root, _cyl(0.024, 0.042, 0.12), straw, Vector3(0, -len - 0.02, 0))
 	return root

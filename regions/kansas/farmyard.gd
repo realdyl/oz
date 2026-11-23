@@ -6,6 +6,7 @@ extends Node3D
 
 const MUNCHKIN_SCENE := "res://regions/munchkinland/landing_square.tscn"
 const DEBRIS_SCENE := preload("res://regions/kansas/debris.tscn")
+const WorldKit := preload("res://systems/world_kit.gd")
 
 enum Phase {
 	INTRO,
@@ -35,7 +36,9 @@ var _spawn_cd: float = 0.0
 var _safe_pos: Vector3
 var _fade_t: float = 0.0
 var _lift_t: float = 0.0
-var _marker: MeshInstance3D
+var _marker: Node3D
+var _wind_clothes: Array = []
+var _windmill_rotor: Node3D = null
 var shutter: Area3D
 var cellar: Area3D
 var house_door: Area3D
@@ -163,23 +166,16 @@ func _build_farm_layout() -> void:
 	_make_enterable_box(barn, "Barn", Vector3(-22.0, 0.12, 26.0), Vector3(-22.0, 0.12, 31.2), Vector3(5.5, 3.8, 4.5))
 	_make_enterable_simple(Vector3(24.0, 0.0, -20.0), "Chicken coop", Vector3(2.6, 1.4, 2.0), Color(0.4, 0.4, 0.42))
 	_add_map_border(56.0, 54.0)
+	WorldKit.add_horizon_hills(self, 56.0, 54.0, Color(0.32, 0.32, 0.35))
 	_add_kansas_whimsy()
 
 func _dress_basket() -> void:
-	## Ensure basket reads as a basket even if scene mesh is small.
+	## Sculpted woven wicker farm basket with arched handle & cloth liner.
 	if basket == null:
 		return
-	basket.scale = Vector3(1.65, 1.65, 1.65)
-	var lab := Label3D.new()
-	lab.name = "BasketLabel"
-	lab.text = "Toto's basket"
-	lab.font_size = 48
-	lab.modulate = Color(0.92, 0.92, 0.95)
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 1.05, 0)
-	lab.outline_modulate = Color(0, 0, 0, 0.85)
-	lab.outline_size = 8
-	basket.add_child(lab)
+	basket.scale = Vector3(1.55, 1.55, 1.55)
+	WorldKit.build_wicker_basket(basket)
+	WorldKit.make_world_badge(basket, Vector3(0, 1.10, 0), "✦  Toto's Basket (E)", Color(0.92, 0.92, 0.96), 12.0)
 	var col := basket.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col and col.shape is SphereShape3D:
 		(col.shape as SphereShape3D).radius = 1.5
@@ -351,81 +347,13 @@ func _grey_mat(c: Color) -> StandardMaterial3D:
 	m.roughness = 0.9
 	return m
 
-func _add_person(name: String, at: Vector3, dress: Color, hair: Color) -> Node3D:
+func _add_person(name: String, at: Vector3, _dress: Color, _hair: Color) -> Node3D:
 	var root := Node3D.new()
 	root.name = name
 	add_child(root)
 	root.global_position = at
-	# legs
-	for side in [-0.12, 0.12]:
-		var leg := MeshInstance3D.new()
-		var lc := CylinderMesh.new()
-		lc.top_radius = 0.07
-		lc.bottom_radius = 0.08
-		lc.height = 0.55
-		leg.mesh = lc
-		leg.material_override = _grey_mat(Color(0.28, 0.28, 0.3))
-		leg.position = Vector3(side, 0.28, 0)
-		root.add_child(leg)
-	# skirt / trousers volume
-	var skirt := MeshInstance3D.new()
-	var sc := CylinderMesh.new()
-	sc.top_radius = 0.22
-	sc.bottom_radius = 0.32
-	sc.height = 0.7
-	skirt.mesh = sc
-	skirt.material_override = _grey_mat(dress)
-	skirt.position = Vector3(0, 0.85, 0)
-	root.add_child(skirt)
-	# torso
-	var torso := MeshInstance3D.new()
-	var tc := CylinderMesh.new()
-	tc.top_radius = 0.16
-	tc.bottom_radius = 0.2
-	tc.height = 0.45
-	torso.mesh = tc
-	torso.material_override = _grey_mat(dress.darkened(0.08))
-	torso.position = Vector3(0, 1.35, 0)
-	root.add_child(torso)
-	# arms
-	for side2 in [-0.28, 0.28]:
-		var arm := MeshInstance3D.new()
-		var ac := CylinderMesh.new()
-		ac.top_radius = 0.05
-		ac.bottom_radius = 0.06
-		ac.height = 0.5
-		arm.mesh = ac
-		arm.material_override = _grey_mat(Color(0.55, 0.55, 0.57))
-		arm.position = Vector3(side2, 1.3, 0)
-		arm.rotation_degrees.z = -12.0 if side2 < 0 else 12.0
-		root.add_child(arm)
-	# head
-	var head := MeshInstance3D.new()
-	var hs := SphereMesh.new()
-	hs.radius = 0.16
-	hs.height = 0.32
-	head.mesh = hs
-	head.material_override = _grey_mat(Color(0.72, 0.72, 0.74))
-	head.position = Vector3(0, 1.72, 0)
-	root.add_child(head)
-	# hair / bonnet
-	var hair_m := MeshInstance3D.new()
-	var hh := SphereMesh.new()
-	hh.radius = 0.17
-	hh.height = 0.22
-	hair_m.mesh = hh
-	hair_m.material_override = _grey_mat(hair)
-	hair_m.position = Vector3(0, 1.82, 0.02)
-	root.add_child(hair_m)
-	var lab := Label3D.new()
-	lab.text = name.replace("_", " ")
-	lab.font_size = 42
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 2.25, 0)
-	lab.modulate = Color(0.92, 0.92, 0.95)
-	lab.outline_size = 6
-	lab.outline_modulate = Color(0, 0, 0, 0.8)
-	root.add_child(lab)
+	WorldKit.build_kansas_farmer(root, "Aunt" in name)
+	WorldKit.make_world_badge(root, Vector3(0, 2.25, 0), "✦  %s" % name.replace("_", " "), Color(0.94, 0.94, 0.98), 11.0)
 	return root
 
 func _add_aunt_em(at: Vector3) -> void:
@@ -587,37 +515,10 @@ func _add_house_door(at: Vector3) -> void:
 	house_door.visible = false # revealed as FINAL STEP
 
 func _add_clothesline(at: Vector3) -> void:
-	for i in 5:
-		var cloth := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(0.6, 0.8, 0.05)
-		cloth.mesh = box
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.65 + float(i) * 0.02, 0.65, 0.68)
-		cloth.material_override = mat
-		add_child(cloth)
-		cloth.global_position = at + Vector3(float(i) * 0.7, 1.2, 0)
-		cloth.set_meta("wind", true)
+	_wind_clothes = WorldKit.build_clothesline(self, at)
 
 func _add_windmill_ghost(at: Vector3) -> void:
-	var tower := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.4
-	cyl.bottom_radius = 0.7
-	cyl.height = 8.0
-	tower.mesh = cyl
-	tower.material_override = _grey_mat(Color(0.3, 0.3, 0.33))
-	add_child(tower)
-	tower.global_position = at + Vector3(0, 4.0, 0)
-	var blade := MeshInstance3D.new()
-	blade.name = "WindBlade"
-	var box := BoxMesh.new()
-	box.size = Vector3(6.0, 0.15, 0.4)
-	blade.mesh = box
-	blade.material_override = _grey_mat(Color(0.45, 0.45, 0.48))
-	add_child(blade)
-	blade.global_position = at + Vector3(0, 7.5, 0)
-	blade.set_meta("spin", true)
+	_windmill_rotor = WorldKit.build_lattice_windmill(self, at)
 
 func _add_cyclone_funnel(at: Vector3) -> void:
 	## Distant B&W funnel — grey only (no rainbow; vault B&W + IP).
@@ -831,11 +732,13 @@ func _wind_props(delta: float) -> void:
 	var spin_mul := 1.2
 	if phase == Phase.STORM_RUN or phase == Phase.HOUSE_LIFT:
 		spin_mul = 4.5
-	for n in get_children():
-		if n is MeshInstance3D and n.has_meta("wind"):
-			(n as MeshInstance3D).rotation.z = sin(wind_t * 2.2 + n.position.x) * (0.15 if phase < Phase.STORM_RUN else 0.55)
-		if n is MeshInstance3D and n.has_meta("spin"):
-			(n as MeshInstance3D).rotate_z(delta * spin_mul)
+	var cloth_amp := 0.24 if phase < Phase.STORM_RUN else 0.72
+	for ci in range(_wind_clothes.size()):
+		var cl := _wind_clothes[ci] as Node3D
+		if cl and is_instance_valid(cl):
+			cl.rotation.x = sin(wind_t * 2.8 + float(ci) * 0.9) * cloth_amp
+	if _windmill_rotor and is_instance_valid(_windmill_rotor):
+		_windmill_rotor.rotate_z(delta * spin_mul * 1.4)
 	if cyclone:
 		for c in cyclone.get_children():
 			if c is MeshInstance3D:
@@ -988,20 +891,9 @@ func _enter_house() -> void:
 
 func _retarget_marker(at: Vector3) -> void:
 	if _marker == null:
-		_marker = MeshInstance3D.new()
-		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.06
-		cyl.bottom_radius = 0.1
-		cyl.height = 2.0
-		_marker.mesh = cyl
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.8, 0.8, 0.85)
-		mat.emission_enabled = true
-		mat.emission = Color(1, 1, 1)
-		mat.emission_energy_multiplier = 1.2
-		_marker.material_override = mat
+		_marker = WorldKit.build_prairie_lantern_marker()
 		add_child(_marker)
-	_marker.global_position = at
+	_marker.global_position = Vector3(at.x, 0.02, at.z)
 
 func _spawn_debris(final_piece: bool) -> void:
 	var d: Area3D = DEBRIS_SCENE.instantiate()
@@ -1122,41 +1014,36 @@ func _make_enterable_simple(at: Vector3, title: String, size: Vector3, col: Colo
 	_make_enterable_box(body, title, at + Vector3(0, 0.12, 0), at + Vector3(0, 0.12, size.z * 0.5 + 1.6), size)
 
 func _add_kansas_interior(fit: Node3D, title: String) -> void:
-	var floor := MeshInstance3D.new()
-	var fb := BoxMesh.new()
-	fb.size = Vector3(4.5, 0.08, 4.0)
-	floor.mesh = fb
-	floor.material_override = _grey_mat(Color(0.35, 0.35, 0.38))
-	floor.position = Vector3(0, 0.04, 0)
-	fit.add_child(floor)
+	# Enclosed monochrome prairie interior with clear center floor (never clips Dorothy's legs!)
+	var hw := 2.6
+	var hd := 2.2
+	var wh := 3.2
+	var floor_m := _grey_mat(Color(0.30, 0.30, 0.33))
+	var wall_m := _grey_mat(Color(0.50, 0.50, 0.54))
+	var wood_m := _grey_mat(Color(0.24, 0.24, 0.27))
+	# Floor + 4 walls (including front wall with exit door) + ceiling
+	_ks_prop(fit, Vector3(0, 0.03, 0), Vector3(hw * 2.0, 0.06, hd * 2.0), Color(0.30, 0.30, 0.33))
+	_ks_prop(fit, Vector3(0, wh * 0.5, -hd), Vector3(hw * 2.0, wh, 0.12), Color(0.50, 0.50, 0.54))
+	_ks_prop(fit, Vector3(-hw, wh * 0.5, 0), Vector3(0.12, wh, hd * 2.0), Color(0.46, 0.46, 0.50))
+	_ks_prop(fit, Vector3(hw, wh * 0.5, 0), Vector3(0.12, wh, hd * 2.0), Color(0.46, 0.46, 0.50))
+	_ks_prop(fit, Vector3(0, wh * 0.5, hd), Vector3(hw * 2.0, wh, 0.12), Color(0.48, 0.48, 0.52))
+	_ks_prop(fit, Vector3(0, 1.05, hd - 0.08), Vector3(1.15, 2.1, 0.08), Color(0.24, 0.24, 0.27)) # interior exit door
+	_ks_prop(fit, Vector3(0, wh, 0), Vector3(hw * 2.0, 0.12, hd * 2.0), Color(0.28, 0.28, 0.31))
 	var t := title.to_lower()
 	if "farm" in t:
-		_ks_prop(fit, Vector3(0, 0.45, -0.8), Vector3(1.4, 0.7, 0.7), Color(0.28, 0.28, 0.3))
-		_ks_prop(fit, Vector3(1.4, 0.5, 0.6), Vector3(0.7, 1.0, 0.5), Color(0.22, 0.22, 0.24))
-		_ks_prop(fit, Vector3(-1.3, 0.35, 0.5), Vector3(0.6, 0.7, 0.6), Color(0.32, 0.32, 0.34))
-		var pl := Label3D.new()
-		pl.text = "Gale kitchen"
-		pl.font_size = 36
-		pl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		pl.position = Vector3(0, 2.0, 0)
-		fit.add_child(pl)
+		# Furniture pushed cleanly against perimeter walls so center walking space is 100% clear
+		_ks_prop(fit, Vector3(-1.45, 0.42, -1.45), Vector3(1.4, 0.84, 0.72), Color(0.26, 0.26, 0.29)) # kitchen counter
+		_ks_prop(fit, Vector3(1.65, 0.55, -1.35), Vector3(0.85, 1.1, 0.75), Color(0.18, 0.18, 0.21)) # cast-iron stove
+		_ks_prop(fit, Vector3(-1.75, 0.35, 0.65), Vector3(0.75, 0.70, 1.35), Color(0.36, 0.36, 0.40)) # cot
+		WorldKit.make_world_badge(fit, Vector3(0, 2.25, -hd + 0.2), "✦  Gale Farmhouse Kitchen", Color(0.92, 0.92, 0.96), 10.0)
 	elif "barn" in t:
-		_ks_prop(fit, Vector3(-1.2, 0.6, 0), Vector3(0.8, 1.2, 2.5), Color(0.3, 0.3, 0.32))
-		_ks_prop(fit, Vector3(1.2, 0.4, -0.5), Vector3(1.0, 0.8, 1.0), Color(0.4, 0.38, 0.3))
-		var pl2 := Label3D.new()
-		pl2.text = "Hay loft"
-		pl2.font_size = 36
-		pl2.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		pl2.position = Vector3(0, 2.0, 0)
-		fit.add_child(pl2)
+		_ks_prop(fit, Vector3(-1.65, 0.55, -1.1), Vector3(1.1, 1.1, 1.4), Color(0.34, 0.34, 0.36))
+		_ks_prop(fit, Vector3(1.65, 0.45, -1.1), Vector3(1.1, 0.9, 1.2), Color(0.42, 0.42, 0.44))
+		WorldKit.make_world_badge(fit, Vector3(0, 2.25, -hd + 0.2), "✦  Gale Barn & Hayloft", Color(0.92, 0.92, 0.96), 10.0)
 	else:
-		_ks_prop(fit, Vector3(0, 0.25, 0), Vector3(0.8, 0.5, 0.8), Color(0.45, 0.45, 0.4))
-		var pl3 := Label3D.new()
-		pl3.text = "Coop"
-		pl3.font_size = 32
-		pl3.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		pl3.position = Vector3(0, 1.4, 0)
-		fit.add_child(pl3)
+		_ks_prop(fit, Vector3(-1.2, 0.25, -1.0), Vector3(0.9, 0.5, 0.8), Color(0.45, 0.45, 0.48))
+		WorldKit.make_world_badge(fit, Vector3(0, 1.85, -hd + 0.2), "✦  Chicken Coop", Color(0.92, 0.92, 0.96), 10.0)
+	var _unused_refs := [floor_m, wall_m, wood_m]
 
 func _ks_prop(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -1178,6 +1065,13 @@ func _try_build_door() -> bool:
 		return true
 	return false
 
+func _set_host_collisions(host: Node, enabled: bool) -> void:
+	if host == null:
+		return
+	for c in host.find_children("*", "CollisionShape3D", true, false):
+		if c is CollisionShape3D:
+			(c as CollisionShape3D).disabled = not enabled
+
 func _enter_building(door: Area3D) -> void:
 	if door == null or player == null:
 		return
@@ -1185,12 +1079,15 @@ func _enter_building(door: Area3D) -> void:
 	_inside_building = true
 	_active_build_door = door
 	_near_build_door = door
+	var host = door.get_meta("host") if door.has_meta("host") else null
+	# Disable exterior solid box collider while inside so Dorothy can walk freely and never gets stuck!
+	_set_host_collisions(host, false)
 	var ip: Vector3 = door.get_meta("interior_pos")
-	player.global_position = ip + Vector3(0, 0.05, 0)
+	player.global_position = ip + Vector3(0, 0.08, 0.45)
+	player.velocity = Vector3.ZERO
 	var fit = door.get_meta("fitout") if door.has_meta("fitout") else null
 	if fit:
 		fit.visible = true
-	var host = door.get_meta("host") if door.has_meta("host") else null
 	if host:
 		for n in host.find_children("*", "MeshInstance3D", true, false):
 			if fit and (n == fit or fit.is_ancestor_of(n)):
@@ -1198,7 +1095,7 @@ func _enter_building(door: Area3D) -> void:
 			if n is MeshInstance3D:
 				(n as MeshInstance3D).visible = false
 	hud.set_prompt("E  —  Exit %s" % str(door.get_meta("title")))
-	_dlg("Narrator", "Inside the %s." % str(door.get_meta("title")))
+	_dlg("Narrator", "Inside the %s. Press E to step back outside." % str(door.get_meta("title")))
 	get_tree().create_timer(0.25).timeout.connect(func(): _door_busy = false)
 
 func _exit_building() -> void:
@@ -1209,11 +1106,13 @@ func _exit_building() -> void:
 	_door_busy = true
 	var door := _active_build_door
 	var ep: Vector3 = door.get_meta("exterior_pos")
-	player.global_position = ep + Vector3(0, 0.05, 0.4)
+	player.global_position = ep + Vector3(0, 0.08, 0.5)
+	player.velocity = Vector3.ZERO
 	var fit = door.get_meta("fitout") if door.has_meta("fitout") else null
 	if fit:
 		fit.visible = false
 	var host = door.get_meta("host") if door.has_meta("host") else null
+	_set_host_collisions(host, true)
 	if host:
 		for n in host.find_children("*", "MeshInstance3D", true, false):
 			if n is MeshInstance3D:

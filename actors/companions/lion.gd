@@ -57,6 +57,11 @@ func set_parked(on: bool, pos: Vector3 = Vector3.ZERO) -> void:
 		leading = false
 	else:
 		park_pos = Vector3.ZERO
+		set_sleeping(false)
+
+func set_sleeping(on: bool) -> void:
+	if body and body.has_method("set_sleeping"):
+		body.call("set_sleeping", on)
 
 func calm_and_join() -> void:
 	if calmed:

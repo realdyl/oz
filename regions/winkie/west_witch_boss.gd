@@ -31,10 +31,12 @@ func begin_melt() -> void:
 	var lab := get_node_or_null("WestLabel") as Label3D
 	if lab:
 		lab.text = "I'M MELTING—"
-		lab.modulate = Color(0.4, 0.7, 1.0)
+		lab.modulate = Color(0.45, 0.85, 1.0)
 	var tw := create_tween()
-	tw.tween_property(self, "scale", Vector3(1.2, 0.05, 1.2), 2.0)
-	tw.parallel().tween_property(self, "global_position:y", 0.05, 2.0)
+	tw.set_parallel(true)
+	tw.tween_property(self, "rotation:y", rotation.y + TAU * 1.5, 2.1).set_ease(Tween.EASE_IN)
+	tw.tween_property(self, "scale", Vector3(1.55, 0.04, 1.55), 2.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(self, "global_position:y", 0.04, 2.1)
 	await tw.finished
 	add_to_group("enemies_dead")
 	visible = false

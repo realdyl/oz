@@ -99,6 +99,11 @@ func _build() -> void:
 	_mi(_hip, _cyl(0.245, 0.245, 0.05), dark, Vector3(0, 0.12, 0))
 	_mi(_hip, _cyl(0.25, 0.25, 0.05), dark, Vector3(0, 0.48, 0))
 	_mi(_hip, _box(Vector3(0.12, 0.14, 0.05)), brass, Vector3(-0.07, 0.34, -0.22)) # hollow heart door
+	var heart_glow := _mat(Color(0.92, 0.22, 0.28), 0.15, 0.15)
+	heart_glow.emission_enabled = true
+	heart_glow.emission = Color(0.95, 0.18, 0.24)
+	heart_glow.emission_energy_multiplier = 1.2 if not rusted else 0.15
+	_mi(_hip, _sph(0.042), heart_glow, Vector3(-0.07, 0.34, -0.245)) # glowing clockwork heart jewel
 	# Shoulder pauldrons
 	for px in [-1.0, 1.0]:
 		_mi(_hip, _sph(0.12), tin, Vector3(float(px) * 0.28, 0.48, 0), Vector3(1.15, 0.78, 1.05))
@@ -155,7 +160,10 @@ func _arm(parent: Node3D, left: bool, tin: Material) -> Node3D:
 	var root := Node3D.new()
 	root.position = Vector3(0.28 * sign, 0.4, 0)
 	parent.add_child(root)
-	_mi(root, _cyl(0.06, 0.055, 0.55), tin, Vector3(0, -0.28, 0))
+	_mi(root, _cyl(0.062, 0.052, 0.28), tin, Vector3(0, -0.14, 0))
+	_mi(root, _sph(0.062), tin, Vector3(0, -0.28, 0)) # articulated elbow ball-joint
+	_mi(root, _cyl(0.056, 0.048, 0.28), tin, Vector3(0, -0.42, 0))
+	_mi(root, _sph(0.052), tin, Vector3(0, -0.56, 0)) # tin gauntlet hand
 	return root
 
 func _leg(parent: Node3D, left: bool, tin: Material) -> Node3D:
@@ -163,6 +171,8 @@ func _leg(parent: Node3D, left: bool, tin: Material) -> Node3D:
 	var root := Node3D.new()
 	root.position = Vector3(0.11 * sign, -0.1, 0)
 	parent.add_child(root)
-	_mi(root, _cyl(0.08, 0.07, 0.75), tin, Vector3(0, -0.38, 0))
-	_mi(root, _box(Vector3(0.14, 0.08, 0.22)), tin, Vector3(0, -0.78, -0.02))
+	_mi(root, _cyl(0.082, 0.072, 0.36), tin, Vector3(0, -0.18, 0))
+	_mi(root, _sph(0.078), tin, Vector3(0, -0.37, 0)) # articulated knee ball-joint
+	_mi(root, _cyl(0.072, 0.064, 0.36), tin, Vector3(0, -0.56, 0))
+	_mi(root, _box(Vector3(0.14, 0.08, 0.24)), tin, Vector3(0, -0.78, -0.02))
 	return root

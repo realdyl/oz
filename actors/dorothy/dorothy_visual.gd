@@ -22,6 +22,7 @@ var _idle_t: float = 0.0
 var _speed_amt: float = 0.0
 var _kick_t: float = 0.0
 var _interact_t: float = 0.0
+var sleeping: bool = false
 
 const KICK_DUR := 0.34
 const INTERACT_DUR := 0.36
@@ -37,11 +38,15 @@ func play_kick() -> void:
 func play_interact() -> void:
 	_interact_t = INTERACT_DUR
 
+func set_sleeping(on: bool) -> void:
+	sleeping = on
+	_apply_pose()
+
 func set_locomotion(horizontal_speed: float, delta: float) -> void:
 	_idle_t += delta
 	_kick_t = maxf(_kick_t - delta, 0.0)
 	_interact_t = maxf(_interact_t - delta, 0.0)
-	_speed_amt = clampf(horizontal_speed / 5.0, 0.0, 1.45)
+	_speed_amt = clampf(horizontal_speed / 5.0, 0.0, 1.45) if not sleeping else 0.0
 	if _speed_amt > 0.08:
 		_phase += delta * (8.8 + _speed_amt * 5.8)
 	else:
@@ -52,6 +57,25 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 func _apply_pose() -> void:
 	if _leg_l == null:
 		return
+
+	if sleeping:
+		# Smoothly curled up lying down on her side in the poppies
+		var breath := sin(_idle_t * 1.9) * 0.012
+		_hip.position = Vector3(0, 0.20 + breath, 0)
+		_hip.rotation = Vector3(-1.46, 0.15, 0.45) # lying down on ground
+		_torso.rotation = Vector3(0.18, 0.0, 0.12)
+		_leg_l.rotation = Vector3(-0.45, 0.0, 0.08)
+		_leg_r.rotation = Vector3(-0.68, 0.0, -0.08)
+		if _leg_l.has_node("Thigh/Calf"):
+			(_leg_l.get_node("Thigh/Calf") as Node3D).rotation.x = 0.72
+		if _leg_r.has_node("Thigh/Calf"):
+			(_leg_r.get_node("Thigh/Calf") as Node3D).rotation.x = 0.88
+		_arm_l.rotation = Vector3(-0.65, 0.0, 0.25)
+		_arm_r.rotation = Vector3(-0.85, 0.0, -0.35)
+		return
+
+	_hip.rotation.x = 0.0
+	_hip.rotation.z = 0.0
 
 	# Priority 1: Choreographed High-Heel Roundhouse / Snap Kick
 	if _kick_t > 0.0:

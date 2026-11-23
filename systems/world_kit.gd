@@ -184,7 +184,8 @@ void fragment() {
 	return sm
 
 # ============================================================================
-# LABEL3D CULLING & CROOKED WOODEN SIGNPOSTS
+# LABEL3D CULLING, CARVED SIGNPOSTS, BUILDING CRESTS & WORLD BADGES
+# (Conforms to obsidian-oz: Typography & Signpost Style Guide)
 # ============================================================================
 
 static func apply_label3d_culling(root: Node, max_dist: float = 12.0, fade_margin: float = 3.5) -> void:
@@ -195,89 +196,186 @@ static func apply_label3d_culling(root: Node, max_dist: float = 12.0, fade_margi
 		var lab := n as Label3D
 		if lab == null:
 			continue
+		if lab.has_meta("styled_plaque"):
+			continue
 		lab.no_depth_test = false
 		lab.fixed_size = false
-		if lab.pixel_size > 0.0065:
-			lab.pixel_size = 0.0055
-		if lab.font_size > 34:
-			lab.font_size = 30
-		lab.outline_size = maxi(lab.outline_size, 6)
+		if lab.pixel_size > 0.006:
+			lab.pixel_size = 0.0052
+		if lab.font_size > 32:
+			lab.font_size = 28
+		# Replace raw stark white with cohesive storybook parchment ink + deep walnut outline
+		if lab.modulate.r > 0.92 and lab.modulate.g > 0.92 and lab.modulate.b > 0.92:
+			lab.modulate = Color(0.98, 0.93, 0.80)
+		lab.outline_size = maxi(lab.outline_size, 7)
+		lab.outline_modulate = Color(0.11, 0.06, 0.05, 0.95)
 		lab.visibility_range_end = max_dist
 		lab.visibility_range_end_margin = fade_margin
 		lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
-## Replaces giant floating neon billboard markers with an authored 3D crooked wooden signpost.
+## Tier 1: Authored 3D crooked wooden signpost with text ENGRAVED directly on both faces
+## of the arrow plank (zero floating billboard text above the post).
 static func make_wooden_signpost(at: Vector3, label_text: String, accent: Color, toward: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.name = "WoodenSignpost"
 	root.position = at
 
-	var wood := _mat(Color(0.34, 0.22, 0.12), 0.88)
-	var wood_dark := _mat(Color(0.22, 0.14, 0.08), 0.90)
-	var brass := _mat(Color(0.82, 0.66, 0.30), 0.32, 0.82)
-	var glow := _mat(accent.lightened(0.35), 0.35, 0.0, accent, 0.8)
+	var wood := _mat(Color(0.32, 0.20, 0.11), 0.88)
+	var wood_dark := _mat(Color(0.19, 0.11, 0.07), 0.90)
+	var brass := _mat(Color(0.84, 0.68, 0.30), 0.30, 0.84)
+	var glow := _mat(accent.lightened(0.35), 0.30, 0.0, accent, 1.1)
 
-	# Stone base + slightly crooked carved timber post
-	_mi(root, _cyl(0.20, 0.26, 0.25, 8), _mat(Color(0.42, 0.40, 0.44), 0.92), Vector3(0, 0.12, 0))
-	_mi(root, _cyl(0.065, 0.09, 2.35, 8), wood, Vector3(0, 1.25, 0), Vector3(0, 0, 2.2))
-	_mi(root, _sph(0.095, 0.16, 8), brass, Vector3(-0.04, 2.46, 0))
+	# Carved cobblestone base + gently leaning timber post + brass finial
+	_mi(root, _cyl(0.22, 0.28, 0.26, 10), _mat(Color(0.40, 0.38, 0.42), 0.92), Vector3(0, 0.13, 0))
+	_mi(root, _cyl(0.068, 0.095, 2.38, 10), wood, Vector3(0, 1.26, 0), Vector3(0, 0, 2.0))
+	_mi(root, _sph(0.10, 0.16, 10), brass, Vector3(-0.04, 2.48, 0))
 
 	# Directional arrow plank oriented toward destination
 	var plank_holder := Node3D.new()
-	plank_holder.position = Vector3(0, 2.02, 0)
+	plank_holder.position = Vector3(0, 1.98, 0)
 	root.add_child(plank_holder)
 	var flat := toward - at
 	flat.y = 0.0
 	if flat.length() > 0.1:
 		plank_holder.rotation.y = atan2(-flat.x, -flat.z) + PI * 0.5
 
-	_mi(plank_holder, _box(Vector3(1.25, 0.34, 0.08)), wood_dark, Vector3(0.22, 0, 0))
+	# Carved dark-walnut arrow board + gilded brass trim strips
+	_mi(plank_holder, _box(Vector3(1.62, 0.42, 0.10)), wood_dark, Vector3(0.26, 0, 0))
+	_mi(plank_holder, _box(Vector3(1.56, 0.035, 0.115)), brass, Vector3(0.26, 0.19, 0))
+	_mi(plank_holder, _box(Vector3(1.56, 0.035, 0.115)), brass, Vector3(0.26, -0.19, 0))
 	var tip := PrismMesh.new()
-	tip.size = Vector3(0.34, 0.32, 0.08)
-	_mi(plank_holder, tip, wood_dark, Vector3(0.98, 0, 0), Vector3(0, 0, -90))
-	# Small glowing lantern finial hanging off the back
-	_mi(plank_holder, _sph(0.075, 0.15, 8), glow, Vector3(-0.46, -0.18, 0))
+	tip.size = Vector3(0.42, 0.36, 0.10)
+	_mi(plank_holder, tip, wood_dark, Vector3(1.25, 0, 0), Vector3(0, 0, -90))
+	# Brass corner rivets
+	for rx in [-0.46, 0.96]:
+		for ry in [-0.12, 0.12]:
+			_mi(plank_holder, _sph(0.025, 0.05, 6), brass, Vector3(float(rx), float(ry), 0.055))
+			_mi(plank_holder, _sph(0.025, 0.05, 6), brass, Vector3(float(rx), float(ry), -0.055))
+	# Hanging jewel-lantern finial off the back of the plank
+	_mi(plank_holder, _cyl(0.015, 0.015, 0.18, 6), brass, Vector3(-0.52, -0.10, 0))
+	_mi(plank_holder, _sph(0.085, 0.15, 10), glow, Vector3(-0.52, -0.24, 0))
 
-	var lab := Label3D.new()
-	lab.text = label_text
-	lab.font_size = 24
-	lab.pixel_size = 0.0052
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.98, 0.94, 0.84)
-	lab.outline_size = 6
-	lab.outline_modulate = Color(0.14, 0.08, 0.06)
-	lab.visibility_range_end = 9.0
-	lab.visibility_range_end_margin = 2.5
-	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	lab.position = Vector3(0, 2.72, 0)
-	root.add_child(lab)
+	# Double-sided engraved parchment lettering mounted FLUSH onto the arrow board
+	var clean_txt := label_text.replace("YBR → ", "").replace("YBR -> ", "").strip_edges()
+	for face_z in [0.062, -0.062]:
+		var lab := Label3D.new()
+		lab.set_meta("styled_plaque", true)
+		lab.text = "✦  %s  ➔" % clean_txt
+		lab.font_size = 28
+		lab.pixel_size = 0.0046
+		lab.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		lab.shaded = false
+		lab.modulate = Color(0.99, 0.94, 0.80)
+		lab.outline_size = 6
+		lab.outline_modulate = Color(0.12, 0.06, 0.03)
+		lab.visibility_range_end = 15.0
+		lab.visibility_range_end_margin = 3.5
+		lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		lab.position = Vector3(0.24, 0.0, float(face_z))
+		if float(face_z) < 0.0:
+			lab.rotation_degrees.y = 180.0
+		plank_holder.add_child(lab)
 	return root
 
+## Tier 2: Ornate scrolled wrought-iron & walnut architectural crest plaque for buildings.
+static func make_building_crest_sign(parent: Node3D, local_pos: Vector3, title: String, accent: Color, greyscale: bool = false) -> MeshInstance3D:
+	var root := Node3D.new()
+	root.name = "BuildingCrestSign"
+	root.position = local_pos
+	parent.add_child(root)
+
+	var iron := _mat(Color(0.16, 0.15, 0.18) if not greyscale else Color(0.20, 0.20, 0.22), 0.45, 0.78)
+	var walnut := _mat(Color(0.20, 0.12, 0.08) if not greyscale else Color(0.26, 0.26, 0.28), 0.82)
+	var brass := _mat(Color(0.86, 0.70, 0.30) if not greyscale else Color(0.68, 0.68, 0.72), 0.28, 0.86)
+	var face_col := accent.darkened(0.55) if not greyscale else Color(0.18, 0.18, 0.20)
+	var enamel := _mat(face_col, 0.55, 0.12)
+
+	# Wrought-iron bracket arm + hanging chains
+	_mi(root, _box(Vector3(0.10, 0.10, 0.85)), iron, Vector3(0, 0.48, -0.18))
+	_mi(root, _cyl(0.025, 0.025, 0.26, 6), iron, Vector3(-0.72, 0.36, 0.22))
+	_mi(root, _cyl(0.025, 0.025, 0.26, 6), iron, Vector3(0.72, 0.36, 0.22))
+
+	# Chamfered walnut crest board (returned so caller can gently sway it)
+	var board := _mi(root, _box(Vector3(2.45, 0.86, 0.12)), walnut, Vector3(0, 0.0, 0.24))
+	_mi(board, _box(Vector3(2.32, 0.74, 0.13)), brass, Vector3(0, 0, 0.01))
+	_mi(board, _box(Vector3(2.18, 0.60, 0.14)), enamel, Vector3(0, 0, 0.015))
+	for ox in [-1.06, 1.06]:
+		for oy in [-0.28, 0.28]:
+			_mi(board, _sph(0.045, 0.08, 8), brass, Vector3(float(ox), float(oy), 0.08))
+
+	var lab := Label3D.new()
+	lab.set_meta("styled_plaque", true)
+	lab.text = "✦  %s  ✦" % title.to_upper()
+	lab.font_size = 54
+	lab.pixel_size = 0.0062
+	lab.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	lab.shaded = false
+	lab.modulate = Color(0.99, 0.92, 0.72) if not greyscale else Color(0.92, 0.92, 0.95)
+	lab.outline_size = 10
+	lab.outline_modulate = Color(0.10, 0.05, 0.04)
+	lab.visibility_range_end = 20.0
+	lab.visibility_range_end_margin = 4.0
+	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	lab.position = Vector3(0, 0.0, 0.10)
+	board.add_child(lab)
+	return board
+
+## Tier 3: Compact diegetic storybook world badge (replaces raw floating white text on props).
+static func make_world_badge(parent: Node3D, local_pos: Vector3, text: String, accent: Color = Color(0.96, 0.84, 0.48), max_dist: float = 10.5) -> Node3D:
+	var holder := Node3D.new()
+	holder.name = "WorldBadge"
+	holder.position = local_pos
+	parent.add_child(holder)
+
+	var lab := Label3D.new()
+	lab.set_meta("styled_plaque", true)
+	lab.text = text
+	lab.font_size = 28
+	lab.pixel_size = 0.0050
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.shaded = false
+	lab.modulate = accent.lerp(Color(0.99, 0.95, 0.85), 0.55)
+	lab.outline_size = 9
+	lab.outline_modulate = Color(0.09, 0.06, 0.08, 0.96)
+	lab.visibility_range_end = max_dist
+	lab.visibility_range_end_margin = 2.8
+	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	holder.add_child(lab)
+	return holder
+
 # ============================================================================
-# WALKABLE COLLIDABLE HILLS, HORIZON SKYLINE, SWAYING GRASS & LUSH CORNFIELD
+# CONTINUOUS GROUND APRON, WALKABLE HILLS, HORIZON SKYLINE & SWAYING GRASS
 # ============================================================================
 
-## Outer horizon hills placed STRICTLY outside the playable boundary so they never
-## bury the Yellow Brick Road or Marshal arena.
+## Adds a vast continuous under-meadow slab so no sky-void drop-off is ever visible at map borders.
+static func add_ground_apron(parent: Node3D, width: float, depth: float, grass_col: Color, y_pos: float = -0.10) -> void:
+	var apron := _mi(parent, _box(Vector3(width, 0.14, depth)), _mat(grass_col, 0.96), Vector3(0, y_pos, 0))
+	apron.name = "HorizonGroundApron"
+	apron.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## Outer horizon hills placed cleanly just outside the MapBorder tree line (zero void gap, never inside playable rim).
 static func add_horizon_hills(parent: Node3D, half_x: float, half_z: float, hill_col: Color) -> void:
 	var hroot := Node3D.new()
 	hroot.name = "HorizonHills"
 	parent.add_child(hroot)
 
+	# Seamless ground apron under the entire horizon ring so the sky never peeks underneath
+	add_ground_apron(hroot, (half_x + 140.0) * 2.0, (half_z + 140.0) * 2.0, hill_col.darkened(0.06), -0.12)
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 777
 	var m_near := _mat(hill_col, 0.94)
-	var m_far := _mat(hill_col.darkened(0.24), 0.96)
+	var m_far := _mat(hill_col.darkened(0.20), 0.96)
 
-	for i in range(28):
-		var ang := float(i) / 28.0 * TAU
-		var rad := rng.randf_range(24.0, 38.0)
-		var margin := rad * 1.45 + 18.0
-		var rx := (half_x + margin + rng.randf_range(0.0, 16.0)) * cos(ang)
-		var rz := (half_z + margin + rng.randf_range(0.0, 16.0)) * sin(ang)
-		var ht := rng.randf_range(16.0, 30.0)
+	for i in range(32):
+		var ang := float(i) / 32.0 * TAU
+		var rad := rng.randf_range(22.0, 34.0)
+		var margin := rad * 0.85 + 6.0
+		var rx := (half_x + margin + rng.randf_range(0.0, 10.0)) * cos(ang)
+		var rz := (half_z + margin + rng.randf_range(0.0, 10.0)) * sin(ang)
+		var ht := rng.randf_range(14.0, 26.0)
 		var mat := m_near if i % 2 == 0 else m_far
-		_mi(hroot, _sph(rad, ht, 16), mat, Vector3(rx, -ht * 0.14, rz), Vector3.ZERO, Vector3(1.3, 0.7, 1.3))
+		_mi(hroot, _sph(rad, ht, 16), mat, Vector3(rx, -ht * 0.16, rz), Vector3.ZERO, Vector3(1.35, 0.72, 1.35))
 
 ## Walkable, COLLIDABLE gentle grassy hills in the side meadows (characters physically climb up them!).
 static func add_walkable_meadow_hills(parent: Node3D, specs: Array, grass_col: Color) -> void:
@@ -523,13 +621,46 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	_mi(fit, _cyl(minf(half_w, half_d) * 0.58, minf(half_w, half_d) * 0.58, 0.03, 20), rug_trim, Vector3(0, 0.11, 0.2))
 	_mi(fit, _cyl(minf(half_w, half_d) * 0.50, minf(half_w, half_d) * 0.50, 0.035, 20), rug_mat, Vector3(0, 0.115, 0.2))
 
-	# Warm plaster walls + wood wainscoting skirt + exposed ceiling rafters
-	_mi(fit, _box(Vector3(fw, wall_h - 0.2, 0.08)), plaster, Vector3(0, wall_h * 0.5, -half_d + 0.12))
-	_mi(fit, _box(Vector3(0.08, wall_h - 0.2, fd)), plaster, Vector3(-half_w + 0.12, wall_h * 0.5, 0))
-	_mi(fit, _box(Vector3(0.08, wall_h - 0.2, fd)), plaster, Vector3(half_w - 0.12, wall_h * 0.5, 0))
+	# Warm plaster walls + wood wainscoting skirt + FULL 4th front wall (+Z) with Exit Door + ceiling slab
+	_mi(fit, _box(Vector3(fw, wall_h - 0.1, 0.08)), plaster, Vector3(0, wall_h * 0.5, -half_d + 0.12))
+	_mi(fit, _box(Vector3(0.08, wall_h - 0.1, fd)), plaster, Vector3(-half_w + 0.12, wall_h * 0.5, 0))
+	_mi(fit, _box(Vector3(0.08, wall_h - 0.1, fd)), plaster, Vector3(half_w - 0.12, wall_h * 0.5, 0))
+	_mi(fit, _box(Vector3(fw, 0.12, fd)), timber, Vector3(0, wall_h - 0.06, 0)) # solid ceiling above rafters
+
+	# 4th Front Wall (+Z) flanking the interior Exit Doorway so turning around never shows the outside!
+	var front_z := half_d - 0.12
+	var door_w := 1.25
+	var door_h := 2.25
+	var side_w := maxf(0.4, (fw - door_w) * 0.5)
+	_mi(fit, _box(Vector3(side_w, wall_h - 0.1, 0.08)), plaster, Vector3(-(door_w * 0.5 + side_w * 0.5), wall_h * 0.5, front_z))
+	_mi(fit, _box(Vector3(side_w, wall_h - 0.1, 0.08)), plaster, Vector3(door_w * 0.5 + side_w * 0.5, wall_h * 0.5, front_z))
+	_mi(fit, _box(Vector3(door_w + 0.2, maxf(0.3, wall_h - door_h), 0.08)), plaster, Vector3(0, door_h + (wall_h - door_h) * 0.5, front_z))
+	# Ornate closed interior Exit Door + timber jambs + iron hinges + glowing brass handle + lintel plaque
+	_mi(fit, _box(Vector3(door_w, door_h, 0.10)), timber, Vector3(0, door_h * 0.5, front_z - 0.02))
+	_mi(fit, _box(Vector3(0.14, door_h + 0.12, 0.16)), wainscot, Vector3(-door_w * 0.5 - 0.05, door_h * 0.5, front_z - 0.04))
+	_mi(fit, _box(Vector3(0.14, door_h + 0.12, 0.16)), wainscot, Vector3(door_w * 0.5 + 0.05, door_h * 0.5, front_z - 0.04))
+	_mi(fit, _box(Vector3(door_w + 0.28, 0.16, 0.18)), wainscot, Vector3(0, door_h + 0.08, front_z - 0.04))
+	_mi(fit, _sph(0.065, 0.13, 10), brass, Vector3(0.42, 1.05, front_z - 0.10)) # brass doorknob
+	_mi(fit, _box(Vector3(0.35, 0.06, 0.04)), _mat(Color(0.12, 0.12, 0.14), 0.4, 0.8), Vector3(-0.42, 1.75, front_z - 0.08))
+	_mi(fit, _box(Vector3(0.35, 0.06, 0.04)), _mat(Color(0.12, 0.12, 0.14), 0.4, 0.8), Vector3(-0.42, 0.55, front_z - 0.08))
+	var exit_plaque := Label3D.new()
+	exit_plaque.set_meta("styled_plaque", true)
+	exit_plaque.text = "EXIT (E)"
+	exit_plaque.font_size = 24
+	exit_plaque.pixel_size = 0.0045
+	exit_plaque.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	exit_plaque.shaded = false
+	exit_plaque.modulate = Color(0.98, 0.88, 0.58)
+	exit_plaque.outline_size = 5
+	exit_plaque.position = Vector3(0, door_h + 0.32, front_z - 0.12)
+	exit_plaque.rotation_degrees.y = 180.0
+	fit.add_child(exit_plaque)
+
 	_mi(fit, _box(Vector3(fw, 0.95, 0.12)), wainscot, Vector3(0, 0.52, -half_d + 0.16))
 	_mi(fit, _box(Vector3(0.12, 0.95, fd)), wainscot, Vector3(-half_w + 0.16, 0.52, 0))
 	_mi(fit, _box(Vector3(0.12, 0.95, fd)), wainscot, Vector3(half_w - 0.16, 0.52, 0))
+	_mi(fit, _box(Vector3(side_w, 0.95, 0.12)), wainscot, Vector3(-(door_w * 0.5 + side_w * 0.5), 0.52, front_z - 0.04))
+	_mi(fit, _box(Vector3(side_w, 0.95, 0.12)), wainscot, Vector3(door_w * 0.5 + side_w * 0.5, 0.52, front_z - 0.04))
 
 	# Ceiling beams + hanging wrought-iron candelabrum
 	for bi in range(3):
@@ -852,7 +983,8 @@ static func build_lush_cornfield(parent: Node3D, at: Vector3) -> Node3D:
 	_mi(root, _box(Vector3(0.18, 0.22, 3.3)), wood_m, Vector3(-5.8, 2.48, 0))
 	return root
 
-## Replaces flat red BoxMesh poppy slabs with lush swaying beds of 3D scarlet poppy flowers.
+## Hardware-instanced MultiMesh carpet of 2,400+ lush swaying scarlet poppies + foliage
+## flanking both sides of the Yellow Brick Road in L3 Deadly Poppy Field.
 static func build_poppy_beds(parent: Node3D, z_start: float, z_end: float) -> Node3D:
 	var root := Node3D.new()
 	root.name = "PoppyFlowerBeds"
@@ -860,39 +992,357 @@ static func build_poppy_beds(parent: Node3D, z_start: float, z_end: float) -> No
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 303
-	var stem_m := make_wind_grass_material(Color(0.20, 0.44, 0.22))
-	var petal_a := make_wind_grass_material(Color(0.92, 0.12, 0.22))
-	var petal_b := make_wind_grass_material(Color(0.80, 0.08, 0.20))
-	var center_m := _mat(Color(0.08, 0.05, 0.07), 0.7)
-	var pollen_m := _mat(Color(0.95, 0.78, 0.22), 0.4, 0.0, Color(0.95, 0.72, 0.20), 0.6)
+	var stem_m := make_wind_grass_material(Color(0.18, 0.42, 0.19))
+	var petal_a := make_wind_grass_material(Color(0.92, 0.10, 0.18))
+	var petal_b := make_wind_grass_material(Color(0.76, 0.06, 0.16))
+	var core_m := make_wind_grass_material(Color(0.08, 0.05, 0.07))
 
-	var stem_mesh := _cyl(0.02, 0.035, 0.75, 6)
-	var petal_mesh := _sph(0.24, 0.14, 8)
-	var core_mesh := _sph(0.09, 0.10, 7)
+	var total_flowers := 2400
+	var stem_mm := MultiMesh.new()
+	stem_mm.transform_format = MultiMesh.TRANSFORM_3D
+	stem_mm.mesh = _cyl(0.018, 0.030, 0.68, 5)
+	stem_mm.instance_count = total_flowers
 
-	# Dense lush beds flanking both sides of the Yellow Brick Road
-	var z := z_start
-	while z <= z_end:
-		for side in [-1.0, 1.0]:
-			var s: float = float(side)
-			for i in range(6):
-				var fx := s * rng.randf_range(3.6, 17.5)
-				var fz := z + rng.randf_range(-2.2, 2.2)
-				var sc := rng.randf_range(0.85, 1.45)
-				var fl := Node3D.new()
-				fl.position = Vector3(fx, 0.0, fz)
-				fl.rotation.y = rng.randf() * TAU
-				root.add_child(fl)
-				_mi(fl, stem_mesh, stem_m, Vector3(0, 0.36 * sc, 0), Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(-8, 8)), Vector3(1, sc, 1))
-				var pmat := petal_a if i % 2 == 0 else petal_b
-				# 4 cupped petals around dark seed pod
-				for pi in range(4):
-					var pa := float(pi) * PI * 0.5
-					_mi(fl, petal_mesh, pmat, Vector3(cos(pa) * 0.14 * sc, 0.72 * sc, sin(pa) * 0.14 * sc), Vector3(sin(pa) * 22.0, 0, -cos(pa) * 22.0), Vector3.ONE * sc)
-				_mi(fl, core_mesh, center_m, Vector3(0, 0.75 * sc, 0), Vector3.ZERO, Vector3.ONE * sc)
-				_mi(fl, _sph(0.05, 0.05, 6), pollen_m, Vector3(0, 0.80 * sc, 0))
-		z += 2.6
+	var cap_a_mm := MultiMesh.new()
+	cap_a_mm.transform_format = MultiMesh.TRANSFORM_3D
+	cap_a_mm.mesh = _sph(0.24, 0.16, 7)
+	cap_a_mm.instance_count = total_flowers / 2
+
+	var cap_b_mm := MultiMesh.new()
+	cap_b_mm.transform_format = MultiMesh.TRANSFORM_3D
+	cap_b_mm.mesh = _sph(0.21, 0.14, 7)
+	cap_b_mm.instance_count = total_flowers / 2
+
+	var core_mm := MultiMesh.new()
+	core_mm.transform_format = MultiMesh.TRANSFORM_3D
+	core_mm.mesh = _sph(0.075, 0.08, 5)
+	core_mm.instance_count = total_flowers
+
+	var idx_a := 0
+	var idx_b := 0
+	for i in range(total_flowers):
+		var side: float = -1.0 if i % 2 == 0 else 1.0
+		var fx: float = side * rng.randf_range(3.25, 36.0)
+		var fz: float = rng.randf_range(z_start - 2.0, z_end + 2.0)
+		var sc: float = rng.randf_range(0.65, 1.38)
+		var tilt_x := deg_to_rad(rng.randf_range(-10.0, 10.0))
+		var tilt_z := deg_to_rad(rng.randf_range(-10.0, 10.0))
+		var yaw := rng.randf() * TAU
+
+		var stem_b := Basis.from_euler(Vector3(tilt_x, yaw, tilt_z)).scaled(Vector3(sc, sc, sc))
+		stem_mm.set_instance_transform(i, Transform3D(stem_b, Vector3(fx, 0.32 * sc, fz)))
+
+		var head_pos := Vector3(fx, 0.66 * sc, fz)
+		var head_b := Basis.from_euler(Vector3(tilt_x * 1.4, yaw, tilt_z * 1.4)).scaled(Vector3(sc * 1.15, sc * 0.72, sc * 1.15))
+		if i % 2 == 0 and idx_a < cap_a_mm.instance_count:
+			cap_a_mm.set_instance_transform(idx_a, Transform3D(head_b, head_pos))
+			idx_a += 1
+		elif idx_b < cap_b_mm.instance_count:
+			cap_b_mm.set_instance_transform(idx_b, Transform3D(head_b, head_pos))
+			idx_b += 1
+
+		var core_b := Basis.from_euler(Vector3(0, yaw, 0)).scaled(Vector3(sc, sc, sc))
+		core_mm.set_instance_transform(i, Transform3D(core_b, head_pos + Vector3(0, 0.05 * sc, 0)))
+
+	for pair in [[stem_mm, stem_m, "PoppyStems"], [cap_a_mm, petal_a, "PoppyPetalsBright"], [cap_b_mm, petal_b, "PoppyPetalsDeep"], [core_mm, core_m, "PoppyCores"]]:
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = str(pair[2])
+		mmi.multimesh = pair[0] as MultiMesh
+		mmi.material_override = pair[1] as Material
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mmi)
+
 	return root
+
+# ============================================================================
+# LION SANCTUARY, PRISTINE WATER CISTERN & KANSAS 3D STORYBOOK PROPS
+# ============================================================================
+
+## Sculpted mossy boulder & gnarled-root forest sanctuary for the Cowardly Lion in Munchkinland.
+static func build_lion_sanctuary(parent: Node3D, at: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "LionDen"
+	root.position = at
+	parent.add_child(root)
+
+	var stone := _mat(Color(0.36, 0.35, 0.38), 0.94)
+	var moss := _mat(Color(0.22, 0.44, 0.22), 0.92)
+	var bark := _mat(Color(0.26, 0.17, 0.11), 0.92)
+	var fern_m := make_wind_grass_material(Color(0.20, 0.48, 0.22))
+	var berry_m := _mat(Color(1.0, 0.62, 0.18), 0.3, 0.0, Color(1.0, 0.55, 0.15), 1.4)
+
+	# Mossy forest floor mound (walkable visual bed)
+	_mi(root, _cyl(2.6, 2.9, 0.14, 18), moss, Vector3(0, 0.05, 0.15))
+
+	# Horseshoe of sculpted mossy boulders forming a natural stone hollow (open toward +Z south)
+	var rocks := [
+		{"p": Vector3(0.0, 0.85, -1.75), "r": 1.35, "s": Vector3(1.5, 0.95, 0.85)},
+		{"p": Vector3(-1.85, 0.72, -0.95), "r": 1.15, "s": Vector3(0.95, 0.95, 1.2)},
+		{"p": Vector3(1.85, 0.72, -0.95), "r": 1.15, "s": Vector3(0.95, 0.95, 1.2)},
+		{"p": Vector3(-2.15, 0.52, 0.65), "r": 0.90, "s": Vector3(0.85, 0.8, 1.1)},
+		{"p": Vector3(2.15, 0.52, 0.65), "r": 0.90, "s": Vector3(0.85, 0.8, 1.1)},
+	]
+	for rk in rocks:
+		var rp: Vector3 = rk["p"]
+		var rr: float = float(rk["r"])
+		var rs: Vector3 = rk["s"]
+		_mi(root, _sph(rr, rr * 1.8, 12), stone, rp, Vector3.ZERO, rs)
+		_mi(root, _sph(rr * 0.82, rr * 0.9, 10), moss, rp + Vector3(0, rr * 0.55, 0), Vector3.ZERO, rs)
+
+	# Arching gnarled forest roots curving over the hollow
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(root, _cyl(0.14, 0.24, 2.6, 8), bark, Vector3(s * 1.65, 1.35, -0.45), Vector3(14, 0, -s * 28))
+		_mi(root, _cyl(0.10, 0.15, 1.8, 8), bark, Vector3(s * 0.65, 2.45, -0.75), Vector3(8, 0, -s * 72))
+		# Amber forest lantern-berries hanging from the root arch
+		_mi(root, _sph(0.10, 0.14, 8), berry_m, Vector3(s * 1.15, 2.10, -0.15))
+
+	# Swaying fern fronds ringing the entrance
+	var frond := PrismMesh.new()
+	frond.size = Vector3(0.28, 0.95, 0.04)
+	for fi in range(12):
+		var a := -PI * 0.15 + float(fi) / 11.0 * (PI * 1.3)
+		_mi(root, frond, fern_m, Vector3(cos(a) * 2.35, 0.42, -sin(a) * 1.75 + 0.4), Vector3(38, rad_to_deg(a), 0))
+
+	make_world_badge(root, Vector3(0, 2.95, 0.1), "✦  A Trembling Thicket", Color(1.0, 0.82, 0.48), 11.0)
+	return root
+
+## Pristine octagonal carved stone & copper courtyard Water Cistern for L4 Winkie Castle.
+static func build_water_cistern(parent: Node3D) -> void:
+	var stone := _mat(Color(0.32, 0.34, 0.38), 0.86)
+	var stone_hi := _mat(Color(0.46, 0.48, 0.54), 0.78)
+	var copper := _mat(Color(0.42, 0.62, 0.56), 0.36, 0.72)
+	var iron := _mat(Color(0.14, 0.14, 0.18), 0.44, 0.82)
+	var wood := _mat(Color(0.38, 0.24, 0.14), 0.85)
+	var water := _mat(Color(0.22, 0.68, 0.98, 0.92), 0.08, 0.15, Color(0.25, 0.72, 1.0), 1.35)
+	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+	# Stepped octagonal stone well basin + copper coping rim
+	_mi(parent, _cyl(1.95, 2.15, 0.24, 8), stone, Vector3(0, 0.12, 0))
+	_mi(parent, _cyl(1.75, 1.82, 0.92, 8), stone_hi, Vector3(0, 0.58, 0))
+	_mi(parent, _cyl(1.86, 1.86, 0.12, 8), copper, Vector3(0, 1.08, 0))
+	# Shimmering crystalline water surface + subtle spilled puddles on courtyard stones
+	_mi(parent, _cyl(1.52, 1.52, 0.08, 16), water, Vector3(0, 0.98, 0))
+	_mi(parent, _cyl(0.65, 0.65, 0.02, 12), water, Vector3(1.85, 0.03, 0.95))
+	_mi(parent, _cyl(0.42, 0.42, 0.02, 10), water, Vector3(-1.45, 0.03, 1.55))
+
+	# Wrought-iron wellhead arch + windlass bar + hanging chain & wooden water bucket
+	for sx in [-1.52, 1.52]:
+		_mi(parent, _cyl(0.065, 0.085, 2.45, 8), iron, Vector3(float(sx), 2.15, 0))
+	_mi(parent, _box(Vector3(3.25, 0.14, 0.16)), iron, Vector3(0, 3.35, 0))
+	_mi(parent, _cyl(0.08, 0.08, 3.1, 10), wood, Vector3(0, 2.55, 0), Vector3(0, 0, 90))
+	_mi(parent, _cyl(0.02, 0.02, 1.25, 6), iron, Vector3(0, 1.92, 0))
+	_mi(parent, _cyl(0.28, 0.22, 0.42, 12), wood, Vector3(0, 1.32, 0))
+	_mi(parent, _cyl(0.29, 0.29, 0.05, 12), iron, Vector3(0, 1.44, 0))
+	_mi(parent, _cyl(0.24, 0.24, 0.05, 12), iron, Vector3(0, 1.18, 0))
+
+	# Gentle aqua lantern glow above the arch
+	var well_light := OmniLight3D.new()
+	well_light.light_color = Color(0.45, 0.85, 1.0)
+	well_light.light_energy = 2.6
+	well_light.omni_range = 11.0
+	well_light.position = Vector3(0, 2.6, 0)
+	parent.add_child(well_light)
+
+	make_world_badge(parent, Vector3(0, 3.85, 0), "✦  Ruptured Cistern  ·  Draw Water (E)", Color(0.55, 0.90, 1.0), 14.0)
+
+## Kansas 3D Clothesline: cedar T-posts, sagging hemp rope, clothespins, and pinned billowing laundry.
+static func build_clothesline(parent: Node3D, at: Vector3) -> Array:
+	var root := Node3D.new()
+	root.name = "PrairieClothesline"
+	root.position = at
+	parent.add_child(root)
+
+	var wood := _mat(Color(0.30, 0.30, 0.32), 0.92)
+	var rope := _mat(Color(0.46, 0.46, 0.48), 0.88)
+	var pin_m := _mat(Color(0.22, 0.22, 0.24), 0.85)
+	var span := 5.6
+
+	# Two weathered wooden T-posts with crossbars & ground braces
+	for px in [0.0, span]:
+		var x: float = float(px)
+		_mi(root, _cyl(0.06, 0.08, 2.35, 8), wood, Vector3(x, 1.17, 0))
+		_mi(root, _box(Vector3(0.10, 0.10, 1.15)), wood, Vector3(x, 2.25, 0))
+		_mi(root, _box(Vector3(0.08, 0.65, 0.08)), wood, Vector3(x, 1.98, 0.26), Vector3(-42, 0, 0))
+		_mi(root, _box(Vector3(0.08, 0.65, 0.08)), wood, Vector3(x, 1.98, -0.26), Vector3(42, 0, 0))
+
+	# Segmented sagging hemp rope between the two T-posts
+	var segs := 8
+	for si in range(segs):
+		var t0 := float(si) / float(segs)
+		var t1 := float(si + 1) / float(segs)
+		var tm := (t0 + t1) * 0.5
+		var sag := sin(tm * PI) * 0.22
+		var seg_w := span / float(segs) + 0.04
+		_mi(root, _cyl(0.014, 0.014, seg_w, 6), rope, Vector3(tm * span, 2.22 - sag, 0), Vector3(0, 0, 90))
+
+	# Sculpted laundry garments hung from pivot nodes pinned directly to the rope
+	var sway_nodes: Array = []
+	var garment_specs := [
+		{"t": 0.16, "w": 0.62, "h": 0.85, "c": Color(0.76, 0.76, 0.78), "shirt": false},
+		{"t": 0.34, "w": 0.52, "h": 0.72, "c": Color(0.60, 0.60, 0.64), "shirt": true},
+		{"t": 0.52, "w": 0.78, "h": 0.96, "c": Color(0.82, 0.82, 0.84), "shirt": false},
+		{"t": 0.70, "w": 0.48, "h": 0.68, "c": Color(0.54, 0.54, 0.58), "shirt": true},
+		{"t": 0.86, "w": 0.60, "h": 0.80, "c": Color(0.72, 0.72, 0.75), "shirt": false},
+	]
+	for g in garment_specs:
+		var gt: float = float(g["t"])
+		var gw: float = float(g["w"])
+		var gh: float = float(g["h"])
+		var sag_y: float = 2.22 - sin(gt * PI) * 0.22
+		var pivot := Node3D.new()
+		pivot.position = Vector3(gt * span, sag_y, 0)
+		pivot.set_meta("wind_cloth", true)
+		root.add_child(pivot)
+		var gmat := _mat(g["c"] as Color, 0.88)
+		# Clothespins on top edge
+		_mi(pivot, _box(Vector3(0.035, 0.10, 0.045)), pin_m, Vector3(-gw * 0.35, 0.02, 0))
+		_mi(pivot, _box(Vector3(0.035, 0.10, 0.045)), pin_m, Vector3(gw * 0.35, 0.02, 0))
+		# Main cloth hanging DOWN from the rope pivot
+		_mi(pivot, _box(Vector3(gw, gh, 0.035)), gmat, Vector3(0, -gh * 0.5, 0))
+		if bool(g["shirt"]):
+			_mi(pivot, _box(Vector3(0.24, 0.18, 0.035)), gmat, Vector3(-gw * 0.5 - 0.10, -0.14, 0), Vector3(0, 0, 22))
+			_mi(pivot, _box(Vector3(0.24, 0.18, 0.035)), gmat, Vector3(gw * 0.5 + 0.10, -0.14, 0), Vector3(0, 0, -22))
+		sway_nodes.append(pivot)
+	return sway_nodes
+
+## Kansas 3D Lattice Prairie Windmill with 4-leg timber tower, cross-braces, tail vane & 8-blade wheel.
+static func build_lattice_windmill(parent: Node3D, at: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "PrairieWindmill"
+	root.position = at
+	parent.add_child(root)
+
+	var timber := _mat(Color(0.28, 0.28, 0.31), 0.90)
+	var iron := _mat(Color(0.20, 0.20, 0.23), 0.52, 0.65)
+	var vane_m := _mat(Color(0.46, 0.46, 0.50), 0.82)
+
+	# 4 slanted corner legs + horizontal collar rings
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var s_x: float = float(sx)
+			var s_z: float = float(sz)
+			_mi(root, _cyl(0.07, 0.11, 8.6, 6), timber, Vector3(s_x * 0.88, 4.2, s_z * 0.88), Vector3(-s_z * 7.5, 0, s_x * 7.5))
+	for level_y in [2.0, 4.2, 6.4, 8.1]:
+		var ly: float = float(level_y)
+		var span: float = lerpf(2.35, 0.95, ly / 8.5)
+		_mi(root, _box(Vector3(span, 0.12, 0.12)), timber, Vector3(0, ly, span * 0.5))
+		_mi(root, _box(Vector3(span, 0.12, 0.12)), timber, Vector3(0, ly, -span * 0.5))
+		_mi(root, _box(Vector3(0.12, 0.12, span)), timber, Vector3(span * 0.5, ly, 0))
+		_mi(root, _box(Vector3(0.12, 0.12, span)), timber, Vector3(-span * 0.5, ly, 0))
+
+	# Gearbox head + tail rudder vane
+	_mi(root, _box(Vector3(0.75, 0.55, 0.95)), iron, Vector3(0, 8.55, 0))
+	_mi(root, _box(Vector3(0.08, 0.10, 2.4)), iron, Vector3(0, 8.62, -1.4))
+	_mi(root, _box(Vector3(0.06, 1.15, 1.35)), vane_m, Vector3(0, 8.68, -2.45))
+
+	# Spinning 8-blade slatted rotor wheel
+	var rotor := Node3D.new()
+	rotor.name = "WindRotor"
+	rotor.position = Vector3(0, 8.62, 0.72)
+	rotor.set_meta("spin", true)
+	root.add_child(rotor)
+	_mi(rotor, _cyl(0.24, 0.24, 0.26, 12), iron, Vector3.ZERO, Vector3(90, 0, 0))
+	var rim := TorusMesh.new()
+	rim.inner_radius = 2.35
+	rim.outer_radius = 2.48
+	_mi(rotor, rim, iron, Vector3.ZERO, Vector3(90, 0, 0))
+	for bi in range(8):
+		var a := float(bi) / 8.0 * TAU
+		var spoke := Node3D.new()
+		spoke.rotation.z = a
+		rotor.add_child(spoke)
+		_mi(spoke, _box(Vector3(0.08, 2.4, 0.05)), iron, Vector3(0, 1.2, 0))
+		_mi(spoke, _box(Vector3(0.48, 1.45, 0.04)), vane_m, Vector3(0.14, 1.65, 0.04), Vector3(0, 18, 0))
+	return rotor
+
+## Sculpted woven wicker Toto Basket (replaces plain brown box in Kansas).
+static func build_wicker_basket(parent: Node3D) -> void:
+	for c in parent.get_children():
+		if c is MeshInstance3D:
+			(c as MeshInstance3D).visible = false
+	var wicker := _mat(Color(0.52, 0.50, 0.48), 0.92)
+	var wicker_dark := _mat(Color(0.34, 0.33, 0.32), 0.94)
+	var cloth := _mat(Color(0.84, 0.84, 0.86), 0.86)
+
+	var b := Node3D.new()
+	b.name = "WickerBasketVisual"
+	parent.add_child(b)
+	_mi(b, _cyl(0.34, 0.26, 0.36, 16), wicker, Vector3(0, 0.18, 0), Vector3.ZERO, Vector3(1.25, 1.0, 0.88))
+	for ry in [0.09, 0.19, 0.29]:
+		_mi(b, _cyl(0.35, 0.35, 0.03, 16), wicker_dark, Vector3(0, float(ry), 0), Vector3.ZERO, Vector3(1.26, 1.0, 0.90))
+	# Checkered cloth liner peeking over rim + hinged double lids
+	_mi(b, _cyl(0.36, 0.34, 0.06, 16), cloth, Vector3(0, 0.36, 0), Vector3.ZERO, Vector3(1.22, 1.0, 0.86))
+	_mi(b, _box(Vector3(0.38, 0.04, 0.56)), wicker_dark, Vector3(-0.20, 0.40, 0), Vector3(0, 0, 10))
+	_mi(b, _box(Vector3(0.38, 0.04, 0.56)), wicker_dark, Vector3(0.20, 0.40, 0), Vector3(0, 0, -10))
+	# Arched braided carry handle
+	var handle := TorusMesh.new()
+	handle.inner_radius = 0.28
+	handle.outer_radius = 0.33
+	_mi(b, handle, wicker_dark, Vector3(0, 0.38, 0), Vector3(0, 0, 0), Vector3(1.0, 1.05, 0.5))
+
+## Diegetic Kansas Storm-Lantern Waypoint Stake (replaces bare neon cylinder stick).
+static func build_prairie_lantern_marker() -> Node3D:
+	var root := Node3D.new()
+	root.name = "PrairieLanternMarker"
+	var iron := _mat(Color(0.18, 0.18, 0.20), 0.48, 0.78)
+	var glow := _mat(Color(0.95, 0.95, 0.98), 0.15, 0.0, Color(0.95, 0.95, 1.0), 2.1)
+	var halo_m := _mat(Color(0.90, 0.90, 0.95, 0.42), 0.2, 0.0, Color(0.90, 0.90, 0.96), 1.1)
+	halo_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+	_mi(root, _cyl(0.032, 0.045, 1.65, 8), iron, Vector3(0, 0.82, 0))
+	_mi(root, _box(Vector3(0.38, 0.04, 0.04)), iron, Vector3(0.18, 1.62, 0))
+	_mi(root, _cyl(0.03, 0.13, 0.10, 6), iron, Vector3(0.34, 1.50, 0))
+	_mi(root, _cyl(0.095, 0.08, 0.22, 6), glow, Vector3(0.34, 1.34, 0))
+	_mi(root, _cyl(0.11, 0.04, 0.07, 6), iron, Vector3(0.34, 1.20, 0))
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.65
+	ring.outer_radius = 0.78
+	_mi(root, ring, halo_m, Vector3(0, 0.06, 0), Vector3(90, 0, 0))
+	return root
+
+## Articulated monochrome Kansas Aunt Em or Uncle Henry character visual.
+static func build_kansas_farmer(parent: Node3D, is_aunt_em: bool) -> void:
+	var skin := _mat(Color(0.76, 0.76, 0.78), 0.52)
+	var dark := _mat(Color(0.16, 0.16, 0.18), 0.75)
+	var dress := _mat(Color(0.42, 0.42, 0.45), 0.86)
+	var apron := _mat(Color(0.80, 0.80, 0.83), 0.88)
+	var hair := _mat(Color(0.56, 0.56, 0.59) if is_aunt_em else Color(0.32, 0.32, 0.34), 0.78)
+
+	if is_aunt_em:
+		# Full pleated prairie skirt + crisp white apron + shawl + sculpted bodice
+		_mi(parent, _cyl(0.16, 0.42, 0.92, 20), dress, Vector3(0, 0.46, 0))
+		_mi(parent, _cyl(0.17, 0.34, 0.76, 14), apron, Vector3(0, 0.48, -0.05))
+		_mi(parent, _cyl(0.16, 0.13, 0.40, 18), dress, Vector3(0, 1.12, 0))
+		_mi(parent, _cyl(0.24, 0.19, 0.18, 16), apron, Vector3(0, 1.26, 0.02)) # knitted prairie shawl
+	else:
+		# Work boots, trousers, tucked shirt, suspenders
+		for sx in [-0.11, 0.11]:
+			_mi(parent, _cyl(0.075, 0.085, 0.76, 12), dark, Vector3(float(sx), 0.38, 0))
+			_mi(parent, _box(Vector3(0.13, 0.10, 0.22)), _mat(Color(0.12, 0.12, 0.14), 0.6), Vector3(float(sx), 0.05, -0.03))
+		_mi(parent, _cyl(0.19, 0.17, 0.56, 18), _mat(Color(0.62, 0.62, 0.65), 0.85), Vector3(0, 1.06, 0))
+		for sx in [-0.09, 0.09]:
+			_mi(parent, _box(Vector3(0.04, 0.52, 0.22)), dark, Vector3(float(sx), 1.06, 0)) # suspenders
+
+	# Articulated arms + hands
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(parent, _sph(0.072, 0.13, 10), dress if is_aunt_em else _mat(Color(0.62, 0.62, 0.65), 0.85), Vector3(s * 0.22, 1.26, 0))
+		_mi(parent, _cyl(0.048, 0.038, 0.44, 10), skin, Vector3(s * 0.26, 1.04, -0.04), Vector3(14, 0, -s * 12))
+		_mi(parent, _sph(0.04, 0.08, 8), skin, Vector3(s * 0.30, 0.84, -0.10))
+
+	# Neck, sculpted head, eyes, hair bun or farmer hat + mustache
+	_mi(parent, _cyl(0.045, 0.055, 0.12, 12), skin, Vector3(0, 1.38, 0))
+	_mi(parent, _sph(0.135, 0.29, 18), skin, Vector3(0, 1.54, 0))
+	for ex in [-0.045, 0.045]:
+		_mi(parent, _sph(0.018, 0.036, 8), dark, Vector3(float(ex), 1.56, -0.12))
+	if is_aunt_em:
+		_mi(parent, _sph(0.142, 0.26, 16), hair, Vector3(0, 1.58, 0.02))
+		_mi(parent, _sph(0.075, 0.13, 12), hair, Vector3(0, 1.60, 0.15)) # neat hair bun
+	else:
+		_mi(parent, _box(Vector3(0.11, 0.03, 0.04)), hair, Vector3(0, 1.48, -0.13)) # mustache
+		_mi(parent, _cyl(0.32, 0.34, 0.035, 18), dark, Vector3(0, 1.67, 0)) # wide prairie hat brim
+		_mi(parent, _cyl(0.14, 0.16, 0.18, 16), dark, Vector3(0, 1.76, 0))
 
 ## Carved wooden flatbed Mice Cart with spoked wheels, hitch shafts, and 6 harnessed 3D Field Mice.
 static func build_mice_cart_visual(parent: Node3D) -> void:
