@@ -561,23 +561,12 @@ func _build_world() -> void:
 	WorldKit.build_poppy_beds(self, POPPY_START_Z, POPPY_END_Z)
 	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.28, 0.45, 0.26))
 	_add_box(Vector3(0, 0.03, 42), Vector3(40, 0.08, 24), Color(0.4, 0.65, 0.38), "SafeMeadow")
-	_add_box(WEST_GATE + Vector3(0, 0.02, 0), Vector3(7.0, 0.14, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
-	_add_box(CLEAR_AIR_POS + Vector3(0, 0.02, 0), Vector3(5.0, 0.12, 5.0), Color(0.35, 0.75, 1.0), "ClearAirPad")
-	var ybr := Label3D.new()
-	ybr.text = "YELLOW BRICK ROAD\n→ through the poppies"
-	ybr.font_size = 42
-	ybr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	ybr.modulate = Color(1.0, 0.9, 0.4)
-	add_child(ybr)
-	ybr.global_position = Vector3(0, 3.5, -48)
-	var warn := Label3D.new()
-	warn.name = "PoppyWarn"
-	warn.text = "DEADLY POPPY FIELD\nFlesh sleeps — straw & tin do not"
-	warn.font_size = 40
-	warn.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	warn.modulate = Color(1.0, 0.4, 0.45)
-	add_child(warn)
-	warn.global_position = Vector3(0, 4.0, POPPY_START_Z)
+	_add_box(WEST_GATE + Vector3(0, -0.02, 0), Vector3(7.0, 0.08, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
+	_add_box(CLEAR_AIR_POS + Vector3(0, -0.02, 0), Vector3(5.0, 0.08, 5.0), Color(0.35, 0.75, 1.0), "ClearAirPad")
+	var poppy_sign := WorldKit.make_wooden_signpost(Vector3(-3.8, 0.0, -46.0), "POPPY FIELD", Color(1.0, 0.40, 0.45), WEST_GATE)
+	add_child(poppy_sign)
+	var warn_sign := WorldKit.make_wooden_signpost(Vector3(3.8, 0.0, POPPY_START_Z - 2.0), "DEADLY SCENT", Color(1.0, 0.32, 0.38), WEST_GATE)
+	add_child(warn_sign)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.92, 0.85)
 	sun.light_energy = 1.05
@@ -603,13 +592,6 @@ func _build_world() -> void:
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)
-	var title := Label3D.new()
-	title.text = "THE DEADLY\nPOPPY FIELD"
-	title.font_size = 56
-	title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	title.modulate = Color(1.0, 0.45, 0.5)
-	add_child(title)
-	title.global_position = Vector3(0, 9, -10)
 
 func _spawn_party() -> void:
 	hud = HUD_SCENE.instantiate()

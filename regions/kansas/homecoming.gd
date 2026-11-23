@@ -7,11 +7,13 @@ extends Node3D
 
 const PLAYER_SCENE := preload("res://actors/dorothy/player.tscn")
 const HUD_SCENE := preload("res://ui/play_hud.tscn")
+const WorldKit := preload("res://systems/world_kit.gd")
 
 const PLAY_BOUND_X := 40.0
 const PLAY_BOUND_Z := 36.0
 const SPAWN := Vector3(6.0, 0.08, 18.0)
 const AUNT_POS := Vector3(-2.0, 0.08, -4.0)
+const UNCLE_POS := Vector3(-6.2, 0.08, -4.5)
 const HOUSE_POS := Vector3(-2.0, 0.0, -10.0)
 const PORCH_PAD := Vector3(-2.0, 0.08, -6.5)
 
@@ -28,11 +30,16 @@ enum Phase {
 var hud: CanvasLayer
 var player: CharacterBody3D
 var aunt_em: Node3D
+var uncle_henry: Node3D
 var farmhouse: Node3D
+var _wind_clothes: Array = []
+var _windmill_rotor: Node3D = null
+var _wind_t: float = 0.0
 var fade: ColorRect
 var compass: Label
 var phase: Phase = Phase.LANDING
 var _near_aunt: bool = false
+var _near_uncle: bool = false
 var _near_porch: bool = false
 var _aunt_line: int = 0
 var _fade_t: float = 0.0
@@ -89,6 +96,13 @@ func _process(delta: float) -> void:
 	if player == null or _ended:
 		return
 	_update_compass()
+	_wind_t += delta
+	for ci in range(_wind_clothes.size()):
+		var cl := _wind_clothes[ci] as Node3D
+		if cl and is_instance_valid(cl):
+			cl.rotation.x = sin(_wind_t * 2.4 + float(ci) * 0.9) * 0.22
+	if _windmill_rotor and is_instance_valid(_windmill_rotor):
+		_windmill_rotor.rotate_z(delta * 1.4)
 	if phase == Phase.LANDING:
 		_landing_t += delta
 		if fade:
@@ -102,6 +116,7 @@ func _process(delta: float) -> void:
 			_finish("There's no place like the road that ends.")
 		return
 	_near_aunt = phase in [Phase.FIND_AUNT, Phase.REUNION] and player.global_position.distance_to(AUNT_POS) < 3.2
+	_near_uncle = player.global_position.distance_to(UNCLE_POS) < 3.0
 	_near_porch = phase in [Phase.WALK_HOME, Phase.PORCH] and player.global_position.distance_to(PORCH_PAD) < 3.5
 	if Input.is_action_just_pressed("interact"):
 		if _near_aunt and phase == Phase.FIND_AUNT:
@@ -109,6 +124,10 @@ func _process(delta: float) -> void:
 			_advance_aunt()
 		elif _near_aunt and phase == Phase.REUNION:
 			_advance_aunt()
+		elif _near_uncle:
+			var du := get_node_or_null("/root/DialogueUI")
+			if du and du.has_method("say"):
+				du.say("Uncle Henry", "Dorothy! Bless my soul — the child is back, and Toto too! Come on up to the porch.", true, 4.0)
 		elif _near_porch and phase == Phase.WALK_HOME:
 			_set_phase(Phase.PORCH)
 		elif _near_porch and phase == Phase.PORCH:
@@ -178,22 +197,28 @@ func _build_world() -> void:
 	_add_box(Vector3(0, -0.2, -20), Vector3(70, 0.4, 40), Color(0.4, 0.4, 0.42), "GroundN")
 	# Dirt path to house (grey)
 	_add_box(Vector3(2, 0.04, 6), Vector3(4.0, 0.08, 28), Color(0.48, 0.46, 0.42), "Path")
-	# Farmhouse mass
+	# Farmhouse dressed with full Kansas storybook architecture (matching L1 farmyard!)
 	farmhouse = Node3D.new()
 	farmhouse.name = "Farmhouse"
 	add_child(farmhouse)
 	farmhouse.global_position = HOUSE_POS
-	_add_box_to(farmhouse, Vector3(0, 2.0, 0), Vector3(7.0, 4.0, 5.5), Color(0.5, 0.5, 0.52), "HouseBody")
-	_add_box_to(farmhouse, Vector3(0, 4.6, 0), Vector3(8.0, 1.2, 6.2), Color(0.35, 0.35, 0.38), "Roof")
+	_add_box_to(farmhouse, Vector3(0, 2.0, 0), Vector3(7.0, 4.0, 5.5), Color(0.48, 0.48, 0.50), "HouseBody")
+	WorldKit.dress_cottage_exterior(farmhouse, 3.5, 2.75, 4.0, Color(0.48, 0.48, 0.50), Color(0.28, 0.28, 0.31))
+	WorldKit.make_building_crest_sign(farmhouse, Vector3(0, 4.15, 3.1), "GALE FARMHOUSE", Color(0.55, 0.55, 0.58), true)
+	# Matching L1 Kansas landmarks: Barn, Clothesline, Lattice Windmill, Prairie Grass & Horizon Hills
+	var barn := Node3D.new()
+	barn.name = "Barn"
+	add_child(barn)
+	barn.global_position = Vector3(-20.0, 0.0, 14.0)
+	_add_box_to(barn, Vector3(0, 2.25, 0), Vector3(7.0, 4.5, 6.0), Color(0.36, 0.36, 0.39), "BarnBody")
+	WorldKit.dress_cottage_exterior(barn, 3.5, 3.0, 4.5, Color(0.36, 0.36, 0.39), Color(0.22, 0.22, 0.25), true)
+	WorldKit.make_building_crest_sign(barn, Vector3(0, 4.6, 3.3), "BARN", Color(0.45, 0.45, 0.48), true)
+	_wind_clothes = WorldKit.build_clothesline(self, Vector3(8.0, 0.0, 4.0))
+	_windmill_rotor = WorldKit.build_lattice_windmill(self, Vector3(-26.0, 0.0, -10.0))
+	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 4), 32.0, 100, 4.8)
 	# Porch pad (FINAL STEP)
-	_add_box(PORCH_PAD + Vector3(0, 0.02, 0), Vector3(5.5, 0.12, 4.0), Color(0.55, 0.55, 0.58), "PorchPad")
-	var porch_lab := Label3D.new()
-	porch_lab.text = "HOME\n(FINAL STEP · E)"
-	porch_lab.font_size = 44
-	porch_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	porch_lab.modulate = Color(0.9, 0.9, 0.92)
-	add_child(porch_lab)
-	porch_lab.global_position = PORCH_PAD + Vector3(0, 3.5, 0)
+	_add_box(PORCH_PAD + Vector3(0, -0.02, 0), Vector3(5.5, 0.08, 4.0), Color(0.55, 0.55, 0.58), "PorchPad")
+	WorldKit.make_world_badge(self, PORCH_PAD + Vector3(0, 2.6, 0), "✦  Home Porch — Final Step (E)", Color(0.94, 0.94, 0.98), 14.0)
 	# Fence posts
 	for x in [-14.0, -8.0, 4.0, 10.0, 16.0]:
 		_add_box(Vector3(x, 0.7, 12), Vector3(0.25, 1.4, 0.25), Color(0.38, 0.36, 0.34), "Fence")
@@ -219,13 +244,6 @@ func _build_world() -> void:
 	basket_m.material_override = bm
 	balloon.add_child(basket_m)
 	basket_m.position = Vector3(0, -2.6, 0)
-	var blab := Label3D.new()
-	blab.text = "a balloon drifts far\n(the Wizard's — not yours)"
-	blab.font_size = 28
-	blab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	blab.modulate = Color(0.7, 0.7, 0.72)
-	balloon.add_child(blab)
-	blab.position = Vector3(0, 3.5, 0)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(0.85, 0.85, 0.88)
 	sun.light_energy = 0.85
@@ -244,13 +262,7 @@ func _build_world() -> void:
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)
-	var title := Label3D.new()
-	title.text = "KANSAS\nHomecoming"
-	title.font_size = 56
-	title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	title.modulate = Color(0.85, 0.85, 0.88)
-	add_child(title)
-	title.global_position = Vector3(0, 8, 8)
+	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.34, 0.34, 0.37))
 
 func _spawn_cast() -> void:
 	hud = HUD_SCENE.instantiate()
@@ -261,49 +273,21 @@ func _spawn_cast() -> void:
 	# Shoes carried her; they fall away in the desert — no Oz power on home soil.
 	if player.has_method("set_kansas_locked"):
 		player.set_kansas_locked(true)
-	# Toto marker
-	var toto := MeshInstance3D.new()
-	toto.name = "Toto"
-	var ts := SphereMesh.new()
-	ts.radius = 0.28
-	ts.height = 0.45
-	toto.mesh = ts
-	var tm := StandardMaterial3D.new()
-	tm.albedo_color = Color(0.25, 0.22, 0.2)
-	toto.material_override = tm
-	add_child(toto)
-	toto.global_position = SPAWN + Vector3(0.8, 0.25, 0.4)
-	# Aunt Em
+	# PlayHUD automatically spawns the real sculpted, playable 3D Cairn Terrier Toto!
+	# Aunt Em (exact same articulated character visual as L1 Kansas!)
 	aunt_em = CharacterBody3D.new()
 	aunt_em.name = "AuntEm"
 	add_child(aunt_em)
 	aunt_em.global_position = AUNT_POS
-	var body := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.28
-	cyl.bottom_radius = 0.45
-	cyl.height = 1.5
-	body.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.55, 0.55, 0.58)
-	body.material_override = mat
-	body.position = Vector3(0, 0.85, 0)
-	aunt_em.add_child(body)
-	var head := MeshInstance3D.new()
-	var hs := SphereMesh.new()
-	hs.radius = 0.22
-	hs.height = 0.44
-	head.mesh = hs
-	head.material_override = mat
-	head.position = Vector3(0, 1.8, 0)
-	aunt_em.add_child(head)
-	var lab := Label3D.new()
-	lab.text = "AUNT EM"
-	lab.font_size = 40
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.9, 0.9, 0.92)
-	lab.position = Vector3(0, 2.8, 0)
-	aunt_em.add_child(lab)
+	WorldKit.build_kansas_farmer(aunt_em, true)
+	WorldKit.make_world_badge(aunt_em, Vector3(0, 2.25, 0), "✦  Aunt Em", Color(0.94, 0.94, 0.98), 12.0)
+	# Uncle Henry on the yard beside Aunt Em!
+	uncle_henry = CharacterBody3D.new()
+	uncle_henry.name = "UncleHenry"
+	add_child(uncle_henry)
+	uncle_henry.global_position = UNCLE_POS
+	WorldKit.build_kansas_farmer(uncle_henry, false)
+	WorldKit.make_world_badge(uncle_henry, Vector3(0, 2.25, 0), "✦  Uncle Henry", Color(0.94, 0.94, 0.98), 12.0)
 	# Soft whimsy — grey prairie only
 	var w := get_node_or_null("/root/Whimsy")
 	if w and w.has_method("setup") and hud:

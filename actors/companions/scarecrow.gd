@@ -76,6 +76,8 @@ func _physics_process(delta: float) -> void:
 	if leading:
 		if kit_lock <= 0.0:
 			_move_as_lead(delta)
+			if Input.is_action_just_pressed("blink") and is_on_floor():
+				velocity.y = 7.4
 		else:
 			velocity.x = move_toward(velocity.x, 0.0, friction * delta * move_speed)
 			velocity.z = move_toward(velocity.z, 0.0, friction * delta * move_speed)

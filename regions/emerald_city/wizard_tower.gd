@@ -32,6 +32,10 @@ var wizard_body: Node3D
 var curtain: Node3D
 var hall_root: Node3D
 var door_seal: StaticBody3D
+var _gate_seal: StaticBody3D
+var _gate_doors: Dictionary = {}
+var _palace_doors: Dictionary = {}
+var _projection_dismissed: bool = false
 var gate_pos: Vector3 = Vector3(0, 0.08, -8)
 var door_pos: Vector3 = Vector3(0, 0.08, -38)
 var hall_stand: Vector3 = Vector3(0, 0.15, -46)
@@ -101,9 +105,10 @@ func _process(delta: float) -> void:
 		and actor.global_position.distance_to(curtain.global_position) < 4.0
 	if Input.is_action_just_pressed("interact"):
 		if _near_gate and beat == Beat.GATES:
+			_open_gate_doors()
 			_set_beat(Beat.ENTER_HALL)
-			# Walk them through the arch onto the palace approach.
-			actor.global_position = Vector3(0, 0.12, -18)
+			if DisplayServer.get_name() in ["headless", "Dummy"]:
+				actor.global_position = Vector3(0, 0.12, -18)
 		elif _near_door and not _in_hall:
 			_enter_hall(false)
 			_set_beat(Beat.AUDIENCE)
@@ -134,14 +139,33 @@ func _say(line: String) -> void:
 	if dui and dui.has_method("say_line"):
 		dui.say_line(line, true)
 
+func _open_gate_doors() -> void:
+	if _gate_seal:
+		_gate_seal.collision_layer = 0
+	if _gate_doors.has("left") and _gate_doors.has("right"):
+		var tw := create_tween()
+		tw.set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(_gate_doors["left"], "rotation_degrees:y", 105.0, 1.1)
+		tw.tween_property(_gate_doors["right"], "rotation_degrees:y", -105.0, 1.1)
+
 func _enter_hall(skip_walk: bool) -> void:
 	_in_hall = true
 	if door_seal:
 		door_seal.collision_layer = 0
 		door_seal.visible = false
+	if _palace_doors.has("left") and _palace_doors.has("right"):
+		var tw := create_tween()
+		tw.set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(_palace_doors["left"], "rotation_degrees:y", 105.0, 1.25)
+		tw.tween_property(_palace_doors["right"], "rotation_degrees:y", -105.0, 1.25)
 	var actor := _lead()
 	if actor and not skip_walk:
-		actor.global_position = hall_stand
+		if DisplayServer.get_name() in ["headless", "Dummy"]:
+			actor.global_position = hall_stand
+		else:
+			var wtw := create_tween()
+			wtw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			wtw.tween_property(actor, "global_position", hall_stand, 1.15)
 	# Stagger party into hall.
 	var party := get_node_or_null("/root/Party")
 	if party and party.has_method("combat_bodies"):
@@ -151,7 +175,12 @@ func _enter_hall(skip_walk: bool) -> void:
 			for b in bodies:
 				if b is CharacterBody3D and b != actor:
 					i += 1
-					(b as CharacterBody3D).global_position = hall_stand + Vector3(float(i % 3) - 1.0, 0, 1.2 + float(i) * 0.8)
+					var dest := hall_stand + Vector3(float(i % 3) - 1.0, 0, 1.2 + float(i) * 0.8)
+					if DisplayServer.get_name() in ["headless", "Dummy"]:
+						(b as CharacterBody3D).global_position = dest
+					else:
+						var btw := create_tween()
+						btw.tween_property(b, "global_position", dest, 1.25)
 
 func _build_world() -> void:
 	_add_box(Vector3(0, -0.2, 20), Vector3(90, 0.4, 100), Color(0.18, 0.32, 0.22), "OuterGround")
@@ -161,29 +190,27 @@ func _build_world() -> void:
 		var z := 38.0 - float(i) * 4.2
 		_add_box(Vector3(-2.6, 0.08, z), Vector3(2.0, 0.06, 2.0), Color(0.95, 0.82, 0.25), "Brick")
 		_add_box(Vector3(2.6, 0.08, z), Vector3(2.0, 0.06, 2.0), Color(0.88, 0.72, 0.18), "Brick")
-	var ybr := Label3D.new()
-	ybr.text = "YELLOW BRICK ROAD\n→ Emerald City"
-	ybr.font_size = 48
-	ybr.pixel_size = 0.014
-	ybr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	ybr.modulate = Color(1.0, 0.9, 0.35)
-	ybr.outline_size = 8
-	add_child(ybr)
-	ybr.global_position = Vector3(0, 3.5, 30)
-	# City gates — grander arch
+	var ybr_sign := WorldKit.make_wooden_signpost(Vector3(-4.2, 0.0, 28.0), "EMERALD CITY", Color(0.35, 0.95, 0.55), gate_pos)
+	add_child(ybr_sign)
+	# City gates — grander arch + sealed double gates
 	_add_box(Vector3(-20, 6, -8), Vector3(14, 14, 5), Color(0.12, 0.42, 0.26), "GateL")
 	_add_box(Vector3(20, 6, -8), Vector3(14, 14, 5), Color(0.12, 0.42, 0.26), "GateR")
 	_add_box(Vector3(0, 11, -8), Vector3(14, 5, 4), Color(0.18, 0.55, 0.34), "GateArch")
 	_add_box(Vector3(-8, 3, -8), Vector3(2.2, 8, 3.2), Color(0.15, 0.5, 0.3), "PillarL")
 	_add_box(Vector3(8, 3, -8), Vector3(2.2, 8, 3.2), Color(0.15, 0.5, 0.3), "PillarR")
-	var glab := Label3D.new()
-	glab.text = "EMERALD CITY GATES\n(E — pass through)"
-	glab.font_size = 44
-	glab.pixel_size = 0.013
-	glab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	glab.modulate = Color(0.5, 1.0, 0.65)
-	add_child(glab)
-	glab.global_position = gate_pos + Vector3(0, 6, 0)
+	_gate_doors = WorldKit.build_palace_double_doors(self, Vector3(0, 0, -8.0), 13.8, 8.5)
+	_gate_seal = StaticBody3D.new()
+	_gate_seal.name = "EmeraldGateSeal"
+	_gate_seal.collision_layer = 1
+	add_child(_gate_seal)
+	_gate_seal.global_position = Vector3(0, 4.2, -8.0)
+	var gcs := CollisionShape3D.new()
+	var gsh := BoxShape3D.new()
+	gsh.size = Vector3(14.0, 8.5, 1.2)
+	gcs.shape = gsh
+	_gate_seal.add_child(gcs)
+	WorldKit.make_building_crest_sign(self, Vector3(0, 9.6, -5.8), "EMERALD CITY GATES", Color(0.22, 0.78, 0.45), false)
+	WorldKit.make_world_badge(self, gate_pos + Vector3(0, 3.6, 1.2), "✦  Emerald City Gates — Open (E)", Color(0.55, 1.0, 0.72), 14.0)
 	# Plaza
 	_add_box(Vector3(0, -0.12, -40), Vector3(70, 0.4, 55), Color(0.16, 0.38, 0.26), "Plaza")
 	# Approach stairs up to palace (climbable)
@@ -215,14 +242,6 @@ func _build_world() -> void:
 	env.environment = e
 	add_child(env)
 	_add_map_border(48.0, 58.0)
-	var title := Label3D.new()
-	title.text = "EMERALD CITY"
-	title.font_size = 72
-	title.pixel_size = 0.018
-	title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	title.modulate = Color(0.45, 1.0, 0.6)
-	add_child(title)
-	title.global_position = Vector3(0, 12, -22)
 
 func _build_palace_hall() -> void:
 	hall_root = Node3D.new()
@@ -251,37 +270,20 @@ func _build_palace_hall() -> void:
 	# Throne dais
 	_add_box(Vector3(0, 0.45, -60), Vector3(10, 0.9, 6), Color(0.35, 0.28, 0.15), "ThroneDais")
 	_add_box(Vector3(0, 1.4, -61.5), Vector3(3.2, 2.2, 1.6), Color(0.55, 0.45, 0.2), "ThroneSeat")
-	# Door seal (blocks until E)
+	# Full-width colossal Emerald & Gold Double Doors completely sealing the 10m archway until E!
+	_palace_doors = WorldKit.build_palace_double_doors(self, Vector3(0, 0, -36.5), 10.0, 7.5)
 	door_seal = StaticBody3D.new()
 	door_seal.name = "PalaceDoorSeal"
 	add_child(door_seal)
-	door_seal.global_position = door_pos + Vector3(0, 2.2, 0)
+	door_seal.global_position = Vector3(0, 3.75, -36.5)
 	door_seal.collision_layer = 1
 	var dcs := CollisionShape3D.new()
 	var dbox := BoxShape3D.new()
-	dbox.size = Vector3(5.5, 4.4, 0.6)
+	dbox.size = Vector3(10.4, 7.6, 1.2)
 	dcs.shape = dbox
 	door_seal.add_child(dcs)
-	var dmi := MeshInstance3D.new()
-	var dm := BoxMesh.new()
-	dm.size = dbox.size
-	dmi.mesh = dm
-	var dmat := StandardMaterial3D.new()
-	dmat.albedo_color = Color(0.08, 0.35, 0.22)
-	dmat.emission_enabled = true
-	dmat.emission = Color(0.15, 0.6, 0.35)
-	dmat.emission_energy_multiplier = 0.6
-	dmi.material_override = dmat
-	door_seal.add_child(dmi)
-	var dlab := Label3D.new()
-	dlab.text = "PALACE DOORS\n(E — enter the great hall)"
-	dlab.font_size = 42
-	dlab.pixel_size = 0.012
-	dlab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	dlab.modulate = Color(0.7, 1.0, 0.75)
-	dlab.outline_size = 8
-	add_child(dlab)
-	dlab.global_position = door_pos + Vector3(0, 5.2, 1.5)
+	WorldKit.make_building_crest_sign(self, Vector3(0, 8.6, -35.6), "GREAT HALL OF OZ", Color(0.22, 0.78, 0.45), false)
+	WorldKit.make_world_badge(self, door_pos + Vector3(0, 3.4, 2.2), "✦  Palace Doors — Enter Great Hall (E)", Color(0.65, 1.0, 0.78), 14.0)
 	# Hall lights
 	var lamp := OmniLight3D.new()
 	lamp.light_color = Color(0.6, 1.0, 0.7)
@@ -334,7 +336,7 @@ func _add_limb(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	mi.position = pos
 
 func _pulse_projection(delta: float) -> void:
-	if wizard_head == null or not wizard_head.visible:
+	if _projection_dismissed or wizard_head == null or not wizard_head.visible:
 		return
 	_head_pulse += delta
 	var s := 1.0 + sin(_head_pulse * 2.2) * 0.04
@@ -440,12 +442,18 @@ func _set_beat(next: Beat) -> void:
 		Beat.CURTAIN:
 			hud.set_objective("Final step: pull the red curtain (E) — the man behind the spectacle.")
 			hud.set_prompt("E at the red curtain · this is the level end-gate")
-			if wizard_head:
+			_projection_dismissed = true
+			if wizard_head and wizard_head.visible:
 				var tw := create_tween()
-				tw.tween_property(wizard_head, "scale", Vector3(0.15, 0.15, 0.15), 0.9)
+				tw.tween_property(wizard_head, "scale", Vector3(0.02, 0.02, 0.02), 0.75).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+				tw.tween_callback(func():
+					if wizard_head:
+						wizard_head.visible = false
+				)
 		Beat.CHOICE:
 			hud.set_objective("The Wizard is only a man. E — take the Yellow Brick Road south to Glinda.")
 			hud.set_prompt("E  —  \"I want to go home\" → Glinda / Road Home (L5)")
+			_projection_dismissed = true
 			if wizard_body:
 				wizard_body.visible = true
 			if curtain:

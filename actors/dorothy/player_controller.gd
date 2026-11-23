@@ -277,6 +277,8 @@ func _blink() -> void:
 	var burst_spd := maxf(blink_distance / 0.10, 34.0)
 	velocity.x = dir.x * burst_spd
 	velocity.z = dir.z * burst_spd
+	if is_on_floor():
+		velocity.y = 7.4 # physical hop onto curbs/platforms!
 	visual.rotation.y = atan2(-dir.x, -dir.z)
 
 func _blink_destination(dir: Vector3) -> Vector3:

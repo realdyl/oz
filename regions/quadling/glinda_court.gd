@@ -156,9 +156,10 @@ func _go_homecoming(msg: String) -> void:
 func _build_world() -> void:
 	_add_box(Vector3(0, -0.2, 0), Vector3(90, 0.4, 100), Color(0.55, 0.35, 0.48), "Ground")
 	_add_box(Vector3(0, -0.2, -30), Vector3(70, 0.4, 50), Color(0.5, 0.32, 0.45), "GroundS")
-	_add_box(Vector3(0, 0.05, 10), Vector3(5.6, 0.1, 55), Color(0.95, 0.82, 0.25), "YellowBrickRoad")
-	_add_box(Vector3(0, 0.05, -30), Vector3(5.8, 0.12, 30), Color(0.96, 0.84, 0.28), "YellowBrickRoadS")
-	_add_box(ROAD_HOME_PAD + Vector3(0, 0.02, 0), Vector3(7.5, 0.16, 7.5), Color(1.0, 0.75, 0.9), "RoadHomePad")
+	# Flush Yellow Brick Road strips (top y = 0.03m — effortless to step onto from any side!)
+	_add_box(Vector3(0, 0.00, 10), Vector3(5.6, 0.06, 55), Color(0.95, 0.82, 0.25), "YellowBrickRoad")
+	_add_box(Vector3(0, 0.00, -30), Vector3(5.8, 0.06, 30), Color(0.96, 0.84, 0.28), "YellowBrickRoadS")
+	_add_box(ROAD_HOME_PAD + Vector3(0, -0.02, 0), Vector3(7.5, 0.08, 7.5), Color(1.0, 0.75, 0.9), "RoadHomePad")
 	# Tall emissive marker so the pad never reads as “just floor”
 	var post := MeshInstance3D.new()
 	post.name = "RoadHomeMarker"
@@ -203,14 +204,8 @@ func _build_world() -> void:
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)
-	var title := Label3D.new()
-	title.text = "QUADLING COUNTRY\nGlinda · the South"
-	title.font_size = 56
-	title.pixel_size = 0.015
-	title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	title.modulate = Color(1.0, 0.65, 0.85)
-	add_child(title)
-	title.global_position = Vector3(0, 9, -8)
+	var sign_glinda := WorldKit.make_wooden_signpost(Vector3(-3.8, 0.0, 22.0), "GLINDA'S COURT", Color(1.0, 0.65, 0.85), GLINDA_POS)
+	add_child(sign_glinda)
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	var h := 3.2
@@ -277,7 +272,7 @@ func _spawn_glinda() -> void:
 	glinda = CharacterBody3D.new()
 	glinda.name = "Glinda"
 	add_child(glinda)
-	glinda.global_position = GLINDA_POS
+	glinda.global_position = Vector3(GLINDA_POS.x, 0.12, GLINDA_POS.z) # feet squarely on top of collidable marble dais!
 	WorldKit.build_glinda_visual(glinda)
 	WorldKit.make_world_badge(glinda, Vector3(0, 2.75, 0), "✦  Glinda — Good Witch of the South", Color(1.0, 0.82, 0.94), 14.0)
 	var light := OmniLight3D.new()

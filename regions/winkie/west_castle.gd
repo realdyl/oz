@@ -150,23 +150,10 @@ func _build_world() -> void:
 	_add_box(Vector3(6.5, 4.5, -36), Vector3(3.5, 9, 5), Color(0.16, 0.11, 0.1), "GatePillarR")
 	_add_box(Vector3(0, 10.5, -36), Vector3(16, 2.5, 5), Color(0.18, 0.12, 0.11), "GateArch")
 	# Glowing end-gate pad past the arch (story-gated E after melt).
-	_add_box(gate_pos + Vector3(0, 0.02, 0), Vector3(6.5, 0.14, 6.5), Color(0.35, 0.9, 0.45), "EmeraldGatePad")
-	var gate_lab := Label3D.new()
-	gate_lab.text = "YELLOW BRICK ROAD\n→ EMERALD CITY\n(E when West falls)"
-	gate_lab.font_size = 42
-	gate_lab.pixel_size = 0.013
-	gate_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	gate_lab.modulate = Color(0.3, 0.95, 0.5)
-	gate_lab.outline_size = 8
-	add_child(gate_lab)
-	gate_lab.global_position = gate_pos + Vector3(0, 4.2, 0)
-	var ybr_lab := Label3D.new()
-	ybr_lab.text = "YBR → EMERALD"
-	ybr_lab.font_size = 40
-	ybr_lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	ybr_lab.modulate = Color(1.0, 0.9, 0.35)
-	add_child(ybr_lab)
-	ybr_lab.global_position = Vector3(0, 3.2, -20)
+	_add_box(gate_pos + Vector3(0, -0.02, 0), Vector3(6.5, 0.08, 6.5), Color(0.35, 0.9, 0.45), "EmeraldGatePad")
+	WorldKit.make_world_badge(self, gate_pos + Vector3(0, 3.2, 0), "✦  Emerald City Gate (E)", Color(0.45, 0.96, 0.58), 16.0)
+	var em_sign := WorldKit.make_wooden_signpost(Vector3(-3.8, 0.0, -20.0), "EMERALD CITY", Color(0.45, 0.95, 0.55), gate_pos)
+	add_child(em_sign)
 	# Ornate wrought-iron flaming braziers off the brick centerline
 	for i in 6:
 		var a := float(i) / 6.0 * TAU
@@ -224,16 +211,7 @@ func _build_world() -> void:
 	add_child(env)
 	# Map border rails — north edge past the Emerald gate pad
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)
-	# Title
-	var title := Label3D.new()
-	title.text = "WINKIE CASTLE\nWitch of the West"
-	title.font_size = 64
-	title.pixel_size = 0.016
-	title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	title.modulate = Color(0.85, 0.35, 0.3)
-	title.outline_size = 10
-	add_child(title)
-	title.global_position = Vector3(0, 8, -8)
+	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.10, 0.09, 0.12))
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	var h := 3.5

@@ -19,7 +19,7 @@ func try_step(body: CharacterBody3D, dir: Vector3, step_height: float = DEFAULT_
 	var d: Vector3 = dir.normalized()
 	var rid: RID = body.get_rid()
 	for dist_mul in [0.42, 0.62]:
-		var feet: Vector3 = body.global_position + Vector3(0, 0.10, 0)
+		var feet: Vector3 = body.global_position + Vector3(0, 0.025, 0)
 		var ahead: Vector3 = feet + d * float(dist_mul)
 		var hit_wall: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(feet, ahead, 1, [rid]))
 		# Only step up when an actual VERTICAL riser wall blocks feet (normal.y < 0.35).
@@ -31,14 +31,14 @@ func try_step(body: CharacterBody3D, dir: Vector3, step_height: float = DEFAULT_
 			continue
 		var hit_top: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(
 			ahead + Vector3(0, step_height + 0.45, 0),
-			ahead + Vector3(0, 0.02, 0),
+			ahead + Vector3(0, 0.01, 0),
 			1,
 			[rid]
 		))
 		if hit_top.is_empty():
 			continue
 		var land_y: float = hit_top.position.y
-		if land_y <= body.global_position.y + 0.06 or land_y > body.global_position.y + step_height + 0.22:
+		if land_y <= body.global_position.y + 0.02 or land_y > body.global_position.y + step_height + 0.22:
 			continue
 		if not _head_clear(space, rid, ahead.x, land_y, ahead.z):
 			continue

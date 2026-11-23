@@ -290,13 +290,8 @@ func _add_barn(at: Vector3) -> void:
 	roof.material_override = rm
 	barn.add_child(roof)
 	roof.position = Vector3(0, 4.6, 0)
-	var lab := Label3D.new()
-	lab.text = "Barn"
-	lab.font_size = 64
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 5.4, 0)
-	lab.modulate = Color(0.85, 0.85, 0.88)
-	barn.add_child(lab)
+	WorldKit.dress_cottage_exterior(barn, 3.5, 3.0, 4.5, Color(0.35, 0.35, 0.38), Color(0.22, 0.22, 0.25), true)
+	WorldKit.make_building_crest_sign(barn, Vector3(0, 4.65, 3.3), "BARN", Color(0.45, 0.45, 0.48), true)
 
 func _add_chicken_coop(at: Vector3) -> void:
 	var coop := StaticBody3D.new()
@@ -429,13 +424,7 @@ func _add_house_shutter(at: Vector3) -> void:
 	panel.material_override = pm
 	panel.position = Vector3(-0.35, 1.1, 0.1)
 	shutter.add_child(panel)
-	var lab := Label3D.new()
-	lab.text = "Shutter"
-	lab.font_size = 40
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 2.2, 0)
-	lab.modulate = Color(0.9, 0.9, 0.92)
-	shutter.add_child(lab)
+	WorldKit.make_world_badge(shutter, Vector3(0, 2.2, 0), "✦  Shutter (E)", Color(0.92, 0.92, 0.96), 10.0)
 	add_child(shutter)
 	shutter.global_position = at
 	shutter.body_entered.connect(func(b): if b.is_in_group("player"): _near_shutter = true)
@@ -466,13 +455,7 @@ func _add_cellar_door(at: Vector3) -> void:
 		flap.position = Vector3(-0.45 + float(i) * 0.9, 0.08, 0)
 		flap.rotation_degrees.x = -18.0
 		cellar.add_child(flap)
-	var lab := Label3D.new()
-	lab.text = "Cellar doors"
-	lab.font_size = 40
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.position = Vector3(0, 1.1, 0)
-	lab.modulate = Color(0.9, 0.9, 0.92)
-	cellar.add_child(lab)
+	WorldKit.make_world_badge(cellar, Vector3(0, 1.15, 0), "✦  Storm Cellar (E)", Color(0.92, 0.92, 0.96), 10.0)
 	add_child(cellar)
 	cellar.global_position = at
 	cellar.body_entered.connect(func(b): if b.is_in_group("player"): _near_cellar = true)
@@ -957,13 +940,7 @@ func _make_enterable_box(host: Node3D, title: String, interior: Vector3, exterio
 	plate.material_override = pm
 	plate.position = Vector3(0, 1.0, 0)
 	door.add_child(plate)
-	var dlab := Label3D.new()
-	dlab.text = "Enter %s (E)" % title
-	dlab.font_size = 28
-	dlab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	dlab.position = Vector3(0, 2.35, 0)
-	dlab.modulate = Color(0.85, 0.85, 0.9)
-	door.add_child(dlab)
+	WorldKit.make_world_badge(door, Vector3(0, 2.35, 0), "✦  Enter %s (E)" % title, Color(0.92, 0.92, 0.96), 9.0)
 	add_child(door)
 	door.global_position = exterior
 	door.set_meta("title", title)

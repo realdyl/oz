@@ -213,6 +213,8 @@ func _physics_process(delta: float) -> void:
 		else:
 			velocity.x = move_toward(velocity.x, 0.0, 20.0 * delta)
 			velocity.z = move_toward(velocity.z, 0.0, 20.0 * delta)
+		if Input.is_action_just_pressed("blink") and is_on_floor():
+			velocity.y = 7.6
 		move_and_slide()
 		spd = Vector2(velocity.x, velocity.z).length()
 

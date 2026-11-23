@@ -7,6 +7,7 @@ extends RefCounted
 static var _grass_shader: Shader = null
 static var _leaf_shader: Shader = null
 static var _fishnet_shader: Shader = null
+static var _holo_shader: Shader = null
 static var _grass_mats: Array[ShaderMaterial] = []
 
 static func _mat(
@@ -1487,73 +1488,162 @@ static func build_emerald_palace_facade(parent: Node3D, at: Vector3) -> void:
 	arch_ring.outer_radius = 4.5
 	_mi(root, arch_ring, gold, Vector3(0, 7.2, 15.8))
 
-## Badass towering 3D sculpted holographic visage of OZ THE GREAT AND POWERFUL!
-static func build_oz_projection_head(parent: Node3D) -> void:
-	var plasma := _mat(Color(0.16, 0.88, 0.46, 0.72), 0.18, 0.25, Color(0.14, 0.96, 0.48), 1.65)
-	plasma.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var plasma_deep := _mat(Color(0.06, 0.42, 0.24, 0.85), 0.25, 0.35, Color(0.08, 0.62, 0.32), 1.0)
-	plasma_deep.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var fire_eye := _mat(Color(1.0, 0.76, 0.16), 0.1, 0.0, Color(1.0, 0.52, 0.08), 3.6)
-	var pupil := _mat(Color(0.06, 0.02, 0.02), 0.1)
-	var gold := _mat(Color(0.95, 0.78, 0.28), 0.22, 0.88, Color(0.95, 0.72, 0.20), 0.8)
-	var flame := _mat(Color(0.32, 1.0, 0.62, 0.68), 0.15, 0.0, Color(0.28, 1.0, 0.58), 2.2)
-	flame.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+## Holographic Fresnel rim-glow + horizontal arcane scanlines spatial shader for Oz Projection.
+static func make_hologram_material(base_col: Color, rim_col: Color, alpha: float = 0.84) -> ShaderMaterial:
+	if _holo_shader == null:
+		_holo_shader = Shader.new()
+		_holo_shader.code = """
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back;
 
-	# Orbiting concentric brass-and-emerald arcane astrolabe halo rings behind the head
+uniform vec4 base_color : source_color = vec4(0.05, 0.34, 0.20, 0.86);
+uniform vec4 rim_color : source_color = vec4(0.32, 1.0, 0.62, 1.0);
+uniform float alpha_val = 0.86;
+
+void fragment() {
+	float ndotv = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
+	float fresnel = pow(1.0 - ndotv, 2.3);
+	float scan = 0.88 + 0.12 * sin(FRAGCOORD.y * 0.45 + TIME * 5.0);
+	vec3 col = mix(base_color.rgb * 0.55, rim_color.rgb, fresnel * 0.92) * scan;
+	ALBEDO = col;
+	EMISSION = mix(base_color.rgb * 0.45, rim_color.rgb * 2.1, fresnel) * scan;
+	ALPHA = clamp(alpha_val + fresnel * 0.14, 0.0, 1.0);
+	ROUGHNESS = 0.22;
+}
+"""
+	var sm := ShaderMaterial.new()
+	sm.shader = _holo_shader
+	sm.set_shader_parameter("base_color", base_col)
+	sm.set_shader_parameter("rim_color", rim_col)
+	sm.set_shader_parameter("alpha_val", alpha)
+	return sm
+
+## Multi-plane chiseled volumetric holographic visage of OZ THE GREAT AND POWERFUL!
+static func build_oz_projection_head(parent: Node3D) -> void:
+	var holo_face := make_hologram_material(Color(0.06, 0.44, 0.24), Color(0.34, 1.0, 0.62), 0.88)
+	var holo_deep := make_hologram_material(Color(0.02, 0.20, 0.12), Color(0.18, 0.78, 0.44), 0.94)
+	var holo_flame := make_hologram_material(Color(0.16, 0.75, 0.42), Color(0.55, 1.0, 0.72), 0.74)
+	var cavity := _mat(Color(0.01, 0.04, 0.03), 0.95)
+	var fire_eye := _mat(Color(1.0, 0.78, 0.18), 0.1, 0.0, Color(1.0, 0.56, 0.08), 3.8)
+	var pupil := _mat(Color(0.05, 0.01, 0.01), 0.1)
+	var gold := _mat(Color(0.95, 0.78, 0.28), 0.22, 0.90, Color(0.95, 0.72, 0.20), 0.85)
+	var beam_mat := _mat(Color(0.22, 0.95, 0.55, 0.16), 0.2, 0.0, Color(0.22, 0.95, 0.55), 1.4)
+	beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+	# 1) REAR 16-Ray Golden-Emerald Sunburst Mandorla & Rotating Astrolabe (STRICTLY BEHIND HEAD at z = -1.8!)
 	var halo_outer := Node3D.new()
 	halo_outer.name = "HaloOuter"
+	halo_outer.position = Vector3(0, 0.2, -1.85)
 	parent.add_child(halo_outer)
 	var r1 := TorusMesh.new()
-	r1.inner_radius = 4.6
-	r1.outer_radius = 4.88
-	_mi(halo_outer, r1, gold, Vector3(0, 0, -0.6))
+	r1.inner_radius = 4.35
+	r1.outer_radius = 4.65
+	_mi(halo_outer, r1, gold, Vector3.ZERO)
 	var r2 := TorusMesh.new()
-	r2.inner_radius = 3.85
-	r2.outer_radius = 4.08
-	_mi(halo_outer, r2, flame, Vector3(0, 0, -0.2), Vector3(16, 12, 0))
+	r2.inner_radius = 3.55
+	r2.outer_radius = 3.78
+	_mi(halo_outer, r2, holo_flame, Vector3(0, 0, 0.25))
+	for ri in range(16):
+		var a := float(ri) / 16.0 * TAU
+		var rlen := 2.4 if ri % 2 == 0 else 1.45
+		_mi(halo_outer, _cyl(0.03, 0.18, rlen, 6), gold if ri % 2 == 0 else holo_flame, Vector3(cos(a) * (4.5 + rlen * 0.45), sin(a) * (4.5 + rlen * 0.45), 0), Vector3(0, 0, rad_to_deg(a) - 90.0))
 
-	# Sculpted towering angular holographic cranium, cheekbones, brow ridge & aquiline nose
-	_mi(parent, _sph(2.65, 6.0, 20), plasma, Vector3(0, 0.35, 0), Vector3.ZERO, Vector3(0.96, 1.15, 0.88))
-	_mi(parent, _box(Vector3(3.8, 0.68, 1.4)), plasma_deep, Vector3(0, 1.45, 1.95), Vector3(12, 0, 0)) # severe furrowed brow
-	# Cheekbone plates
+	# 2) Twin Flanking Brass & Emerald Projector Pylons casting volumetric light cones toward the visage
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(parent, _sph(1.05, 1.8, 12), plasma, Vector3(s * 1.45, -0.15, 1.55), Vector3(0, s * -18, 0), Vector3(0.9, 1.1, 0.8))
-	# Aquiline holographic nose bridge
+		_mi(parent, _cyl(0.32, 0.52, 6.8, 10), gold, Vector3(s * 6.2, -3.6, 1.2))
+		_mi(parent, _sph(0.45, 0.85, 10), holo_flame, Vector3(s * 6.2, -0.1, 1.2))
+		_mi(parent, _cyl(1.85, 0.22, 6.2, 12), beam_mat, Vector3(s * 3.2, -0.1, 0.5), Vector3(0, 0, s * 84.0))
+
+	# 3) Multi-Plane Chiseled Titan Cranium & Face (NO single smooth egg sphere!)
+	_mi(parent, _cyl(1.85, 2.15, 2.2, 12), holo_face, Vector3(0, 1.65, 0.0), Vector3.ZERO, Vector3(1.05, 1.0, 0.92)) # angular upper cranium
+	_mi(parent, _sph(2.05, 2.2, 14), holo_face, Vector3(0, 2.75, -0.10), Vector3.ZERO, Vector3(0.95, 0.72, 0.88)) # domed crown
+	_mi(parent, _box(Vector3(3.15, 2.45, 2.1)), holo_deep, Vector3(0, 0.15, -0.15)) # inner structural core
+	# Fierce angled supraorbital brow arches (scowling inward over eyes)
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(parent, _box(Vector3(1.55, 0.46, 1.15)), holo_face, Vector3(s * 0.86, 1.38, 1.48), Vector3(14, s * -16, s * 16))
+		# High flared zygomatic cheekbones + hollow gaunt cheek planes
+		_mi(parent, _box(Vector3(1.15, 0.75, 1.25)), holo_face, Vector3(s * 1.42, 0.10, 1.18), Vector3(-10, s * -28, s * -12))
+		_mi(parent, _box(Vector3(0.85, 1.35, 1.15)), holo_deep, Vector3(s * 1.22, -0.78, 0.95), Vector3(0, s * -22, s * 14))
+		# Temporal side-flanges (majestic sculptural framing)
+		_mi(parent, _box(Vector3(0.45, 2.6, 1.45)), holo_deep, Vector3(s * 2.05, 0.85, 0.25), Vector3(0, s * -15, s * -8))
+
+	# Chiseled aquiline nose bridge + nostrils
 	var nose := PrismMesh.new()
-	nose.size = Vector3(0.82, 1.75, 1.15)
-	_mi(parent, nose, plasma, Vector3(0, 0.18, 2.45), Vector3(-12, 0, 0))
+	nose.size = Vector3(0.68, 1.85, 1.15)
+	_mi(parent, nose, holo_face, Vector3(0, 0.35, 1.92), Vector3(-10, 0, 0))
+	for nx in [-0.28, 0.28]:
+		_mi(parent, _sph(0.24, 0.32, 8), holo_face, Vector3(float(nx), -0.45, 1.98))
 
-	# Radiant crown of 7 floating emerald flame shards above brow
-	for ci in range(7):
-		var a := -0.78 + float(ci) / 6.0 * 1.56
-		var sh := 1.45 if ci == 3 else (1.05 if (ci == 2 or ci == 4) else 0.78)
-		_mi(parent, _cyl(0.06, 0.28, sh, 6), flame, Vector3(sin(a) * 2.45, 3.15 + cos(a) * 0.55, 0.65), Vector3(0, 0, -rad_to_deg(a) * 0.45))
+	# Sweeping sculpted holographic mustache wings above the jaw
+	for sx in [-1.0, 1.0]:
+		var s: float = float(sx)
+		_mi(parent, _cyl(0.08, 0.28, 1.65, 8), holo_flame, Vector3(s * 0.88, -0.78, 1.85), Vector3(12, s * -18, s * 74))
 
-	# Deep orbital sockets + blazing golden-amber iris eyes with vertical slit pupils
-	for ex in [-0.96, 0.96]:
+	# Deep dark orbital cavities + blazing golden-amber iris eyes with vertical slit pupils
+	for ex in [-0.88, 0.88]:
 		var x: float = float(ex)
-		_mi(parent, _sph(0.62, 1.0, 12), _mat(Color(0.02, 0.08, 0.05), 0.9), Vector3(x, 0.72, 2.08))
-		_mi(parent, _sph(0.42, 0.72, 14), fire_eye, Vector3(x, 0.72, 2.38))
-		_mi(parent, _box(Vector3(0.10, 0.54, 0.16)), pupil, Vector3(x, 0.72, 2.74))
+		_mi(parent, _box(Vector3(1.15, 0.78, 0.75)), cavity, Vector3(x, 0.82, 1.45))
+		_mi(parent, _sph(0.36, 0.62, 14), fire_eye, Vector3(x, 0.82, 1.72))
+		_mi(parent, _box(Vector3(0.09, 0.46, 0.14)), pupil, Vector3(x, 0.82, 2.06))
 
-	# Articulated Lower Jaw ("Mouth") with spectral beard shards & glowing rune teeth
+	# 4) Hinged Articulated Lower Jaw ("Mouth") with chin cleft & layered pharaonic beard plates
 	var jaw := Node3D.new()
 	jaw.name = "Mouth"
-	jaw.position = Vector3(0, -1.25, 1.65)
+	jaw.position = Vector3(0, -1.25, 1.35)
 	parent.add_child(jaw)
-	_mi(jaw, _box(Vector3(2.35, 0.34, 1.15)), plasma_deep, Vector3(0, 0.18, 0.35))
-	_mi(jaw, _box(Vector3(2.05, 0.58, 1.25)), plasma, Vector3(0, -0.45, 0.40))
-	# Glowing upper & lower rune teeth bars
+	_mi(jaw, _box(Vector3(2.05, 0.52, 1.15)), cavity, Vector3(0, 0.0, 0.15))
+	_mi(jaw, _box(Vector3(1.92, 0.62, 1.18)), holo_face, Vector3(0, -0.48, 0.38)) # chiseled chin
 	for ti in range(5):
-		var tx := -0.76 + float(ti) * 0.38
-		_mi(jaw, _box(Vector3(0.22, 0.18, 0.18)), flame, Vector3(tx, -0.02, 0.98))
-		_mi(jaw, _box(Vector3(0.22, 0.18, 0.18)), flame, Vector3(tx, -0.24, 0.98))
-	# Flowing pharaonic beard of floating emerald flame shards
-	for bi in range(5):
-		var bx := -0.85 + float(bi) * 0.425
-		var blen := 1.85 if bi == 2 else (1.40 if (bi == 1 or bi == 3) else 0.95)
-		_mi(jaw, _cyl(0.22, 0.04, blen, 6), flame, Vector3(bx, -0.85 - blen * 0.45, 0.32))
+		var tx := -0.68 + float(ti) * 0.34
+		_mi(jaw, _box(Vector3(0.18, 0.16, 0.14)), holo_flame, Vector3(tx, 0.12, 0.76))
+		_mi(jaw, _box(Vector3(0.18, 0.16, 0.14)), holo_flame, Vector3(tx, -0.18, 0.76))
+	# Stepped gilded-emerald pharaonic beard plates
+	_mi(jaw, _box(Vector3(1.25, 0.95, 0.42)), holo_flame, Vector3(0, -1.15, 0.35))
+	_mi(jaw, _box(Vector3(0.82, 0.85, 0.35)), holo_face, Vector3(0, -1.95, 0.30))
+	_mi(jaw, _box(Vector3(1.32, 0.14, 0.48)), gold, Vector3(0, -1.52, 0.36))
+
+## Builds colossal hinged Emerald & Gold Double Doors that completely seal an archway until E opens them.
+static func build_palace_double_doors(parent: Node3D, at: Vector3, total_w: float, door_h: float) -> Dictionary:
+	var root := Node3D.new()
+	root.name = "PalaceDoubleDoors"
+	root.position = at
+	parent.add_child(root)
+
+	var emerald := _mat(Color(0.06, 0.38, 0.22), 0.28, 0.35, Color(0.08, 0.55, 0.30), 0.35)
+	var gold := _mat(Color(0.92, 0.76, 0.30), 0.24, 0.88, Color(0.90, 0.70, 0.22), 0.25)
+	var crystal := _mat(Color(0.32, 1.0, 0.62), 0.12, 0.4, Color(0.28, 1.0, 0.58), 1.6)
+	var leaf_w := total_w * 0.5 + 0.08
+
+	var piv_l := Node3D.new()
+	piv_l.name = "LeftDoorPivot"
+	piv_l.position = Vector3(-total_w * 0.5, 0, 0)
+	root.add_child(piv_l)
+
+	var piv_r := Node3D.new()
+	piv_r.name = "RightDoorPivot"
+	piv_r.position = Vector3(total_w * 0.5, 0, 0)
+	root.add_child(piv_r)
+
+	for pair in [[piv_l, 1.0], [piv_r, -1.0]]:
+		var piv: Node3D = pair[0] as Node3D
+		var s: float = float(pair[1])
+		var cx := s * (leaf_w * 0.5)
+		_mi(piv, _box(Vector3(leaf_w, door_h, 0.42)), emerald, Vector3(cx, door_h * 0.5, 0))
+		# Gilded outer border frame + decorative inset relief panels + glowing emerald rosette medallion
+		_mi(piv, _box(Vector3(leaf_w, 0.28, 0.50)), gold, Vector3(cx, door_h - 0.14, 0))
+		_mi(piv, _box(Vector3(leaf_w, 0.28, 0.50)), gold, Vector3(cx, 0.14, 0))
+		_mi(piv, _box(Vector3(0.24, door_h, 0.50)), gold, Vector3(s * (leaf_w - 0.12), door_h * 0.5, 0))
+		_mi(piv, _sph(0.68, 0.28, 14), gold, Vector3(cx, door_h * 0.56, 0.24), Vector3(90, 0, 0))
+		_mi(piv, _sph(0.42, 0.22, 12), crystal, Vector3(cx, door_h * 0.56, 0.30), Vector3(90, 0, 0))
+		# Ornate golden pull-ring handle near center seam
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.22
+		ring.outer_radius = 0.30
+		_mi(piv, ring, gold, Vector3(s * (leaf_w - 0.55), 2.15, 0.28))
+
+	return {"root": root, "left": piv_l, "right": piv_r}
 
 ## Sculpted 19th-century Omaha Humbug Inventor + Brass Voice-Horn & Geared Projector Console.
 static func build_humbug_wizard(parent: Node3D) -> void:
@@ -1638,12 +1728,32 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 	var lotus := _mat(Color(1.0, 0.58, 0.78), 0.45, 0.0, Color(1.0, 0.55, 0.76), 0.55)
 	var star_glow := _mat(Color(1.0, 0.92, 0.72), 0.15, 0.0, Color(1.0, 0.88, 0.62), 2.2)
 
-	# 1) 8-Column Alabaster & Rose-Gold Temple Rotunda around Glinda
+	# 1) 8-Column Alabaster & Rose-Gold Temple Rotunda around Glinda (SOLID COLLIDABLE DAIS!)
 	var pav := Node3D.new()
-	pav.position = glinda_pos
+	pav.position = Vector3(glinda_pos.x, 0.0, glinda_pos.z)
 	root.add_child(pav)
-	_mi(pav, _cyl(9.2, 9.8, 0.22, 24), marble, Vector3(0, 0.11, 0))
-	_mi(pav, _cyl(7.6, 8.0, 0.26, 24), rose_marble, Vector3(0, 0.26, 0))
+	# Collidable stepped marble dais (top at y = 0.10m so characters' feet stand cleanly ON TOP!)
+	var dais_body := StaticBody3D.new()
+	dais_body.name = "PavilionDaisCollider"
+	dais_body.collision_layer = 1
+	dais_body.collision_mask = 0
+	pav.add_child(dais_body)
+	_mi(dais_body, _cyl(9.2, 9.6, 0.06, 24), marble, Vector3(0, 0.03, 0))
+	_mi(dais_body, _cyl(7.8, 8.1, 0.06, 24), rose_marble, Vector3(0, 0.08, 0))
+	var dcol1 := CollisionShape3D.new()
+	var dsh1 := CylinderShape3D.new()
+	dsh1.radius = 9.4
+	dsh1.height = 0.06
+	dcol1.shape = dsh1
+	dcol1.position = Vector3(0, 0.03, 0)
+	dais_body.add_child(dcol1)
+	var dcol2 := CollisionShape3D.new()
+	var dsh2 := CylinderShape3D.new()
+	dsh2.radius = 8.0
+	dsh2.height = 0.06
+	dcol2.shape = dsh2
+	dcol2.position = Vector3(0, 0.08, 0)
+	dais_body.add_child(dcol2)
 	_mi(pav, _cyl(8.6, 8.6, 0.45, 24), gold, Vector3(0, 6.85, 0)) # crown cornice ring
 	_mi(pav, _sph(8.4, 5.2, 24), rose_marble, Vector3(0, 7.1, 0), Vector3.ZERO, Vector3(1.0, 0.55, 1.0)) # ribbed rose dome
 	_mi(pav, _cyl(0.12, 0.42, 2.2, 12), gold, Vector3(0, 10.6, 0)) # golden temple finial
