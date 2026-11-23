@@ -36,7 +36,7 @@ const PLAY_BOUND_Z := 140.0
 ## House stays at baked ~z=-5; Dorothy starts far north and walks the road south.
 const YBR_SPAWN := Vector3(0.0, 0.08, -52.0)
 const YBR_LOCASTA := Vector3(0.0, 0.08, -28.0) # before the grey house, clear of wreckage
-const YBR_SCARECROW := Vector3(0.0, 0.08, 28.0)
+const YBR_SCARECROW := Vector3(4.5, 0.08, 28.0) # dead-center of the cornfield beside YBR
 const YBR_LION := Vector3(0.0, 0.08, 62.0)
 const YBR_TIN := Vector3(0.0, 0.08, 95.0)
 const YBR_TREE := Vector3(0.0, 0.0, 110.0)
@@ -183,9 +183,20 @@ func _expand_world() -> void:
 	_scatter_grass(Vector3(0, 0, 0), 50.0, 120)
 	_scatter_grass(Vector3(0, 0, 60), 40.0, 100)
 	_scatter_grass(Vector3(0, 0, -40), 30.0, 80)
-	# Soft story border — thicket + solid rails + rolling horizon hills + YBR street lanterns.
+	# Hide legacy horizon monolith boxes (giant green EmeraldSpeck, WinkieHaze, EastCrook)
+	for monolith in ["EmeraldSpeck", "WinkieHaze", "EastCrook"]:
+		var mn := get_node_or_null(monolith) as Node3D
+		if mn:
+			mn.visible = false
+	# Soft story border — thicket + solid rails + distant skyline + walkable meadow hills + YBR street lanterns.
 	_add_map_border(85.0, 150.0)
 	WorldKit.add_horizon_hills(self, 85.0, 150.0, Color(0.28, 0.48, 0.30))
+	WorldKit.add_emerald_skyline(self, Vector3(0.0, 0.0, -195.0))
+	WorldKit.add_walkable_meadow_hills(self, [
+		{"pos": Vector3(-28.0, 0.0, -4.0), "radius": 11.0, "height": 2.4},
+		{"pos": Vector3(32.0, 0.0, 62.0), "radius": 12.0, "height": 2.6},
+		{"pos": Vector3(-34.0, 0.0, 82.0), "radius": 13.0, "height": 2.8},
+	], Color(0.38, 0.58, 0.30))
 	WorldKit.dress_ybr_spine(self, -54.0, 126.0, 2.75)
 	_add_whimsy_activities()
 	_ensure_whimsy_hud()
@@ -196,7 +207,12 @@ func _expand_world() -> void:
 		player.velocity = Vector3.ZERO
 
 func _cull_world_labels() -> void:
-	WorldKit.apply_label3d_culling(self, 15.0, 4.0)
+	# Hide baked giant floating road signs like "The road goes on."
+	for lab in find_children("*", "Label3D", true, false):
+		var l := lab as Label3D
+		if l and ("road goes on" in l.text.to_lower() or "press e" in l.text.to_lower()):
+			l.visible = false
+	WorldKit.apply_label3d_culling(self, 12.0, 3.5)
 
 func _add_map_border(half_x: float, half_z: float) -> void:
 	# Continuous solid rails + shrub/tree dressing. Corners closed so pads can't leak.
@@ -358,23 +374,7 @@ func _add_road_spur(at: Vector3, size: Vector3) -> void:
 	mi.global_position = at + Vector3(0, size.y * 0.5, 0)
 
 func _scatter_grass(center: Vector3, radius: float, count: int) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 42
-	for i in count:
-		var ang := rng.randf() * TAU
-		var r := rng.randf() * radius
-		var p := center + Vector3(cos(ang) * r, 0.0, sin(ang) * r)
-		var blade := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(0.08, rng.randf_range(0.25, 0.55), 0.08)
-		blade.mesh = box
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.28 + rng.randf() * 0.2, 0.55 + rng.randf() * 0.25, 0.22)
-		mat.roughness = 1.0
-		blade.material_override = mat
-		add_child(blade)
-		blade.global_position = p + Vector3(0, box.size.y * 0.5, 0)
-		blade.rotation.y = rng.randf() * TAU
+	WorldKit.scatter_swaying_grass(self, center, radius, mini(count, 75), 4.5)
 
 func _add_enterable_cottage(at: Vector3, wall_col: Color, title: String) -> void:
 	# Large hollow room — readable third-person interior for any Lead.
@@ -461,89 +461,7 @@ func _add_enterable_cottage(at: Vector3, wall_col: Color, title: String) -> void
 	door_area.body_exited.connect(func(b): _on_door_exit(door_area, b))
 
 func _build_interior_fitout(parent: Node3D, half_w: float, half_d: float, wall_h: float, wall_col: Color, title: String) -> Node3D:
-	var fit := Node3D.new()
-	fit.name = "InteriorFitout"
-	parent.add_child(fit)
-	var floor_mi := MeshInstance3D.new()
-	var fbox := BoxMesh.new()
-	fbox.size = Vector3(half_w * 2.0 - 0.2, 0.1, half_d * 2.0 - 0.2)
-	floor_mi.mesh = fbox
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(0.55, 0.38, 0.26)
-	fm.roughness = 0.85
-	floor_mi.material_override = fm
-	fit.add_child(floor_mi)
-	floor_mi.position = Vector3(0, 0.05, 0)
-	var ceil := MeshInstance3D.new()
-	var cbox := BoxMesh.new()
-	cbox.size = Vector3(half_w * 2.0 - 0.3, 0.08, half_d * 2.0 - 0.3)
-	ceil.mesh = cbox
-	var cm := StandardMaterial3D.new()
-	cm.albedo_color = Color(0.92, 0.86, 0.78, 0.92)
-	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	cm.roughness = 1.0
-	ceil.material_override = cm
-	fit.add_child(ceil)
-	ceil.position = Vector3(0, wall_h - 0.15, 0)
-	var inner := wall_col.lerp(Color(0.95, 0.9, 0.82), 0.35)
-	_add_decor_box(fit, Vector3(0, wall_h * 0.5, -half_d + 0.08), Vector3(half_w * 2.0 - 0.3, wall_h - 0.2, 0.08), inner)
-	_add_decor_box(fit, Vector3(-half_w + 0.08, wall_h * 0.5, 0), Vector3(0.08, wall_h - 0.2, half_d * 2.0 - 0.3), inner)
-	_add_decor_box(fit, Vector3(half_w - 0.08, wall_h * 0.5, 0), Vector3(0.08, wall_h - 0.2, half_d * 2.0 - 0.3), inner)
-	_add_decor_box(fit, Vector3(-(half_w * 0.55), wall_h * 0.5, half_d - 0.08), Vector3(half_w * 0.7, wall_h - 0.2, 0.08), inner)
-	_add_decor_box(fit, Vector3((half_w * 0.55), wall_h * 0.5, half_d - 0.08), Vector3(half_w * 0.7, wall_h - 0.2, 0.08), inner)
-	# Story-flavored set dressing by building title (not anonymous junk cubes).
-	var tlow := title.to_lower()
-	if "mayor" in tlow or "hall" in tlow:
-		_add_decor_box(fit, Vector3(0, 0.7, -half_d + 1.0), Vector3(2.4, 1.4, 1.0), Color(0.35, 0.22, 0.12)) # desk
-		_add_decor_box(fit, Vector3(0, 1.5, -half_d + 1.0), Vector3(1.6, 0.12, 0.7), Color(0.55, 0.4, 0.2))
-		_add_decor_box(fit, Vector3(-1.8, 0.55, 0.8), Vector3(0.7, 1.1, 0.7), Color(0.45, 0.2, 0.15)) # chair
-		_add_decor_box(fit, Vector3(1.8, 1.2, -0.4), Vector3(0.9, 1.6, 0.35), Color(0.3, 0.25, 0.2)) # ledger shelf
-		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), "MAYOR'S LEDGER\n(welcome to Munchkinland)")
-	elif "shop" in tlow or "store" in tlow or "market" in tlow:
-		_add_decor_box(fit, Vector3(-1.6, 0.7, -0.6), Vector3(2.0, 1.4, 0.6), Color(0.5, 0.35, 0.2)) # counter
-		_add_decor_box(fit, Vector3(1.5, 0.9, -1.2), Vector3(1.2, 1.8, 0.5), Color(0.4, 0.28, 0.18)) # shelves
-		_add_decor_box(fit, Vector3(1.5, 0.35, 1.0), Vector3(0.8, 0.7, 0.8), Color(0.7, 0.25, 0.3)) # candy crate
-		_add_decor_box(fit, Vector3(-1.2, 0.3, 1.3), Vector3(0.6, 0.6, 0.6), Color(0.9, 0.75, 0.2)) # grain sack
-		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), "MUNCHKIN MARKET\nboots · sweets · oil cans")
-	elif "cottage" in tlow or "house" in tlow or "home" in tlow:
-		_add_decor_box(fit, Vector3(-1.8, 0.45, -1.0), Vector3(2.0, 0.9, 1.4), Color(0.55, 0.3, 0.25)) # bed
-		_add_decor_box(fit, Vector3(-1.8, 0.95, -1.0), Vector3(1.8, 0.25, 1.2), Color(0.85, 0.75, 0.9)) # quilt
-		_add_decor_box(fit, Vector3(1.6, 0.55, -0.8), Vector3(1.0, 1.1, 0.8), Color(0.4, 0.25, 0.15)) # hearth
-		_add_decor_box(fit, Vector3(1.6, 1.3, -0.8), Vector3(0.35, 0.5, 0.35), Color(0.9, 0.4, 0.15)) # fire
-		_add_decor_box(fit, Vector3(0.2, 0.4, 1.2), Vector3(1.0, 0.8, 1.0), Color(0.45, 0.3, 0.2)) # table
-		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), "COTTAGE\nrest · hearth · kindness")
-	else:
-		_add_decor_box(fit, Vector3(-1.8, 0.55, -1.0), Vector3(1.8, 1.1, 0.9), Color(0.4, 0.25, 0.16))
-		_add_decor_box(fit, Vector3(1.8, 0.7, -0.6), Vector3(1.2, 1.4, 0.55), Color(0.45, 0.3, 0.22))
-		_add_decor_box(fit, Vector3(0.0, 0.4, 1.2), Vector3(1.2, 0.8, 1.0), Color(0.5, 0.28, 0.25))
-		_add_named_plaque(fit, Vector3(0, 2.2, -half_d + 0.25), title.to_upper())
-	# Window light strip
-	_add_decor_box(fit, Vector3(0.0, 1.5, -half_d + 0.2), Vector3(1.6, 1.1, 0.06), Color(0.7, 0.85, 0.95))
-	var lamp := OmniLight3D.new()
-	lamp.light_color = Color(1.0, 0.92, 0.75)
-	lamp.light_energy = 2.6
-	lamp.omni_range = 12.0
-	lamp.shadow_enabled = false
-	fit.add_child(lamp)
-	lamp.position = Vector3(0, wall_h - 0.6, 0)
-	var lamp2 := OmniLight3D.new()
-	lamp2.light_color = Color(1.0, 0.85, 0.65)
-	lamp2.light_energy = 1.3
-	lamp2.omni_range = 8.0
-	lamp2.shadow_enabled = false
-	fit.add_child(lamp2)
-	lamp2.position = Vector3(-1.5, 1.8, -0.8)
-	var plaque := Label3D.new()
-	plaque.text = title
-	plaque.font_size = 64
-	plaque.pixel_size = 0.012
-	plaque.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	plaque.modulate = Color(0.95, 0.9, 0.8)
-	plaque.outline_size = 8
-	plaque.outline_modulate = Color(0.15, 0.08, 0.1)
-	fit.add_child(plaque)
-	plaque.position = Vector3(0, 2.55, 0)
-	return fit
+	return WorldKit.build_rich_interior(parent, half_w, half_d, wall_h, wall_col, title)
 
 func _add_named_plaque(parent: Node3D, pos: Vector3, text: String) -> void:
 	var lab := Label3D.new()
@@ -972,7 +890,7 @@ func _spawn_party_world() -> void:
 	var sc_field := YBR_SCARECROW
 	scarecrow.global_position = sc_field
 	_build_pole(sc_field + Vector3(0.35, 0, 0.15))
-	_build_cornfield(sc_field + Vector3(6.0, 0.0, 0.0)) # corn beside the road, not blocking it
+	WorldKit.build_lush_cornfield(self, sc_field) # Scarecrow dead-center in the lush cornfield!
 	_add_way_marker(Vector3(0.0, 0.08, 12.0), Color(0.95, 0.85, 0.3), "YBR → SCARECROW", sc_field)
 	_add_way_marker(Vector3(0.0, 0.08, 20.0), Color(0.95, 0.85, 0.3), "YBR → SCARECROW", sc_field)
 	_add_way_marker(sc_field + Vector3(0.0, 0.0, -3.5), Color(0.95, 0.85, 0.3), "SCARECROW", sc_field)
@@ -1033,16 +951,6 @@ func _spawn_locasta(at: Vector3) -> void:
 	aura.material_override = am
 	root.add_child(aura)
 	aura.position = Vector3(0, 0.08, 0)
-	var lab := Label3D.new()
-	lab.text = "Locasta · Good Witch of the North"
-	lab.font_size = 32
-	lab.pixel_size = 0.0065
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.95, 0.96, 1.0)
-	lab.outline_size = 8
-	lab.outline_modulate = Color(0.05, 0.08, 0.20)
-	root.add_child(lab)
-	lab.position = Vector3(0, 2.55, 0)
 	var col_body := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.42
@@ -1050,8 +958,6 @@ func _spawn_locasta(at: Vector3) -> void:
 	col_body.shape = cap
 	col_body.position = Vector3(0, 0.95, 0)
 	root.add_child(col_body)
-	_add_way_marker(at + Vector3(-2.5, 0, 0), Color(0.65, 0.85, 1.0), "LOCASTA", at)
-	_add_way_marker(at + Vector3(2.5, 0, 1.5), Color(0.65, 0.85, 1.0), "NORTH", at)
 
 func _locasta_mesh(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	var mi := MeshInstance3D.new()
@@ -1143,83 +1049,13 @@ func _spawn_west_omen(at: Vector3) -> void:
 	wall.add_child(c)
 
 func _add_way_marker(at: Vector3, col: Color, label: String, toward: Vector3 = Vector3.ZERO) -> void:
-	# Signpost post + board + optional 3D arrow that points at the real target (no lying text arrows).
-	var root := Node3D.new()
-	root.name = "WayMarker_%s" % label.replace(" ", "")
-	add_child(root)
-	root.global_position = at
-	var post := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.07
-	cyl.bottom_radius = 0.1
-	cyl.height = 3.2
-	post.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = col.darkened(0.15)
-	mat.emission_enabled = true
-	mat.emission = col
-	mat.emission_energy_multiplier = 1.6
-	post.material_override = mat
-	root.add_child(post)
-	post.position = Vector3(0, 1.6, 0)
-	# Wooden board
-	var board := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(1.8, 0.7, 0.08)
-	board.mesh = box
-	var bm := StandardMaterial3D.new()
-	bm.albedo_color = Color(0.42, 0.28, 0.14)
-	bm.roughness = 0.85
-	board.material_override = bm
-	root.add_child(board)
-	board.position = Vector3(0, 3.15, 0)
-	_sign_sway.append(board)
-	# Painted face plate
-	var face := MeshInstance3D.new()
-	var fbox := BoxMesh.new()
-	fbox.size = Vector3(1.65, 0.55, 0.04)
-	face.mesh = fbox
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = col.lightened(0.35)
-	fm.emission_enabled = true
-	fm.emission = col
-	fm.emission_energy_multiplier = 0.45
-	face.material_override = fm
-	board.add_child(face)
-	face.position = Vector3(0, 0, 0.06)
-	var lab := Label3D.new()
-	lab.text = label
-	lab.font_size = 56
-	lab.pixel_size = 0.011
-	lab.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	lab.modulate = Color(0.12, 0.06, 0.1)
-	lab.outline_size = 12
-	lab.outline_modulate = Color(0.98, 0.94, 0.82)
-	board.add_child(lab)
-	lab.position = Vector3(0, 0.02, 0.1)
-	# 3D chevron arrow aiming at target
-	var aim := toward
-	if aim == Vector3.ZERO:
-		aim = at + Vector3(0, 0, -4)
-	var flat := aim - at
-	flat.y = 0.0
-	if flat.length() > 0.05:
-		var yaw := atan2(-flat.x, -flat.z)
-		root.rotation.y = yaw
-		var arrow := MeshInstance3D.new()
-		var prism := PrismMesh.new()
-		prism.size = Vector3(0.55, 0.18, 0.7)
-		arrow.mesh = prism
-		var am := StandardMaterial3D.new()
-		am.albedo_color = col
-		am.emission_enabled = true
-		am.emission = col
-		am.emission_energy_multiplier = 2.0
-		arrow.material_override = am
-		root.add_child(arrow)
-		# Point along local −Z (toward aim after yaw)
-		arrow.position = Vector3(0, 2.55, -0.85)
-		arrow.rotation_degrees = Vector3(90, 0, 0)
+	# Place authored crooked wooden signposts neatly off the Yellow Brick Road curb
+	var curb_pos := at
+	if absf(curb_pos.x) < 3.4:
+		curb_pos.x = -3.6 if int(absf(curb_pos.z)) % 2 == 0 else 3.6
+	var aim := toward if toward != Vector3.ZERO else curb_pos + Vector3(0, 0, 6)
+	var post := WorldKit.make_wooden_signpost(curb_pos, label, col, aim)
+	add_child(post)
 
 func _add_building_sign(parent: Node3D, local_pos: Vector3, title: String, accent: Color) -> void:
 	# Thematic hanging sign: post arm + painted board + readable Label3D.
@@ -2062,9 +1898,22 @@ func _ensure_whimsy_hud() -> void:
 		hud.add_child(_whimsy_label)
 	_refresh_whimsy_hud()
 
+func _whimsy_blessing_tier() -> String:
+	if whimsy_points >= 75:
+		return "Silver Trail"
+	if whimsy_points >= 50:
+		return "Bonded Courage"
+	if whimsy_points >= 25:
+		return "Swift Heels"
+	return ""
+
 func _refresh_whimsy_hud() -> void:
 	if _whimsy_label:
-		_whimsy_label.text = "Whimsy  %d" % whimsy_points
+		var tier := _whimsy_blessing_tier()
+		if tier == "":
+			_whimsy_label.text = "Whimsy  %d / 25" % whimsy_points
+		else:
+			_whimsy_label.text = "Whimsy  %d  ·  ★ %s" % [whimsy_points, tier]
 
 func _add_whimsy_activities() -> void:
 	# Side fun along the YBR corridor (not on the brick centerline).
@@ -2183,12 +2032,46 @@ func _collect_whimsy(area: Area3D) -> void:
 			hud.set_prompt("You spin a little. +%d whimsy" % pts)
 		_:
 			pts = 5
+	var old_tier := _whimsy_blessing_tier()
 	whimsy_points += pts
 	_refresh_whimsy_hud()
-	area.visible = false
+	if whimsy_points >= 25 and player and "blink_distance" in player:
+		var base_d: float = 5.0 if shoes_done else 3.3
+		player.set("blink_distance", maxf(float(player.get("blink_distance")), base_d * 1.15))
+	var new_tier := _whimsy_blessing_tier()
+	if new_tier != old_tier and new_tier != "" and hud and hud.has_method("show_toast"):
+		hud.call("show_toast", "★ Road's Blessing Unlocked: %s!" % new_tier, 3.4)
+
+	# Interactive 3D pickup celebration tailored per whimsy kind
+	var fx := get_node_or_null("/root/CombatFx")
+	var fx_col := Color(1.0, 0.86, 0.42)
+	match kind:
+		"bounce":
+			fx_col = Color(1.0, 0.42, 0.65)
+		"giggle":
+			fx_col = Color(1.0, 0.90, 0.35)
+		"chime":
+			fx_col = Color(0.55, 0.90, 1.0)
+		"dance":
+			fx_col = Color(0.85, 0.55, 1.0)
+	if fx and fx.has_method("ring"):
+		fx.call("ring", area, area.global_position, fx_col, 1.7, 0.45)
+		if fx.has_method("flash_sphere"):
+			fx.call("flash_sphere", area, area.global_position + Vector3(0, 0.5, 0), fx_col.lightened(0.25), 0.55, 0.25)
+
 	area.monitoring = false
 	if _near_whimsy == area:
 		_near_whimsy = null
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
+		area.visible = false
+	else:
+		var tw := area.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(area, "scale", Vector3(1.45, 0.62, 1.45), 0.12)
+		tw.chain().tween_property(area, "position:y", area.position.y + 1.4, 0.36).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(area, "rotation:y", area.rotation.y + TAU, 0.36)
+		tw.parallel().tween_property(area, "scale", Vector3(0.05, 0.05, 0.05), 0.36)
+		tw.chain().tween_callback(func(): area.visible = false)
 	get_tree().create_timer(1.4).timeout.connect(func():
 		if hud and not _near_west_gate:
 			pass

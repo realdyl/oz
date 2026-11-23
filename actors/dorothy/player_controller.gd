@@ -289,9 +289,14 @@ func _kick() -> void:
 	if forward.length() < 0.01:
 		forward = -global_transform.basis.z
 	forward = forward.normalized()
-	# Heel plant + silver arc (always visible even with no target)
-	CombatFx.slash_box(self, global_position, forward, Color(0.85, 0.9, 1.0), Vector3(0.95, 0.22, 1.2), 0.16)
-	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.5, 0) + forward * 0.9, Color(0.9, 0.95, 1.0), 0.4, 0.12)
+	# Choreographed High-Heel Stiletto Roundhouse Kick + Silver Crescent Arc
+	if body and body.has_method("play_kick"):
+		body.call("play_kick")
+	if CombatFx.has_method("kick_arc"):
+		CombatFx.kick_arc(self, global_position, forward)
+	else:
+		CombatFx.slash_box(self, global_position, forward, Color(0.85, 0.9, 1.0), Vector3(0.95, 0.22, 1.2), 0.16)
+	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.7, 0) + forward * 0.95, Color(0.92, 0.96, 1.0), 0.38, 0.14)
 	CombatFx.label(self, global_position, "KICK", Color(0.95, 0.95, 1.0))
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
@@ -319,9 +324,10 @@ func _hitstop() -> void:
 	Engine.time_scale = 1.0
 
 func _animate_visual(delta: float) -> void:
-	var target_x := -0.55 if kick_active > 0.0 else 0.0
-	visual.rotation.x = lerp_angle(visual.rotation.x, target_x, 16.0 * delta)
+	visual.rotation.x = lerp_angle(visual.rotation.x, 0.0, 14.0 * delta)
 	visual.scale = visual.scale.lerp(Vector3.ONE, 10.0 * delta)
+	if Input.is_action_just_pressed("interact") and body and body.has_method("play_interact"):
+		body.call("play_interact")
 	var hs := Vector2(velocity.x, velocity.z).length()
 	if body and body.has_method("set_locomotion"):
 		body.set_locomotion(hs, delta)

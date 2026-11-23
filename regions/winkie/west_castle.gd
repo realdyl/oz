@@ -1,5 +1,7 @@
 extends Node3D
 
+const WorldKit := preload("res://systems/world_kit.gd")
+
 ## Act 3 · Winkie Country — Witch of the West castle (vault [[Witch of the West]]).
 ## Dark iron/ember arena. Book-true water melt (Baum) as the finish window — not a film gag alone.
 ## Prototype spine: L3 after Munchkinland OPEN_ROAD. F9 → Emerald City.
@@ -165,10 +167,12 @@ func _build_world() -> void:
 	ybr_lab.modulate = Color(1.0, 0.9, 0.35)
 	add_child(ybr_lab)
 	ybr_lab.global_position = Vector3(0, 3.2, -20)
-	# Ember braziers off the brick centerline
+	# Ornate wrought-iron flaming braziers off the brick centerline
 	for i in 6:
 		var a := float(i) / 6.0 * TAU
-		_add_box(Vector3(cos(a) * 14.0, 0.6, sin(a) * 10.0), Vector3(0.6, 1.2, 0.6), Color(0.45, 0.12, 0.05), "Brazier")
+		var bpos := Vector3(cos(a) * 14.0, 0.0, sin(a) * 10.0)
+		var braz := WorldKit.make_street_lantern(bpos, Color(1.0, 0.42, 0.14), i % 2 == 0)
+		add_child(braz)
 	# Lighting — readable dusk, not pitch black (still ominous).
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
@@ -325,53 +329,17 @@ func _spawn_west() -> void:
 	west.collision_mask = 1
 	add_child(west)
 	west.global_position = Vector3(0, 0.08, -10)
-	var hip := Node3D.new()
-	west.add_child(hip)
-	hip.position = Vector3(0, 1.2, 0)
-	var robe := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.3
-	cyl.bottom_radius = 0.55
-	cyl.height = 2.0
-	robe.mesh = cyl
-	var rm := StandardMaterial3D.new()
-	rm.albedo_color = Color(0.12, 0.08, 0.14)
-	rm.emission_enabled = true
-	rm.emission = Color(0.35, 0.05, 0.08)
-	rm.emission_energy_multiplier = 0.9
-	robe.material_override = rm
-	hip.add_child(robe)
-	var head := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	sph.radius = 0.22
-	sph.height = 0.44
-	head.mesh = sph
-	var hm := StandardMaterial3D.new()
-	hm.albedo_color = Color(0.55, 0.7, 0.45)
-	head.material_override = hm
-	hip.add_child(head)
-	head.position = Vector3(0, 1.15, 0)
-	var hat := MeshInstance3D.new()
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.01
-	cone.bottom_radius = 0.4
-	cone.height = 0.7
-	hat.mesh = cone
-	var hatm := StandardMaterial3D.new()
-	hatm.albedo_color = Color(0.05, 0.04, 0.06)
-	hat.material_override = hatm
-	hip.add_child(hat)
-	hat.position = Vector3(0, 1.6, 0)
+	WorldKit.build_west_witch_visual(west)
 	var lab := Label3D.new()
 	lab.name = "WestLabel"
 	lab.text = "WITCH OF THE WEST"
-	lab.font_size = 52
-	lab.pixel_size = 0.014
+	lab.font_size = 34
+	lab.pixel_size = 0.007
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.9, 0.35, 0.3)
-	lab.outline_size = 10
+	lab.modulate = Color(0.95, 0.40, 0.35)
+	lab.outline_size = 8
 	west.add_child(lab)
-	lab.position = Vector3(0, 3.6, 0)
+	lab.position = Vector3(0, 2.85, 0)
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.45

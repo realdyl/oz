@@ -207,10 +207,14 @@ func _try_step(dir: Vector3) -> void:
 func _roar() -> void:
 	roar_timer = roar_cooldown
 	kit_lock = 0.4
-	# Expanding fear ring + mane flash
-	CombatFx.ring(self, global_position, Color(1.0, 0.55, 0.15), roar_radius * 0.55, 0.25)
-	CombatFx.ring(self, global_position, Color(1.0, 0.4, 0.1), roar_radius, 0.45)
-	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.8, 0), Color(1.0, 0.7, 0.25), 1.0, 0.3)
+	if body and body.has_method("play_roar"):
+		body.call("play_roar")
+	var fwd := -visual.global_transform.basis.z if visual else Vector3(0, 0, -1)
+	if CombatFx.has_method("roar_shockwave"):
+		CombatFx.roar_shockwave(self, global_position, fwd, roar_radius)
+	else:
+		CombatFx.ring(self, global_position, Color(1.0, 0.55, 0.15), roar_radius * 0.55, 0.25)
+		CombatFx.ring(self, global_position, Color(1.0, 0.4, 0.1), roar_radius, 0.45)
 	CombatFx.label(self, global_position, "ROAR", Color(1.0, 0.65, 0.2))
 	# Camera shake via pivot if available
 	var pivot := Party.camera_basis_node() if Party else null

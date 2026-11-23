@@ -8,15 +8,23 @@ var _leg_r: Node3D
 var _arm_l: Node3D
 var _arm_r: Node3D
 var _hip: Node3D
+var _head: Node3D
 var _phase: float = 0.0
+var _idle_t: float = 0.0
 var _speed_amt: float = 0.0
+var _caw_t: float = 0.0
 
 func _ready() -> void:
 	for c in get_children():
 		c.free()
 	_build()
 
+func play_caw() -> void:
+	_caw_t = 0.45
+
 func set_locomotion(horizontal_speed: float, delta: float) -> void:
+	_idle_t += delta
+	_caw_t = maxf(_caw_t - delta, 0.0)
 	_speed_amt = clampf(horizontal_speed / 4.5, 0.0, 1.3)
 	if _speed_amt > 0.08:
 		_phase += delta * (7.5 + _speed_amt * 5.5)
@@ -28,16 +36,29 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 func _apply_pose() -> void:
 	if _leg_l == null:
 		return
-	var swing := sin(_phase) * 0.5 * _speed_amt
+	if _caw_t > 0.0:
+		var u := sin((1.0 - _caw_t / 0.45) * PI)
+		_arm_l.rotation.z = -1.35 * u
+		_arm_r.rotation.z = 1.35 * u
+		_arm_l.rotation.x = -0.55 * u
+		_arm_r.rotation.x = -0.55 * u
+		if _head:
+			_head.rotation.x = 0.42 * u
+		if _hip:
+			_hip.position.y = 0.82 + 0.08 * u
+		return
+	var swing := sin(_phase) * 0.56 * _speed_amt
 	_leg_l.rotation.x = swing
 	_leg_r.rotation.x = -swing
-	_arm_l.rotation.x = -swing * 0.85
-	_arm_r.rotation.x = swing * 0.85
-	# Floppy straw arms hang a bit
-	_arm_l.rotation.z = -0.25
-	_arm_r.rotation.z = 0.25
+	_arm_l.rotation.x = -swing * 0.9
+	_arm_r.rotation.x = swing * 0.9
+	_arm_l.rotation.z = -0.25 + sin(_idle_t * 2.2) * 0.05
+	_arm_r.rotation.z = 0.25 - sin(_idle_t * 2.2) * 0.05
+	if _head:
+		_head.rotation.x = 0.0
+		_head.rotation.z = sin(_idle_t * 1.8) * 0.09
 	if _hip:
-		_hip.position.y = 0.82 + absf(sin(_phase)) * 0.02 * _speed_amt
+		_hip.position.y = 0.82 + absf(sin(_phase)) * 0.03 * _speed_amt + sin(_idle_t * 2.2) * 0.01
 
 func _mat(c: Color, r: float = 0.9, e: float = 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -106,6 +127,7 @@ func _build() -> void:
 	var head := Node3D.new()
 	head.position = Vector3(0, 0.58, 0)
 	_hip.add_child(head)
+	_head = head
 	_mi(head, _sph(0.165), burlap, Vector3(0, 0.08, 0), Vector3(1.05, 1.12, 1.0))
 	# Wide floppy brimmed farm/witch hat + bent peak + ribbon band
 	var brim := _mi(head, _cyl(0.36, 0.38, 0.035), hat, Vector3(0, 0.22, 0))

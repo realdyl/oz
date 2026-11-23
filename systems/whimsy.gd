@@ -63,7 +63,26 @@ func _ensure_hud() -> void:
 
 func _refresh() -> void:
 	if _label:
-		_label.text = "Whimsy  %d" % points
+		var tier := _blessing_tier()
+		if tier == "":
+			_label.text = "Whimsy  %d / 25" % points
+		else:
+			_label.text = "Whimsy  %d  ·  ★ %s" % [points, tier]
+
+func _blessing_tier() -> String:
+	if points >= 75:
+		return "Silver Trail"
+	if points >= 50:
+		return "Bonded Courage"
+	if points >= 25:
+		return "Swift Heels"
+	return ""
+
+func _apply_blessing_boons() -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if player and "blink_distance" in player and points >= 25:
+		var base_d: float = 5.0 if bool(player.get("shoes_claimed")) else 3.3
+		player.set("blink_distance", maxf(float(player.get("blink_distance")), base_d * 1.15))
 
 func _colors(kind: String) -> Dictionary:
 	# albedo, emission — per palette + kind
@@ -173,10 +192,13 @@ func _spawn(at: Vector3, kind: String, title: String) -> void:
 	area.add_child(mi)
 	var lab := Label3D.new()
 	lab.text = title
-	lab.font_size = 36
+	lab.font_size = 32
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	lab.modulate = Color(1, 0.9, 0.95)
 	lab.position = Vector3(0, 1.8, 0)
+	lab.visibility_range_end = 10.0
+	lab.visibility_range_end_margin = 2.5
+	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	area.add_child(lab)
 	area.body_entered.connect(func(b: Node3D) -> void:
 		if b.is_in_group("player") or b.is_in_group("party"):
@@ -216,9 +238,31 @@ func _collect(area: Area3D, actor: Node3D) -> void:
 				_hud.set_prompt("You spin a little. +%d whimsy" % pts)
 		_:
 			pts = 5
+	var old_tier := _blessing_tier()
 	points += pts
 	_refresh()
-	area.visible = false
+	_apply_blessing_boons()
+	var new_tier := _blessing_tier()
+	if new_tier != old_tier and new_tier != "" and _hud and _hud.has_method("show_toast"):
+		_hud.call("show_toast", "★ Road's Blessing Unlocked: %s!" % new_tier, 3.4)
+
+	# Interactive 3D pickup celebration instead of popping invisible instantly
+	var fx := get_node_or_null("/root/CombatFx")
+	if fx and fx.has_method("ring"):
+		fx.call("ring", area, area.global_position, Color(1.0, 0.86, 0.42), 1.6, 0.42)
+		if fx.has_method("flash_sphere"):
+			fx.call("flash_sphere", area, area.global_position + Vector3(0, 0.5, 0), Color(1.0, 0.90, 0.65), 0.55, 0.25)
+
 	area.monitoring = false
 	if _near == area:
 		_near = null
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
+		area.visible = false
+		return
+	var tw := area.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(area, "scale", Vector3(1.45, 0.65, 1.45), 0.12)
+	tw.chain().tween_property(area, "position:y", area.position.y + 1.35, 0.35).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(area, "rotation:y", area.rotation.y + TAU, 0.35)
+	tw.parallel().tween_property(area, "scale", Vector3(0.05, 0.05, 0.05), 0.35)
+	tw.chain().tween_callback(func(): area.visible = false)

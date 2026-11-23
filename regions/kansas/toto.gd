@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 ## Toto — waits until basket is held, then hops into the basket on interact/near.
+const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
 signal joined
 
@@ -10,12 +11,15 @@ var player_near: bool = false
 var joined_basket: bool = false
 var following: bool = false
 var _hop_t: float = 0.0
+var _parts: Dictionary = {}
 
 @onready var visual: Node3D = $Visual
 
 func _ready() -> void:
 	add_to_group("toto")
 	floor_snap_length = 0.2
+	if visual:
+		_parts = TotoCompanionScript.build_dog_visual(visual, true)
 
 func _physics_process(delta: float) -> void:
 	if joined_basket:

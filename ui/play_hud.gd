@@ -4,6 +4,7 @@ const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const ThreatRadarScript := preload("res://ui/widgets/threat_radar.gd")
 const PauseMenuScript := preload("res://ui/shell/pause_menu.gd")
 const WorldKit := preload("res://systems/world_kit.gd")
+const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
 ## Modern 2026 PlayHUD for Oz: The Road Home.
 ## Preserves 100% API and node contract compatibility (Fade, ThreatCompass,
@@ -75,7 +76,22 @@ func _ready() -> void:
 func _cull_scene_labels() -> void:
 	var host := get_parent()
 	if host:
-		WorldKit.apply_label3d_culling(host, 15.0, 4.0)
+		WorldKit.apply_label3d_culling(host, 12.0, 3.5)
+		_ensure_toto_present(host)
+
+func _ensure_toto_present(host: Node) -> void:
+	if host == null or not (host is Node3D):
+		return
+	# If the level already has Toto (e.g., L1 Kansas farmyard), don't duplicate him.
+	if not get_tree().get_nodes_in_group("toto").is_empty():
+		return
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if player == null:
+		return
+	var toto_node: Node3D = TotoCompanionScript.new()
+	toto_node.set("greyscale", kansas_mode)
+	host.add_child(toto_node)
+	toto_node.global_position = player.global_position + Vector3(1.15, 0.0, 0.75)
 
 func _is_headless() -> bool:
 	var n := DisplayServer.get_name()
@@ -435,8 +451,19 @@ func _process(delta: float) -> void:
 			toast_panel.visible = false
 
 	_sync_dialogue_quiet_hours()
+	_update_grass_rustle()
 	_update_threat_compass()
 	_update_controls_strip()
+
+func _update_grass_rustle() -> void:
+	var party := get_node_or_null("/root/Party")
+	var actor: Node3D = null
+	if party and party.has_method("leader_body"):
+		actor = party.leader_body() as Node3D
+	if actor == null:
+		actor = get_tree().get_first_node_in_group("player") as Node3D
+	if actor and is_instance_valid(actor):
+		WorldKit.update_grass_rustle(actor.global_position)
 
 func _sync_dialogue_quiet_hours() -> void:
 	var dia := get_node_or_null("/root/DialogueUI")

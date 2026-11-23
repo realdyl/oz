@@ -1,5 +1,7 @@
 extends Node3D
 
+const WorldKit := preload("res://systems/world_kit.gd")
+
 ## L3 · The Deadly Poppy Field (Baum ch.VIII–IX) — between Munchkin party and West.
 ## Flesh (Dorothy + Lion) both fall asleep in the scarlet scent on first pass.
 ## Scarecrow + Tin Man immune. Rescue is three clear pickups:
@@ -479,11 +481,9 @@ func _go_emerald() -> void:
 func _build_world() -> void:
 	_add_box(Vector3(0, -0.2, 0), Vector3(100, 0.4, 150), Color(0.35, 0.55, 0.32), "Ground")
 	_add_box(Vector3(0, 0.05, 0), Vector3(5.8, 0.1, 130), Color(0.95, 0.82, 0.25), "YellowBrickRoad")
-	for z in range(int(POPPY_START_Z), int(POPPY_END_Z) + 1, 6):
-		_add_box(Vector3(-12, 0.4, float(z)), Vector3(14, 0.9, 5.5), Color(0.85, 0.15, 0.28), "PoppiesL")
-		_add_box(Vector3(12, 0.4, float(z)), Vector3(14, 0.9, 5.5), Color(0.8, 0.12, 0.3), "PoppiesR")
-		_add_box(Vector3(-12, 1.0, float(z)), Vector3(12, 0.25, 4.0), Color(1.0, 0.25, 0.4), "PoppyBloomL")
-		_add_box(Vector3(12, 1.0, float(z)), Vector3(12, 0.25, 4.0), Color(1.0, 0.2, 0.35), "PoppyBloomR")
+	WorldKit.dress_ybr_spine(self, -58.0, 56.0, 2.9)
+	WorldKit.build_poppy_beds(self, POPPY_START_Z, POPPY_END_Z)
+	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.28, 0.45, 0.26))
 	_add_box(Vector3(0, 0.03, 42), Vector3(40, 0.08, 24), Color(0.4, 0.65, 0.38), "SafeMeadow")
 	_add_box(WEST_GATE + Vector3(0, 0.02, 0), Vector3(7.0, 0.14, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
 	_add_box(CLEAR_AIR_POS + Vector3(0, 0.02, 0), Vector3(5.0, 0.12, 5.0), Color(0.35, 0.75, 1.0), "ClearAirPad")
@@ -597,38 +597,14 @@ func _spawn_set_pieces() -> void:
 	cart.name = "MiceCart"
 	add_child(cart)
 	cart.global_position = CART_POS
-	var cb := MeshInstance3D.new()
-	var cbox := BoxMesh.new()
-	cbox.size = Vector3(2.6, 1.0, 3.4)
-	cb.mesh = cbox
-	var cm := StandardMaterial3D.new()
-	cm.albedo_color = Color(0.5, 0.32, 0.14)
-	cm.emission_enabled = true
-	cm.emission = Color(0.7, 0.5, 0.2)
-	cm.emission_energy_multiplier = 0.55
-	cb.material_override = cm
-	cb.position = Vector3(0, 0.55, 0)
-	cart.add_child(cb)
-	for wx in [-1.1, 1.1]:
-		for wz in [-1.2, 1.2]:
-			var wh := MeshInstance3D.new()
-			var wc := CylinderMesh.new()
-			wc.top_radius = 0.35
-			wc.bottom_radius = 0.35
-			wc.height = 0.25
-			wh.mesh = wc
-			wh.rotation_degrees = Vector3(0, 0, 90)
-			wh.position = Vector3(wx, 0.35, wz)
-			var wm := StandardMaterial3D.new()
-			wm.albedo_color = Color(0.2, 0.15, 0.1)
-			wh.material_override = wm
-			cart.add_child(wh)
+	WorldKit.build_mice_cart_visual(cart)
 	var clab := Label3D.new()
-	clab.text = "MICE CART — E to take\n(required for Lion)"
-	clab.font_size = 40
+	clab.text = "Mice Cart — E to hitch"
+	clab.font_size = 30
+	clab.pixel_size = 0.006
 	clab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	clab.modulate = Color(1.0, 0.95, 0.4)
-	clab.position = Vector3(0, 2.4, 0)
+	clab.modulate = Color(1.0, 0.95, 0.45)
+	clab.position = Vector3(0, 2.0, 0)
 	cart.add_child(clab)
 	cart.visible = false
 

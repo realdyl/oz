@@ -183,14 +183,14 @@ func _try_step(dir: Vector3) -> void:
 func _caw() -> void:
 	caw_timer = caw_cooldown
 	kit_lock = 0.28
-	# Burst of "crows" — yellow confetti spheres + ring
-	CombatFx.ring(self, global_position, Color(0.95, 0.82, 0.25), caw_radius * 0.9, 0.4)
-	CombatFx.flash_sphere(self, global_position + Vector3(0, 1.0, 0), Color(0.95, 0.85, 0.3), 0.7, 0.25)
+	if body and body.has_method("play_caw"):
+		body.call("play_caw")
+	# Murder of 3D flapping black crows spiraling outward + straw burst
+	if CombatFx.has_method("crow_storm"):
+		CombatFx.crow_storm(self, global_position, caw_radius)
+	else:
+		CombatFx.ring(self, global_position, Color(0.95, 0.82, 0.25), caw_radius * 0.9, 0.4)
 	CombatFx.label(self, global_position, "CAW!", Color(1.0, 0.9, 0.35))
-	for i in 6:
-		var ang := float(i) / 6.0 * TAU
-		var p := global_position + Vector3(cos(ang) * 0.8, 1.2 + randf() * 0.4, sin(ang) * 0.8)
-		CombatFx.flash_sphere(self, p, Color(0.15, 0.12, 0.1), 0.18, 0.35)
 
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()

@@ -8,9 +8,12 @@ var _leg_fr: Node3D
 var _leg_bl: Node3D
 var _leg_br: Node3D
 var _body: Node3D
+var _head: Node3D
 var _tail: Node3D
 var _phase: float = 0.0
+var _idle_t: float = 0.0
 var _speed_amt: float = 0.0
+var _roar_t: float = 0.0
 var cowering: bool = true
 
 func _ready() -> void:
@@ -18,12 +21,17 @@ func _ready() -> void:
 		c.free()
 	_build()
 
+func play_roar() -> void:
+	_roar_t = 0.52
+
 func set_cowering(on: bool) -> void:
 	cowering = on
 	if _body:
 		_body.rotation.x = 0.35 if on else 0.0
 
 func set_locomotion(horizontal_speed: float, delta: float) -> void:
+	_idle_t += delta
+	_roar_t = maxf(_roar_t - delta, 0.0)
 	_speed_amt = clampf(horizontal_speed / 5.5, 0.0, 1.4)
 	if _speed_amt > 0.08:
 		_phase += delta * (9.0 + _speed_amt * 6.0)
@@ -34,17 +42,31 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 func _apply_pose() -> void:
 	if _leg_fl == null:
 		return
-	var swing := sin(_phase) * 0.55 * _speed_amt
+	if _roar_t > 0.0:
+		var u := sin((1.0 - _roar_t / 0.52) * PI)
+		_body.position.y = 0.55 + 0.32 * u
+		_body.rotation.x = -0.58 * u # rear up powerfully on hind haunches!
+		_leg_fl.rotation.x = -0.95 * u
+		_leg_fr.rotation.x = -0.95 * u
+		_leg_bl.rotation.x = 0.45 * u
+		_leg_br.rotation.x = 0.45 * u
+		if _head:
+			_head.rotation.x = 0.35 * u
+			_head.scale = Vector3.ONE * (1.0 + 0.14 * u)
+		return
+	if _head:
+		_head.rotation.x = 0.0
+		_head.scale = Vector3.ONE
+	var swing := sin(_phase) * 0.58 * _speed_amt
 	_leg_fl.rotation.x = swing
 	_leg_fr.rotation.x = -swing
 	_leg_bl.rotation.x = -swing
 	_leg_br.rotation.x = swing
 	if _tail:
-		_tail.rotation.y = sin(_phase * 1.2) * 0.4 * maxf(_speed_amt, 0.2)
+		_tail.rotation.y = sin(_idle_t * 4.5 + _phase) * 0.42
 	if _body:
-		_body.position.y = 0.55 + absf(sin(_phase)) * 0.03 * _speed_amt
-		if cowering:
-			_body.rotation.x = 0.35
+		_body.position.y = 0.55 + absf(sin(_phase)) * 0.035 * _speed_amt + sin(_idle_t * 2.4) * 0.01
+		_body.rotation.x = 0.35 if cowering else 0.0
 
 func _mat(c: Color, r: float = 0.85) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -98,6 +120,7 @@ func _build() -> void:
 	var head := Node3D.new()
 	head.position = Vector3(0, 0.26, -0.46)
 	_body.add_child(head)
+	_head = head
 	_mi(head, _sph(0.23), mane, Vector3(0, 0.06, 0.04), Vector3(1.32, 1.25, 1.15))
 	for mi_i in range(10):
 		var a := float(mi_i) / 10.0 * TAU
