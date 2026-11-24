@@ -26,6 +26,18 @@ var equipped_outfits: Dictionary = {
 }
 var current_scene_path: String = "res://regions/kansas/farmyard.tscn"
 var current_chapter: String = "Act 0 · Kansas — The Gale Farm"
+var difficulty: String = "standard" # "story" | "standard" | "nightmare"
+var screen_shake_enabled: bool = true
+var high_contrast_hud: bool = false
+
+func damage_multiplier() -> float:
+	match difficulty:
+		"story":
+			return 0.6
+		"nightmare":
+			return 1.6
+		_:
+			return 1.0
 
 const SHOP_CATALOG := {
 	"dorothy": [

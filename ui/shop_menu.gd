@@ -3,6 +3,8 @@ extends CanvasLayer
 ## Phase P10: Interactive "The Tailor of Vices" Outfit & Armory Shop UI.
 ## Toggle with [B] key, from Pause Menu (Esc), or at the Emerald Plaza Boutique!
 
+const ShopItemIcon := preload("res://ui/widgets/shop_item_icon.gd")
+
 var _backdrop: ColorRect
 var _panel: PanelContainer
 var _balance_lbl: Label
@@ -156,10 +158,9 @@ func _refresh() -> void:
 		row.add_theme_constant_override("separation", 12)
 		pc.add_child(row)
 
-		var swatch := ColorRect.new()
-		swatch.custom_minimum_size = Vector2(36, 36)
-		swatch.color = it.get("tint", Color.WHITE)
-		row.add_child(swatch)
+		var icon := ShopItemIcon.new()
+		icon.setup(str(it["id"]), it.get("tint", Color.WHITE), str(it["id"]) == equipped_id)
+		row.add_child(icon)
 
 		var info := VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -192,6 +193,9 @@ func _refresh() -> void:
 			btn.disabled = int(sm.desire_fragments) < cost
 		btn.pressed.connect(func():
 			if sm.buy_and_equip(_active_char, iid):
+				var afx := get_node_or_null("/root/AudioFx")
+				if afx and afx.has_method("play"):
+					afx.play("buy", -5.0)
 				_refresh()
 		)
 		row.add_child(btn)

@@ -590,6 +590,8 @@ func _build_world() -> void:
 	WorldKit.dress_ybr_spine(self, -58.0, 56.0, 2.9)
 	WorldKit.build_poppy_beds(self, POPPY_START_Z, POPPY_END_Z)
 	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.28, 0.45, 0.26))
+	# Gleaming Emerald City skyline towering ahead along the Yellow Brick Road horizon (+Z)!
+	WorldKit.add_emerald_skyline(self, Vector3(0.0, 0.0, 128.0))
 	# Offset pads cleanly above road surface (y = 0.08m) so there is ZERO Z-fighting/blinking!
 	_add_box(Vector3(0, 0.01, 42), Vector3(40, 0.06, 24), Color(0.4, 0.65, 0.38), "SafeMeadow")
 	_add_box(WEST_GATE + Vector3(0, 0.06, 0), Vector3(7.0, 0.06, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
@@ -621,7 +623,7 @@ func _build_world() -> void:
 	e.ambient_light_energy = 0.85
 	e.fog_enabled = true
 	e.fog_light_color = Color(0.7, 0.25, 0.35)
-	e.fog_density = 0.008
+	e.fog_density = 0.0042
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)

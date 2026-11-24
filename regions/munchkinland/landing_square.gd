@@ -1282,9 +1282,11 @@ func _count_live_landing() -> int:
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if e == null or not is_instance_valid(e):
 			continue
+		if not (e is CharacterBody3D):
+			continue
 		if e.is_in_group("enemies_dead"):
 			continue
-		if e is CharacterBody3D and e.get("is_marshal") == true:
+		if e.get("is_marshal") == true:
 			continue
 		if e == living_tree or (e is Node and e.is_in_group("living_tree")):
 			continue

@@ -23,6 +23,7 @@ DialogueUI="*res://systems/dialogue_ui.gd"
 Locomotion="*res://systems/locomotion_util.gd"
 Whimsy="*res://systems/whimsy.gd"
 SaveManager="*res://systems/save_manager.gd"
+AudioFx="*res://systems/audio_manager.gd"
 
 [display]
 

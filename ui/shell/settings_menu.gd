@@ -16,6 +16,9 @@ var _scale_slider: HSlider
 var _scale_val: Label
 var _fullscreen_check: CheckButton
 var _tts_check: CheckButton
+var _diff_opt: OptionButton
+var _shake_check: CheckButton
+var _contrast_check: CheckButton
 var _back_btn: Button
 
 func _ready() -> void:
@@ -117,6 +120,32 @@ func _build_ui() -> void:
 	_tts_check.toggled.connect(_on_tts_toggled)
 	vbox.add_child(_tts_check)
 
+	# Phase P12: Difficulty & Accessibility Presets
+	var diff_row := HBoxContainer.new()
+	var diff_lbl := Label.new()
+	diff_lbl.text = "Difficulty Preset"
+	diff_lbl.size_flags_horizontal = SIZE_EXPAND_FILL
+	diff_row.add_child(diff_lbl)
+	_diff_opt = OptionButton.new()
+	_diff_opt.add_item("Story (0.6x Damage)", 0)
+	_diff_opt.add_item("Standard (1.0x)", 1)
+	_diff_opt.add_item("Nightmare (1.6x)", 2)
+	_diff_opt.selected = 1
+	_diff_opt.item_selected.connect(_on_diff_selected)
+	diff_row.add_child(_diff_opt)
+	vbox.add_child(diff_row)
+
+	_shake_check = CheckButton.new()
+	_shake_check.text = "Combat Hit-Stop & Screen Shake"
+	_shake_check.button_pressed = true
+	_shake_check.toggled.connect(_on_shake_toggled)
+	vbox.add_child(_shake_check)
+
+	_contrast_check = CheckButton.new()
+	_contrast_check.text = "High-Contrast HUD Outlines (A11y)"
+	_contrast_check.toggled.connect(_on_contrast_toggled)
+	vbox.add_child(_contrast_check)
+
 	var spacer := Control.new()
 	spacer.size_flags_vertical = SIZE_EXPAND_FILL
 	vbox.add_child(spacer)
@@ -164,3 +193,18 @@ func _on_tts_toggled(on: bool) -> void:
 	var dia := get_node_or_null("/root/DialogueUI")
 	if dia and dia.has_method("set_tts_enabled"):
 		dia.call("set_tts_enabled", on)
+
+func _on_diff_selected(idx: int) -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm:
+		sm.difficulty = ["story", "standard", "nightmare"][clampi(idx, 0, 2)]
+
+func _on_shake_toggled(on: bool) -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm:
+		sm.screen_shake_enabled = on
+
+func _on_contrast_toggled(on: bool) -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm:
+		sm.high_contrast_hud = on

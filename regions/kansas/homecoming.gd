@@ -45,6 +45,10 @@ var _near_barn_door: bool = false
 var _inside_barn: bool = false
 var _barn_node: Node3D = null
 var _barn_fitout: Node3D = null
+var _near_coop_door: bool = false
+var _inside_coop: bool = false
+var _coop_node: Node3D = null
+var _coop_fitout: Node3D = null
 var _cam_out_len: float = 5.5
 var _cam_out_fov: float = 65.0
 var _cam_out_pitch: float = -18.0
@@ -125,12 +129,17 @@ func _process(delta: float) -> void:
 	_near_aunt = phase in [Phase.FIND_AUNT, Phase.REUNION] and player.global_position.distance_to(AUNT_POS) < 3.2
 	_near_uncle = player.global_position.distance_to(UNCLE_POS) < 3.0
 	_near_porch = phase in [Phase.WALK_HOME, Phase.PORCH] and player.global_position.distance_to(PORCH_PAD) < 3.5
-	_near_barn_door = not _inside_barn and player.global_position.distance_to(Vector3(-20.0, 0.08, 17.8)) < 2.2
+	_near_barn_door = not _inside_barn and not _inside_coop and player.global_position.distance_to(Vector3(-20.0, 0.08, 17.8)) < 2.2
+	_near_coop_door = not _inside_coop and not _inside_barn and player.global_position.distance_to(Vector3(22.0, 0.08, -11.4)) < 2.4
 	if Input.is_action_just_pressed("interact"):
 		if _inside_barn:
 			_toggle_barn_interior(false)
+		elif _inside_coop:
+			_toggle_coop_interior(false)
 		elif _near_barn_door:
 			_toggle_barn_interior(true)
+		elif _near_coop_door:
+			_toggle_coop_interior(true)
 		elif _near_aunt and phase == Phase.FIND_AUNT:
 			_set_phase(Phase.REUNION)
 			_advance_aunt()
@@ -227,11 +236,12 @@ func _build_world() -> void:
 	WorldKit.dress_cottage_exterior(barn, 3.5, 3.0, 4.5, Color(0.36, 0.36, 0.39), Color(0.22, 0.22, 0.25), true)
 	WorldKit.make_building_crest_sign(barn, Vector3(0, 4.6, 3.3), "BARN", Color(0.45, 0.45, 0.48), true)
 	_build_barn_interior(barn)
-	# Matching L1 Kansas Chicken Coop + Swinging Fence Gate + 5 sculpted 3D chickens!
+	# Matching L1 Kansas Chicken Coop + Swinging Fence Gate + 5 sculpted 3D chickens + Enterable Interior!
 	var coop := StaticBody3D.new()
 	coop.name = "ChickenCoop"
 	add_child(coop)
 	coop.global_position = Vector3(22.0, 0.0, -14.0)
+	_coop_node = coop
 	WorldKit.build_chicken_coop(coop)
 	var cc := CollisionShape3D.new()
 	var csh := BoxShape3D.new()
@@ -239,6 +249,7 @@ func _build_world() -> void:
 	cc.shape = csh
 	cc.position = Vector3(0, 1.1, 0)
 	coop.add_child(cc)
+	_build_coop_interior(coop)
 	_wind_clothes = WorldKit.build_clothesline(self, Vector3(8.0, 0.0, 4.0))
 	_windmill_rotor = WorldKit.build_lattice_windmill(self, Vector3(-26.0, 0.0, -10.0))
 	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 4), 32.0, 100, 4.8)
@@ -366,8 +377,12 @@ func _update_compass() -> void:
 func _update_prompt() -> void:
 	if _inside_barn:
 		hud.set_prompt("E  —  Exit Barn")
+	elif _inside_coop:
+		hud.set_prompt("E  —  Exit Chicken Coop")
 	elif _near_barn_door:
 		hud.set_prompt("E  —  Enter Barn")
+	elif _near_coop_door:
+		hud.set_prompt("E  —  Enter Chicken Coop")
 	elif _near_aunt and phase in [Phase.FIND_AUNT, Phase.REUNION]:
 		hud.set_prompt("E  —  Talk to Aunt Em")
 	elif _near_porch and phase == Phase.WALK_HOME:
@@ -496,6 +511,80 @@ func _toggle_barn_interior(enter: bool) -> void:
 				_cam_out_fov = cam.fov
 				_cam_out_pitch = arm.rotation_degrees.x
 				arm.spring_length = 2.45
+				arm.rotation_degrees = Vector3(-12.0, 0.0, 0.0)
+				cam.fov = 72.0
+			else:
+				arm.spring_length = _cam_out_len
+				arm.rotation_degrees = Vector3(_cam_out_pitch, 0.0, 0.0)
+				cam.fov = _cam_out_fov
+
+func _build_coop_interior(host: Node3D) -> void:
+	_coop_fitout = Node3D.new()
+	_coop_fitout.name = "CoopInteriorFitout"
+	_coop_fitout.visible = false
+	host.add_child(_coop_fitout)
+	var hw := 2.6
+	var hd := 2.2
+	var wh := 2.8
+	for spec in [
+		[Vector3(0, 0.03, 0), Vector3(hw * 2.0, 0.06, hd * 2.0), Color(0.36, 0.35, 0.34)],
+		[Vector3(0, wh * 0.5, -hd), Vector3(hw * 2.0, wh, 0.14), Color(0.50, 0.50, 0.52)],
+		[Vector3(-hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.45, 0.45, 0.48)],
+		[Vector3(hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.45, 0.45, 0.48)],
+		[Vector3(0, wh * 0.5, hd), Vector3(hw * 2.0, wh, 0.14), Color(0.47, 0.47, 0.50)],
+		[Vector3(0, 1.0, hd - 0.14), Vector3(1.05, 1.95, 0.08), Color(0.22, 0.22, 0.25)],
+		[Vector3(0, wh, 0), Vector3(hw * 2.0, 0.14, hd * 2.0), Color(0.28, 0.28, 0.31)],
+		# Nesting boxes & straw roosting perches
+		[Vector3(-1.7, 0.35, -1.4), Vector3(1.2, 0.7, 0.85), Color(0.40, 0.39, 0.38)],
+		[Vector3(1.7, 0.35, -1.4), Vector3(1.2, 0.7, 0.85), Color(0.40, 0.39, 0.38)],
+		[Vector3(0.0, 0.85, -1.6), Vector3(2.2, 0.10, 0.14), Color(0.34, 0.34, 0.36)],
+	]:
+		var m := MeshInstance3D.new()
+		var b := BoxMesh.new()
+		b.size = spec[1]
+		m.mesh = b
+		var sm := StandardMaterial3D.new()
+		sm.albedo_color = spec[2]
+		m.material_override = sm
+		m.position = spec[0]
+		_coop_fitout.add_child(m)
+	# Animated sculpted chickens pecking & roosting inside the coop!
+	for cp in [Vector3(-1.5, 0.72, -1.4), Vector3(1.5, 0.72, -1.4), Vector3(-0.6, 0.06, -0.3)]:
+		WorldKit.build_chicken_visual(_coop_fitout, cp, 0.0)
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(0.96, 0.96, 1.0)
+	lamp.light_energy = 2.4
+	lamp.omni_range = 10.0
+	lamp.position = Vector3(0, wh - 0.55, 0)
+	_coop_fitout.add_child(lamp)
+	WorldKit.make_world_badge(_coop_fitout, Vector3(0, 2.2, hd - 0.24), "✦  Exit Chicken Coop (E)", Color(0.96, 0.96, 1.0), 10.0)
+	WorldKit.add_interior_activities(_coop_fitout, "homecoming_coop", "", Vector3(1.1, 0.06, 0.1), Vector3.ZERO, true)
+
+func _toggle_coop_interior(enter: bool) -> void:
+	if player == null or _coop_node == null or _coop_fitout == null:
+		return
+	_inside_coop = enter
+	for c in _coop_node.find_children("*", "CollisionShape3D", true, false):
+		if c is CollisionShape3D:
+			(c as CollisionShape3D).disabled = enter
+	for n in _coop_node.find_children("*", "MeshInstance3D", true, false):
+		if _coop_fitout.is_ancestor_of(n):
+			continue
+		if n is MeshInstance3D:
+			(n as MeshInstance3D).visible = not enter
+	_coop_fitout.visible = enter
+	player.global_position = Vector3(22.0, 0.14, -13.5) if enter else Vector3(22.0, 0.14, -10.8)
+	player.velocity = Vector3.ZERO
+	var pivot := player.find_child("CameraPivot", true, false) as Node3D
+	if pivot:
+		var arm := pivot.find_child("SpringArm3D", true, false) as SpringArm3D
+		var cam := pivot.find_child("Camera3D", true, false) as Camera3D
+		if arm and cam:
+			if enter:
+				_cam_out_len = arm.spring_length
+				_cam_out_fov = cam.fov
+				_cam_out_pitch = arm.rotation_degrees.x
+				arm.spring_length = 2.2
 				arm.rotation_degrees = Vector3(-12.0, 0.0, 0.0)
 				cam.fov = 72.0
 			else:

@@ -350,6 +350,9 @@ func _kick() -> void:
 	else:
 		CombatFx.slash_box(self, global_position, forward, Color(0.85, 0.9, 1.0), Vector3(0.95, 0.22, 1.2), 0.16)
 	CombatFx.flash_sphere(self, global_position + Vector3(0, 0.7, 0) + forward * 0.95, Color(0.98, 0.35, 0.58) if _rapture_t > 0.0 else Color(0.92, 0.96, 1.0), 0.38 + float(_combo_step) * 0.08, 0.14)
+	var afx := get_node_or_null("/root/AudioFx")
+	if afx and afx.has_method("play"):
+		afx.play("kick", -6.0)
 	var lbl_txt := "KICK" if _combo_step == 1 else ("HEEL SWEEP ×2" if _combo_step == 2 else "✦ FINISHER ×3")
 	CombatFx.label(self, global_position, lbl_txt, Color(1.0, 0.38, 0.62) if _combo_step == 3 else Color(0.95, 0.95, 1.0))
 	var space := get_world_3d().direct_space_state
@@ -406,6 +409,9 @@ func _use_armament() -> void:
 				return
 			var foe: Node3D = enemies[0]
 			CombatFx.whip_lash(self, global_position, foe.global_position)
+			var afx_w := get_node_or_null("/root/AudioFx")
+			if afx_w and afx_w.has_method("play"):
+				afx_w.play("whip", -5.0)
 			var pull_pos := global_position + (foe.global_position - global_position).normalized() * 1.65
 			pull_pos.y = foe.global_position.y
 			var tw := create_tween()
