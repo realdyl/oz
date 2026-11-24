@@ -2007,12 +2007,24 @@ static func build_grand_portal_arch(parent: Node3D, at: Vector3, accent_col: Col
 	# Glowing circular rune medallion on floor
 	_mi(root, _cyl(3.1, 3.3, 0.06, 24), gold, Vector3(0, 0.04, 0))
 	_mi(root, _cyl(2.7, 2.7, 0.07, 24), glow, Vector3(0, 0.05, 0))
-	# Flanking fluted gilded columns + curved portal arch + crystal crown star
+	# Flanking fluted gilded columns + curved portal arch + 4 glowing Oz Realm Gemstones (quad_01_portal_arch.jpg)
 	for sx in [-1.0, 1.0]:
 		_mi(root, _cyl(0.42, 0.52, 0.45, 14), gold, Vector3(float(sx) * 3.1, 0.22, 0))
 		_mi(root, _cyl(0.28, 0.34, 5.2, 14), stone, Vector3(float(sx) * 3.1, 2.85, 0))
 		_mi(root, _cyl(0.48, 0.34, 0.42, 14), gold, Vector3(float(sx) * 3.1, 5.55, 0))
 		_mi(root, _sph(0.32, 0.52, 12), glow, Vector3(float(sx) * 3.1, 6.15, 0))
+	var realm_gems := [
+		[-1.65, Color(0.22, 0.52, 1.0)],  # North/Blue
+		[-0.55, Color(0.16, 0.92, 0.44)], # Emerald
+		[0.55, Color(0.96, 0.18, 0.34)],  # South/Ruby
+		[1.65, Color(1.0, 0.80, 0.20)],   # West/Topaz
+	]
+	for g in realm_gems:
+		var gx: float = float(g[0])
+		var gcol: Color = g[1]
+		var gmat := _mat(gcol, 0.10, 0.2, gcol, 2.4)
+		_mi(root, _box(Vector3(0.56, 0.72, 0.24)), gold, Vector3(gx, 6.25, 0.25))
+		_mi(root, _box(Vector3(0.40, 0.56, 0.30)), gmat, Vector3(gx, 6.25, 0.27))
 	_mi(root, _box(Vector3(6.8, 0.55, 0.65)), gold, Vector3(0, 5.85, 0))
 	_mi(root, _sph(0.55, 0.95, 14), glow, Vector3(0, 6.75, 0))
 	make_building_crest_sign(root, Vector3(0, 5.85, 0.45), title.to_upper(), accent_col, false)
@@ -2255,6 +2267,10 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 	_mi(pav, _cyl(8.6, 8.6, 0.45, 24), gold, Vector3(0, 6.85, 0)) # crown cornice ring
 	_mi(pav, _sph(8.4, 5.2, 24), rose_marble, Vector3(0, 7.1, 0), Vector3.ZERO, Vector3(1.0, 0.55, 1.0)) # ribbed rose dome
 	_mi(pav, _cyl(0.12, 0.42, 2.2, 12), gold, Vector3(0, 10.6, 0)) # golden temple finial
+	# Radiant golden 8-point starburst crown atop Glinda's dome (quad_02_glinda_pavilion.jpg)
+	_mi(pav, _sph(0.42, 0.84, 12), star_glow, Vector3(0, 11.75, 0))
+	for sri in range(4):
+		_mi(pav, _cyl(0.03, 0.06, 2.2, 6), gold, Vector3(0, 11.75, 0), Vector3(0, 0, float(sri) * 45.0))
 	for ci in range(8):
 		var a := float(ci) / 8.0 * TAU + PI * 0.125
 		var cx := cos(a) * 8.1
@@ -2292,6 +2308,12 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 			var lz := -14.0 + float(li) * 4.8
 			_mi(pool_body, _cyl(0.42, 0.42, 0.02, 10), _mat(Color(0.22, 0.58, 0.32), 0.8), Vector3(sin(lz) * 1.4, 0.088, lz))
 			_mi(pool_body, _sph(0.20, 0.16, 8), lotus, Vector3(sin(lz) * 1.4, 0.15, lz))
+		# Warm rose-gold glowing water lanterns lining pool edge (quad_02_glinda_pavilion.jpg)
+		for wz in [-10.0, 0.0, 10.0]:
+			var lpost_x := -float(sx) * 3.1
+			_mi(pool_body, _cyl(0.14, 0.18, 0.95, 8), marble, Vector3(lpost_x, 0.50, float(wz)))
+			_mi(pool_body, _cyl(0.16, 0.12, 0.36, 8), star_glow, Vector3(lpost_x, 1.15, float(wz)))
+			_mi(pool_body, _cyl(0.04, 0.22, 0.20, 8), gold, Vector3(lpost_x, 1.42, float(wz)))
 
 	# 3) Wind-swaying Rose-Blossom Trees & Golden-Rose Meadow Grass
 	var rng := RandomNumberGenerator.new()
