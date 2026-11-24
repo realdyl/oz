@@ -188,7 +188,7 @@ func _build_ui() -> void:
 	right_vb.add_child(_right_title)
 
 	_right_icon_holder = CenterContainer.new()
-	_right_icon_holder.custom_minimum_size = Vector2(0, 82)
+	_right_icon_holder.custom_minimum_size = Vector2(0, 148)
 	right_vb.add_child(_right_icon_holder)
 
 	_right_sub = Label.new()
@@ -270,8 +270,22 @@ func _refresh_tab() -> void:
 		1: # Companions
 			if sm:
 				var icon_map := {"dorothy": "dorothy_gingham", "scarecrow": "scarecrow_classic", "tinman": "tinman_classic", "lion": "lion_classic", "toto": "toto_classic"}
+				var port_map := {
+					"dorothy": "res://assets/art/portraits/dorothy.png",
+					"scarecrow": "res://assets/art/portraits/scarecrow.png",
+					"tinman": "res://assets/art/portraits/tinman.png",
+					"lion": "res://assets/art/portraits/lion.png",
+					"toto": "res://assets/art/portraits/toto.png",
+				}
 				for comp in sm.COMPANION_CATALOG:
-					_entries.append({"icon": icon_map.get(str(comp.get("id", "")), "dorothy_gingham"), "name": str(comp["name"]), "sub": "%s  ·  %s" % [comp["role"], comp["kit"]], "body": str(comp["lore"])})
+					var cid := str(comp.get("id", ""))
+					_entries.append({
+						"icon": icon_map.get(cid, "dorothy_gingham"),
+						"portrait": port_map.get(cid, ""),
+						"name": str(comp["name"]),
+						"sub": "%s  ·  %s" % [comp["role"], comp["kit"]],
+						"body": str(comp["lore"]),
+					})
 		2: # Armaments
 			for arm in ARMAMENT_LORE:
 				_entries.append({"icon": arm["id"], "name": arm["name"], "sub": arm["sub"], "body": arm["body"]})
@@ -327,6 +341,42 @@ func _show_right_entry() -> void:
 	_right_title.text = str(ent["name"]).to_upper()
 	_right_sub.text = str(ent["sub"])
 	_right_body.text = str(ent["body"])
-	var icon := ShopItemIcon.new()
-	icon.setup(str(ent.get("icon", "dorothy_gingham")), Color(0.769, 0.620, 0.353), true)
-	_right_icon_holder.add_child(icon)
+	var port_path: String = str(ent.get("portrait", ""))
+	var tex: Texture2D = _load_portrait_texture(port_path)
+	if tex != null:
+		var frame_pc := PanelContainer.new()
+		var fst := StyleBoxFlat.new()
+		fst.bg_color = Color(0.10, 0.05, 0.12, 1.0)
+		fst.border_color = Color(0.84, 0.68, 0.36, 1.0)
+		fst.set_border_width_all(3)
+		fst.set_corner_radius_all(6)
+		fst.content_margin_left = 4
+		fst.content_margin_right = 4
+		fst.content_margin_top = 4
+		fst.content_margin_bottom = 4
+		frame_pc.add_theme_stylebox_override("panel", fst)
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(132, 132)
+		frame_pc.add_child(tr)
+		_right_icon_holder.add_child(frame_pc)
+	else:
+		var icon := ShopItemIcon.new()
+		icon.setup(str(ent.get("icon", "dorothy_gingham")), Color(0.769, 0.620, 0.353), true)
+		_right_icon_holder.add_child(icon)
+
+func _load_portrait_texture(res_path: String) -> Texture2D:
+	if res_path == "":
+		return null
+	if ResourceLoader.exists(res_path):
+		var loaded := ResourceLoader.load(res_path) as Texture2D
+		if loaded != null:
+			return loaded
+	var abs_path := ProjectSettings.globalize_path(res_path)
+	if FileAccess.file_exists(abs_path):
+		var img := Image.load_from_file(abs_path)
+		if img != null and not img.is_empty():
+			return ImageTexture.create_from_image(img)
+	return null
