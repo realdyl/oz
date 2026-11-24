@@ -41,6 +41,10 @@ var _allure_bar: ProgressBar
 var _desire_lbl: Label
 var _armament_lbl: Label
 var _rapture_overlay: ColorRect
+var _boss_panel: PanelContainer
+var _boss_name_lbl: Label
+var _boss_phase_lbl: Label
+var _boss_bar: ProgressBar
 var _wheel_root: Control
 var _wheel_open: bool = false
 var _wheel_buttons: Dictionary = {}
@@ -764,6 +768,72 @@ func set_rapture_visual(active: bool) -> void:
 		_rapture_overlay.visible = active
 	if has_method("show_toast"):
 		call("show_toast", "✦ RAPTURE MODE ACTIVE — 2.5× Damage!" if active else "Rapture Mode faded.")
+
+func _ensure_boss_bar() -> void:
+	if _boss_panel != null:
+		return
+	var safe := get_node_or_null("SafeRoot") as Control
+	if safe == null:
+		return
+	_boss_panel = PanelContainer.new()
+	_boss_panel.name = "BossHealthBar"
+	_boss_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_boss_panel.offset_left = -240.0
+	_boss_panel.offset_right = 240.0
+	_boss_panel.offset_top = 16.0
+	_boss_panel.offset_bottom = 80.0
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.08, 0.03, 0.07, 0.92)
+	st.border_color = Color(0.94, 0.76, 0.30, 0.95)
+	st.set_border_width_all(2)
+	st.set_corner_radius_all(8)
+	st.content_margin_left = 14
+	st.content_margin_right = 14
+	st.content_margin_top = 6
+	st.content_margin_bottom = 8
+	_boss_panel.add_theme_stylebox_override("panel", st)
+	_boss_panel.visible = false
+	safe.add_child(_boss_panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	_boss_panel.add_child(vb)
+	var hdr := HBoxContainer.new()
+	vb.add_child(hdr)
+	_boss_name_lbl = Label.new()
+	_boss_name_lbl.add_theme_font_size_override("font_size", 14)
+	_boss_name_lbl.add_theme_color_override("font_color", Color(0.98, 0.86, 0.50))
+	_boss_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr.add_child(_boss_name_lbl)
+	_boss_phase_lbl = Label.new()
+	_boss_phase_lbl.add_theme_font_size_override("font_size", 11)
+	_boss_phase_lbl.add_theme_color_override("font_color", Color(1.0, 0.42, 0.58))
+	hdr.add_child(_boss_phase_lbl)
+	_boss_bar = ProgressBar.new()
+	_boss_bar.show_percentage = false
+	_boss_bar.custom_minimum_size = Vector2(420, 12)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.16, 0.08, 0.12, 0.95)
+	bg.set_corner_radius_all(4)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = Color(0.86, 0.14, 0.28, 0.98)
+	fg.set_corner_radius_all(4)
+	_boss_bar.add_theme_stylebox_override("background", bg)
+	_boss_bar.add_theme_stylebox_override("fill", fg)
+	vb.add_child(_boss_bar)
+
+func show_boss_bar(boss_name: String, phase_label: String, cur_hp: float, max_hp_val: float) -> void:
+	_ensure_boss_bar()
+	if _boss_panel == null:
+		return
+	_boss_panel.visible = true
+	_boss_name_lbl.text = boss_name
+	_boss_phase_lbl.text = phase_label
+	_boss_bar.max_value = maxf(1.0, max_hp_val)
+	_boss_bar.value = clampf(cur_hp, 0.0, max_hp_val)
+
+func hide_boss_bar() -> void:
+	if _boss_panel:
+		_boss_panel.visible = false
 
 func _refresh_vitality_ribbon() -> void:
 	var sm := get_node_or_null("/root/SaveManager")

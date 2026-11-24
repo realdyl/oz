@@ -178,10 +178,48 @@ func _spawn(at: Vector3, kind: String, title: String) -> void:
 			mi.mesh = sphm
 			mi.position = Vector3(0, 0.6, 0)
 		"chime":
-			var box := BoxMesh.new()
-			box.size = Vector3(0.25, 1.4, 0.25)
-			mi.mesh = box
-			mi.position = Vector3(0, 0.9, 0)
+			# Fanciful sculpted storybook hanging Wind-Chime Arch (shepherd hook + gilded ring + 5 staggered chime tubes + crystal star!)
+			var pole := CylinderMesh.new()
+			pole.top_radius = 0.035
+			pole.bottom_radius = 0.05
+			pole.height = 1.95
+			mi.mesh = pole
+			mi.position = Vector3(-0.35, 0.98, 0)
+			var hook := MeshInstance3D.new()
+			var hb := BoxMesh.new()
+			hb.size = Vector3(0.55, 0.06, 0.06)
+			hook.mesh = hb
+			hook.material_override = mat
+			hook.position = Vector3(-0.08, 1.92, 0)
+			area.add_child(hook)
+			var crown := MeshInstance3D.new()
+			var ct := TorusMesh.new()
+			ct.inner_radius = 0.20
+			ct.outer_radius = 0.25
+			crown.mesh = ct
+			crown.material_override = mat
+			crown.position = Vector3(0.12, 1.72, 0)
+			area.add_child(crown)
+			for ci in range(5):
+				var ang := float(ci) / 5.0 * TAU
+				var tube := MeshInstance3D.new()
+				var tc := CylinderMesh.new()
+				var th := 0.42 + float(ci) * 0.11
+				tc.top_radius = 0.025
+				tc.bottom_radius = 0.025
+				tc.height = th
+				tube.mesh = tc
+				tube.material_override = mat
+				tube.position = Vector3(0.12 + cos(ang) * 0.18, 1.70 - th * 0.5, sin(ang) * 0.18)
+				area.add_child(tube)
+			var star := MeshInstance3D.new()
+			var ss := SphereMesh.new()
+			ss.radius = 0.10
+			ss.height = 0.22
+			star.mesh = ss
+			star.material_override = mat
+			star.position = Vector3(0.12, 0.92, 0)
+			area.add_child(star)
 		_:
 			var tor := TorusMesh.new()
 			tor.inner_radius = 0.9

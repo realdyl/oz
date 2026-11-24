@@ -717,3 +717,49 @@ func water_splash(host: Node3D, pos: Vector3) -> void:
 		dtw.tween_property(drop, "global_position", Vector3(pos.x + cos(ang) * 0.45, 0.52, pos.z + sin(ang) * 0.45), 0.18).set_ease(Tween.EASE_OUT)
 		dtw.tween_property(drop, "global_position", Vector3(pos.x + cos(ang) * 0.72, 0.08, pos.z + sin(ang) * 0.72), 0.20).set_ease(Tween.EASE_IN)
 		dtw.tween_callback(drop.queue_free)
+
+## Phase P9: Telegraphed Ground AoE Danger Ring — expands & fills over `duration`, then detonates!
+func aoe_telegraph(host: Node3D, pos: Vector3, radius: float = 3.2, duration: float = 1.15, col: Color = Color(0.98, 0.16, 0.28), on_detonate: Callable = Callable()) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var outer := MeshInstance3D.new()
+	var t := TorusMesh.new()
+	t.inner_radius = maxf(0.2, radius - 0.14)
+	t.outer_radius = radius
+	outer.mesh = t
+	var omat := StandardMaterial3D.new()
+	omat.albedo_color = Color(col.r, col.g, col.b, 0.85)
+	omat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	omat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	omat.emission_enabled = true
+	omat.emission = col
+	omat.emission_energy_multiplier = 2.0
+	outer.material_override = omat
+	root.add_child(outer)
+	outer.global_position = Vector3(pos.x, 0.12, pos.z)
+
+	var fill := MeshInstance3D.new()
+	var fcyl := CylinderMesh.new()
+	fcyl.top_radius = radius
+	fcyl.bottom_radius = radius
+	fcyl.height = 0.04
+	fill.mesh = fcyl
+	var fmat := StandardMaterial3D.new()
+	fmat.albedo_color = Color(col.r, col.g, col.b, 0.35)
+	fmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fill.material_override = fmat
+	root.add_child(fill)
+	fill.global_position = Vector3(pos.x, 0.09, pos.z)
+	fill.scale = Vector3(0.05, 1.0, 0.05)
+
+	var tw := host.get_tree().create_tween()
+	tw.tween_property(fill, "scale", Vector3(1.0, 1.0, 1.0), duration).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		flash_sphere(host, Vector3(pos.x, 0.8, pos.z), col, radius * 0.65, 0.28)
+		if on_detonate.is_valid():
+			on_detonate.call()
+		outer.queue_free()
+		fill.queue_free()
+	)

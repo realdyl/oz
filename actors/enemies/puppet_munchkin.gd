@@ -302,6 +302,11 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 		var echo_dmg := maxi(1, int(float(dmg) * 0.75))
 		CombatFx.gilded_chain(self, global_position, _chain_partner.global_position)
 		_chain_partner.take_damage(echo_dmg, global_position, {"chain_echo": true, "knockback": 2.0})
+	if is_marshal:
+		var hud := get_tree().get_first_node_in_group("hud")
+		if hud and hud.has_method("show_boss_bar"):
+			var ph := "PHASE II — ENRAGED CLEAVE" if health <= 45 else "PHASE I — GUILD CAPTAIN"
+			hud.call("show_boss_bar", "LOLLIPOP GUILD MARSHAL", ph, float(health), 90.0)
 	if health <= 0:
 		_die()
 
@@ -365,6 +370,10 @@ func _die() -> void:
 	collision_mask = 0
 	set_physics_process(false)
 	add_to_group("enemies_dead")
+	if is_marshal:
+		var hud := get_tree().get_first_node_in_group("hud")
+		if hud and hud.has_method("hide_boss_bar"):
+			hud.call("hide_boss_bar")
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm and sm.has_method("add_desire"):
 		var bonus := 8 if (bind_t > 0.0 or enamored_t > 0.0) else 3

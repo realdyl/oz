@@ -213,6 +213,8 @@ func _build_world() -> void:
 	_gate_seal.add_child(gcs)
 	WorldKit.make_building_crest_sign(self, Vector3(0, 9.6, -5.8), "EMERALD CITY GATES", Color(0.22, 0.78, 0.45), false)
 	WorldKit.make_world_badge(self, gate_pos + Vector3(0, 3.6, 1.2), "✦  Emerald City Gates — Open (E)", Color(0.55, 1.0, 0.72), 14.0)
+	# Disney-World Fairy-Tale Emerald Castle Ramparts: 6 Crystal Turrets, Battlements, Stained-Glass Niches, Pennants & Fountains!
+	WorldKit.dress_emerald_city_wall(self, -8.0)
 	# Plaza + Disney-World Fairy-Tale Emerald Boulevard Lanterns & Pennant Flags + Phase P8 Tailor of Vices Boutique!
 	_add_box(Vector3(0, -0.12, -40), Vector3(70, 0.4, 55), Color(0.16, 0.38, 0.26), "Plaza")
 	for sx in [-1.0, 1.0]:
@@ -272,8 +274,8 @@ func _build_palace_hall() -> void:
 	# Outer tower mass (visual bulk above)
 	_add_box(Vector3(0, 18, -52), Vector3(18, 14, 18), Color(0.1, 0.5, 0.3), "TowerUpper")
 	_add_box(Vector3(0, 28, -52), Vector3(20, 2.5, 20), Color(0.65, 0.9, 0.4), "TowerCrown")
-	# Columns inside
-	for x in [-8.0, 8.0]:
+	# Columns widened to x = ±11.4 so the central Great Hall & Wizard reveal stage are 100% unobstructed!
+	for x in [-11.4, 11.4]:
 		for z in [-44.0, -52.0, -60.0]:
 			_add_box(Vector3(x, 4.0, z), Vector3(1.4, 8.0, 1.4), Color(0.2, 0.55, 0.35), "HallCol")
 	# Throne dais

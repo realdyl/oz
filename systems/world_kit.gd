@@ -1881,6 +1881,60 @@ static func build_palace_double_doors(parent: Node3D, at: Vector3, total_w: floa
 
 	return {"root": root, "left": piv_l, "right": piv_r}
 
+## Disney-World Fairy-Tale Emerald City Ramparts: 6 Crystal Turrets, Battlements, Glowing Stained-Glass Niches, Pennants & Fountains!
+static func dress_emerald_city_wall(parent: Node3D, z_pos: float = -8.0) -> void:
+	var root := Node3D.new()
+	root.name = "EmeraldCastleRamparts"
+	parent.add_child(root)
+
+	var em_wall := _mat(Color(0.10, 0.56, 0.34), 0.24, 0.35, Color(0.08, 0.48, 0.28), 0.22)
+	var crystal := _mat(Color(0.24, 0.94, 0.56), 0.10, 0.45, Color(0.20, 0.98, 0.58), 1.45)
+	var gold := _mat(Color(0.95, 0.80, 0.32), 0.22, 0.92, Color(0.92, 0.74, 0.24), 0.28)
+	var glass_glow := _mat(Color(0.55, 1.0, 0.78), 0.12, 0.2, Color(0.45, 1.0, 0.72), 2.1)
+	var crimson := _mat(Color(0.76, 0.12, 0.24), 0.55, 0.1)
+	var water := make_flowing_water_material(Color(0.18, 0.88, 0.62), Color(0.76, 1.0, 0.88), 1.4)
+
+	# 1) Gilded cornice band & crenellated battlements spanning the entire castle curtain wall
+	_mi(root, _box(Vector3(92.0, 0.48, 5.4)), gold, Vector3(0, 12.8, z_pos))
+	for bi in range(-22, 23):
+		var bx := float(bi) * 2.0
+		if absf(bx) < 8.5:
+			continue
+		if bi % 2 == 0:
+			_mi(root, _box(Vector3(1.15, 1.15, 5.3)), em_wall, Vector3(bx, 13.5, z_pos))
+			_mi(root, _box(Vector3(1.22, 0.16, 5.38)), gold, Vector3(bx, 14.1, z_pos))
+
+	# 2) Arched glowing stained-glass windows, gold Art-Deco pilasters & royal pennants along the front wall (+Z face)
+	for wx in [-40.0, -34.0, -22.0, -16.0, 16.0, 22.0, 34.0, 40.0]:
+		_mi(root, _box(Vector3(0.55, 12.6, 0.65)), gold, Vector3(wx - 2.4, 6.4, z_pos + 2.65))
+		_mi(root, _box(Vector3(2.2, 5.6, 0.32)), glass_glow, Vector3(wx, 6.8, z_pos + 2.62))
+		_mi(root, _cyl(1.1, 1.1, 0.36, 14), glass_glow, Vector3(wx, 9.6, z_pos + 2.62), Vector3(90, 0, 0))
+		_mi(root, _box(Vector3(2.55, 0.22, 0.45)), gold, Vector3(wx, 3.9, z_pos + 2.70))
+		# Royal emerald-and-crimson tapestry banner hanging beside each arch
+		_mi(root, _box(Vector3(0.95, 3.8, 0.08)), crimson, Vector3(wx - 2.4, 8.8, z_pos + 3.05))
+		_mi(root, _box(Vector3(1.05, 0.16, 0.12)), gold, Vector3(wx - 2.4, 10.7, z_pos + 3.05))
+
+	# 3) 6 Soaring Fairy-Tale Castle Turrets with conical crystal roofs & gilded spires
+	for tx in [-42.0, -28.0, -13.5, 13.5, 28.0, 42.0]:
+		var th := 22.0 if absf(tx) < 18.0 else (18.5 if absf(tx) < 32.0 else 16.0)
+		var tr := 3.1 if absf(tx) < 18.0 else 2.5
+		_mi(root, _cyl(tr, tr * 1.08, th, 16), em_wall, Vector3(tx, th * 0.5, z_pos + 0.8))
+		_mi(root, _cyl(tr + 0.25, tr + 0.25, 0.55, 16), gold, Vector3(tx, th + 0.1, z_pos + 0.8))
+		_mi(root, _cyl(0.15, tr * 1.15, 7.8, 16), crystal, Vector3(tx, th + 4.1, z_pos + 0.8))
+		_mi(root, _cyl(0.05, 0.18, 2.8, 10), gold, Vector3(tx, th + 9.2, z_pos + 0.8))
+		# Glowing turret balcony window
+		_mi(root, _box(Vector3(1.3, 3.2, 0.45)), glass_glow, Vector3(tx, th * 0.65, z_pos + 0.8 + tr))
+
+	# 4) Flanking Emerald Crystal Fountains with animated flowing water right outside the Grand Gate Arch!
+	for sx in [-1.0, 1.0]:
+		var fx := float(sx) * 10.6
+		var fz := z_pos + 7.2
+		_mi(root, _cyl(2.2, 2.5, 0.72, 16), em_wall, Vector3(fx, 0.36, fz))
+		_mi(root, _cyl(2.25, 2.25, 0.12, 16), gold, Vector3(fx, 0.74, fz))
+		_mi(root, _cyl(1.95, 1.95, 0.08, 16), water, Vector3(fx, 0.66, fz))
+		_mi(root, _cyl(0.32, 0.55, 2.2, 12), crystal, Vector3(fx, 1.45, fz))
+		_mi(root, _sph(0.45, 0.75, 12), glass_glow, Vector3(fx, 2.85, fz))
+
 ## Theatrical crimson-velvet parting curtain on gilded brass rod with pleated folds, rings & gold tassels.
 ## Returns {"root": Node3D, "left": Node3D, "right": Node3D} so callers can animate both drapes drawing back!
 static func build_velvet_curtain(parent: Node3D, pos: Vector3, width: float = 5.4, height: float = 6.2) -> Dictionary:

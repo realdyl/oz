@@ -41,6 +41,13 @@ var phase: Phase = Phase.LANDING
 var _near_aunt: bool = false
 var _near_uncle: bool = false
 var _near_porch: bool = false
+var _near_barn_door: bool = false
+var _inside_barn: bool = false
+var _barn_node: Node3D = null
+var _barn_fitout: Node3D = null
+var _cam_out_len: float = 5.5
+var _cam_out_fov: float = 65.0
+var _cam_out_pitch: float = -18.0
 var _aunt_line: int = 0
 var _fade_t: float = 0.0
 var _landing_t: float = 0.0
@@ -118,8 +125,13 @@ func _process(delta: float) -> void:
 	_near_aunt = phase in [Phase.FIND_AUNT, Phase.REUNION] and player.global_position.distance_to(AUNT_POS) < 3.2
 	_near_uncle = player.global_position.distance_to(UNCLE_POS) < 3.0
 	_near_porch = phase in [Phase.WALK_HOME, Phase.PORCH] and player.global_position.distance_to(PORCH_PAD) < 3.5
+	_near_barn_door = not _inside_barn and player.global_position.distance_to(Vector3(-20.0, 0.08, 17.8)) < 2.2
 	if Input.is_action_just_pressed("interact"):
-		if _near_aunt and phase == Phase.FIND_AUNT:
+		if _inside_barn:
+			_toggle_barn_interior(false)
+		elif _near_barn_door:
+			_toggle_barn_interior(true)
+		elif _near_aunt and phase == Phase.FIND_AUNT:
 			_set_phase(Phase.REUNION)
 			_advance_aunt()
 		elif _near_aunt and phase == Phase.REUNION:
@@ -210,9 +222,11 @@ func _build_world() -> void:
 	barn.name = "Barn"
 	add_child(barn)
 	barn.global_position = Vector3(-20.0, 0.0, 14.0)
+	_barn_node = barn
 	_add_box_to(barn, Vector3(0, 2.25, 0), Vector3(7.0, 4.5, 6.0), Color(0.36, 0.36, 0.39), "BarnBody")
 	WorldKit.dress_cottage_exterior(barn, 3.5, 3.0, 4.5, Color(0.36, 0.36, 0.39), Color(0.22, 0.22, 0.25), true)
 	WorldKit.make_building_crest_sign(barn, Vector3(0, 4.6, 3.3), "BARN", Color(0.45, 0.45, 0.48), true)
+	_build_barn_interior(barn)
 	_wind_clothes = WorldKit.build_clothesline(self, Vector3(8.0, 0.0, 4.0))
 	_windmill_rotor = WorldKit.build_lattice_windmill(self, Vector3(-26.0, 0.0, -10.0))
 	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 4), 32.0, 100, 4.8)
@@ -338,7 +352,11 @@ func _update_compass() -> void:
 			compass.text = "Kansas homecoming"
 
 func _update_prompt() -> void:
-	if _near_aunt and phase in [Phase.FIND_AUNT, Phase.REUNION]:
+	if _inside_barn:
+		hud.set_prompt("E  —  Exit Barn")
+	elif _near_barn_door:
+		hud.set_prompt("E  —  Enter Barn")
+	elif _near_aunt and phase in [Phase.FIND_AUNT, Phase.REUNION]:
 		hud.set_prompt("E  —  Talk to Aunt Em")
 	elif _near_porch and phase == Phase.WALK_HOME:
 		hud.set_prompt("E  —  Step onto the porch")
@@ -403,3 +421,72 @@ func _add_box_to(parent: Node3D, pos: Vector3, size: Vector3, color: Color, n: S
 	mat.albedo_color = color
 	mi.material_override = mat
 	body.add_child(mi)
+
+func _build_barn_interior(host: Node3D) -> void:
+	_barn_fitout = Node3D.new()
+	_barn_fitout.name = "InteriorFitout"
+	_barn_fitout.visible = false
+	host.add_child(_barn_fitout)
+	var hw := 3.8
+	var hd := 3.4
+	var wh := 3.6
+	for spec in [
+		[Vector3(0, 0.03, 0), Vector3(hw * 2.0, 0.06, hd * 2.0), Color(0.32, 0.32, 0.35)],
+		[Vector3(0, wh * 0.5, -hd), Vector3(hw * 2.0, wh, 0.14), Color(0.52, 0.52, 0.56)],
+		[Vector3(-hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.46, 0.46, 0.50)],
+		[Vector3(hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.46, 0.46, 0.50)],
+		[Vector3(0, wh * 0.5, hd), Vector3(hw * 2.0, wh, 0.14), Color(0.48, 0.48, 0.52)],
+		[Vector3(0, 1.08, hd - 0.14), Vector3(1.18, 2.12, 0.08), Color(0.22, 0.22, 0.25)],
+		[Vector3(0, wh, 0), Vector3(hw * 2.0, 0.14, hd * 2.0), Color(0.28, 0.28, 0.31)],
+		[Vector3(-2.5, 0.65, -2.2), Vector3(1.5, 1.3, 1.8), Color(0.38, 0.38, 0.41)],
+		[Vector3(2.5, 0.55, -2.2), Vector3(1.4, 1.1, 1.6), Color(0.44, 0.44, 0.47)],
+	]:
+		var m := MeshInstance3D.new()
+		var b := BoxMesh.new()
+		b.size = spec[1]
+		m.mesh = b
+		var sm := StandardMaterial3D.new()
+		sm.albedo_color = spec[2]
+		m.material_override = sm
+		m.position = spec[0]
+		_barn_fitout.add_child(m)
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(0.95, 0.95, 1.0)
+	lamp.light_energy = 2.8
+	lamp.omni_range = 12.0
+	lamp.position = Vector3(0, wh - 0.65, 0)
+	_barn_fitout.add_child(lamp)
+	WorldKit.make_world_badge(_barn_fitout, Vector3(0, 2.45, hd - 0.24), "✦  Exit Barn (E)", Color(0.96, 0.96, 1.0), 10.0)
+	WorldKit.add_interior_activities(_barn_fitout, "homecoming_barn", "", Vector3(1.6, 0.06, -0.8), Vector3.ZERO, true)
+
+func _toggle_barn_interior(enter: bool) -> void:
+	if player == null or _barn_node == null or _barn_fitout == null:
+		return
+	_inside_barn = enter
+	for c in _barn_node.find_children("*", "CollisionShape3D", true, false):
+		if c is CollisionShape3D:
+			(c as CollisionShape3D).disabled = enter
+	for n in _barn_node.find_children("*", "MeshInstance3D", true, false):
+		if _barn_fitout.is_ancestor_of(n):
+			continue
+		if n is MeshInstance3D:
+			(n as MeshInstance3D).visible = not enter
+	_barn_fitout.visible = enter
+	player.global_position = Vector3(-20.0, 0.14, 14.4) if enter else Vector3(-20.0, 0.14, 18.2)
+	player.velocity = Vector3.ZERO
+	var pivot := player.find_child("CameraPivot", true, false) as Node3D
+	if pivot:
+		var arm := pivot.find_child("SpringArm3D", true, false) as SpringArm3D
+		var cam := pivot.find_child("Camera3D", true, false) as Camera3D
+		if arm and cam:
+			if enter:
+				_cam_out_len = arm.spring_length
+				_cam_out_fov = cam.fov
+				_cam_out_pitch = arm.rotation_degrees.x
+				arm.spring_length = 2.45
+				arm.rotation_degrees = Vector3(-12.0, 0.0, 0.0)
+				cam.fov = 72.0
+			else:
+				arm.spring_length = _cam_out_len
+				arm.rotation_degrees = Vector3(_cam_out_pitch, 0.0, 0.0)
+				cam.fov = _cam_out_fov

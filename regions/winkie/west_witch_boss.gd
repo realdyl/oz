@@ -10,8 +10,21 @@ var grounded: bool = false
 var melting: bool = false
 var _t: float = 0.0
 var _hover_y: float = 0.08
+var _hex_cd: float = 3.6
+var _max_hp: int = 120
 var gravity: float = 18.0
 var body_mat: StandardMaterial3D
+
+func _sync_boss_hud() -> void:
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud == null or not hud.has_method("show_boss_bar"):
+		return
+	if melting:
+		if hud.has_method("hide_boss_bar"):
+			hud.call("hide_boss_bar")
+		return
+	var ph := "PHASE III — DOUSE WITH WATER!" if grounded else ("PHASE II — SHADOW SWARM" if health <= int(_max_hp * 0.65) else "PHASE I — UMBRELLA HEXES")
+	hud.call("show_boss_bar", "WICKED WITCH OF THE WEST", ph, float(health), float(_max_hp))
 
 func setup(host: Node) -> void:
 	level = host
@@ -72,6 +85,7 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 			CombatFx.label(self, global_position + Vector3(0, 2.4, 0), "GROUNDED — WATER!", Color(0.4, 0.75, 1.0))
 	if level and level.has_method("on_west_damaged"):
 		level.on_west_damaged(health, grounded)
+	_sync_boss_hud()
 	var away := global_position - source_position
 	away.y = 0.0
 	if away.length() > 0.01:
@@ -90,6 +104,24 @@ func _physics_process(delta: float) -> void:
 	if melting:
 		return
 	_t += delta
+	if fighting:
+		_sync_boss_hud()
+		# Phase P9: Multi-Phase Telegraphed AoE Hex Fire Rings (faster in Phase II!)
+		_hex_cd -= delta
+		if _hex_cd <= 0.0 and not grounded:
+			_hex_cd = 2.6 if health <= int(_max_hp * 0.65) else 4.0
+			var p := get_node_or_null("/root/Party")
+			var tgt: Node3D = p.call("leader_body") as Node3D if (p and p.has_method("leader_body")) else null
+			if tgt and CombatFx and CombatFx.has_method("aoe_telegraph"):
+				var strike_pos := tgt.global_position
+				CombatFx.aoe_telegraph(self, strike_pos, 3.0, 1.1, Color(0.75, 0.14, 0.92), func():
+					if tgt and is_instance_valid(tgt) and tgt.global_position.distance_to(strike_pos) < 3.1:
+						if tgt.has_method("stumble"):
+							tgt.call("stumble", global_position)
+						var sm := get_node_or_null("/root/SaveManager")
+						if sm and sm.has_method("take_damage"):
+							sm.take_damage(1)
+				)
 	var party := get_node_or_null("/root/Party")
 	var target: Node3D = null
 	if party and party.has_method("leader_body"):
