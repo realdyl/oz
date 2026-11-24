@@ -322,6 +322,8 @@ func _update_speaker_portrait(speaker: String) -> void:
 		key = "glinda"
 	elif "wizard" in s or "oscar" in s or "oz" in s:
 		key = "wizard"
+	elif "witch" in s or "west" in s:
+		key = "wicked_witch"
 	if key == "":
 		_portrait_frame.visible = false
 		return

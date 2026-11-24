@@ -292,7 +292,25 @@ func _refresh_tab() -> void:
 		3: # Bestiary
 			if sm:
 				for foe in sm.BESTIARY_CATALOG:
-					_entries.append({"icon": "scarecrow_obsidian", "name": str(foe["name"]), "sub": "%s  ·  %s" % [foe["region"], foe["threat"]], "body": str(foe["lore"])})
+					var fn := str(foe["name"]).to_lower()
+					var b_port := "res://assets/art/portraits/munchkin_enforcer.png"
+					if "marshal" in fn:
+						b_port = "res://assets/art/portraits/marshal.png"
+					elif "witch" in fn:
+						b_port = "res://assets/art/portraits/wicked_witch.png"
+					elif "oscar" in fn or "wizard" in fn:
+						b_port = "res://assets/art/portraits/oz_hologram.png"
+					elif "tree" in fn:
+						b_port = "res://assets/art/portraits/living_tree.png"
+					elif "monkey" in fn:
+						b_port = "res://assets/art/portraits/winged_monkey.png"
+					_entries.append({
+						"icon": "scarecrow_obsidian",
+						"portrait": b_port,
+						"name": str(foe["name"]),
+						"sub": "%s  ·  %s" % [foe["region"], foe["threat"]],
+						"body": str(foe["lore"]),
+					})
 		4: # Shattered Memories
 			if sm:
 				for mem_id in sm.MEMORY_CATALOG.keys():
