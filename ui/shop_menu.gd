@@ -1,11 +1,12 @@
 extends CanvasLayer
 
-## Phase P1.1: "The Tailor of Vices" — Retail Split-Screen 3D Boutique Stage & Armory.
-## Left: Live 3D SubViewport rotating marble pedestal (drag to spin + hover to preview outfits live!).
-## Right: 5 character tabs + 64x64 illustrated gilded medallion cards + Stat Comparison Strip.
+## Phase P2.1: "The Tailor of Vices" — Remodeled directly from ref_05_boutique_ui.jpg.
+## Left 42%: Live 3D spotlight turntable on obsidian-marble gilded ring pedestal (drag to spin).
+## Right 58%: 5 Character tabs + 2x3 Gilded Medallion Grid + Segmented Gold-Pip Detail Bar + BUY & EQUIP CTA.
 ## Toggle with [B] key, from Pause Menu (Esc), or at the Emerald Plaza Boutique!
 
 const ShopItemIcon := preload("res://ui/widgets/shop_item_icon.gd")
+const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 const TotoCompanion := preload("res://actors/companions/toto_companion.gd")
 
 const VISUAL_SCRIPTS := {
@@ -15,25 +16,40 @@ const VISUAL_SCRIPTS := {
 	"lion": preload("res://actors/companions/lion_visual.gd"),
 }
 
+const CHAR_TITLES := {
+	"dorothy": "DOROTHY GALE  ·  THE SEEKER",
+	"scarecrow": "THE SCARECROW  ·  WIT OF STRAW",
+	"tinman": "THE TIN WOODMAN  ·  STEEL HEART",
+	"lion": "THE COWARDLY LION  ·  PRIMAL ROAR",
+	"toto": "TOTO  ·  FAITHFUL TERRIER",
+}
+
 var _backdrop: ColorRect
 var _panel: PanelContainer
 var _balance_lbl: Label
 var _tab_buttons: Array[Button] = []
-var _items_box: VBoxContainer
+var _grid: GridContainer
 var _active_char: String = "dorothy"
+var _selected_item_id: String = ""
 
-# Phase P1.1: Live 3D Boutique Turntable Stage
+# Left 3D Turntable Stage
 var _vp_container: SubViewportContainer
 var _vp: SubViewport
 var _turntable: Node3D
 var _preview_actor: Node3D
-var _preview_name_lbl: Label
-var _stat_allure: ProgressBar
-var _stat_agility: ProgressBar
-var _stat_power: ProgressBar
+var _char_plaque_lbl: Label
 var _dragging_stage: bool = false
 var _last_drag_x: float = 0.0
 var _spin_yaw: float = 0.35
+
+# Bottom Selected Item Detail Panel (ref_05_boutique_ui.jpg)
+var _detail_title: Label
+var _detail_perk: Label
+var _detail_cost: Label
+var _buy_btn: Button
+var _pip_vitality: Array[ColorRect] = []
+var _pip_allure: Array[ColorRect] = []
+var _pip_power: Array[ColorRect] = []
 
 const CHAR_TABS := [
 	{"id": "dorothy", "label": "Dorothy"},
@@ -53,7 +69,7 @@ func _process(delta: float) -> void:
 	if not visible or _turntable == null or not is_instance_valid(_turntable):
 		return
 	if not _dragging_stage:
-		_spin_yaw += delta * 0.55
+		_spin_yaw += delta * 0.50
 	_turntable.rotation.y = _spin_yaw
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -73,6 +89,7 @@ func toggle() -> void:
 
 func open(char_id: String = "dorothy") -> void:
 	_active_char = char_id
+	_selected_item_id = ""
 	visible = true
 	get_tree().paused = true
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
@@ -89,7 +106,7 @@ func close() -> void:
 func _build_ui() -> void:
 	_backdrop = ColorRect.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.04, 0.01, 0.05, 0.82)
+	_backdrop.color = Color(0.04, 0.015, 0.05, 0.86)
 	add_child(_backdrop)
 
 	var center := CenterContainer.new()
@@ -97,83 +114,41 @@ func _build_ui() -> void:
 	add_child(center)
 
 	_panel = PanelContainer.new()
-	_panel.custom_minimum_size = Vector2(980, 560)
+	_panel.custom_minimum_size = Vector2(1040, 600)
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.09, 0.04, 0.11, 0.97)
-	st.border_color = Color(0.94, 0.72, 0.34, 0.95)
+	st.bg_color = Color(0.071, 0.035, 0.078, 0.98) # #120914 Obsidian Plum
+	st.border_color = Color(0.769, 0.620, 0.353, 0.96) # #C49E5A Antique Brass
 	st.set_border_width_all(2)
-	st.set_corner_radius_all(12)
-	st.content_margin_left = 22
-	st.content_margin_right = 22
+	st.set_corner_radius_all(6)
+	st.content_margin_left = 20
+	st.content_margin_right = 20
 	st.content_margin_top = 18
-	st.content_margin_bottom = 18
+	st.content_margin_bottom = 16
 	_panel.add_theme_stylebox_override("panel", st)
 	center.add_child(_panel)
 
-	var root_vb := VBoxContainer.new()
-	root_vb.add_theme_constant_override("separation", 12)
-	_panel.add_child(root_vb)
+	var frame_overlay := OrnateFrame.new()
+	_panel.add_child(frame_overlay)
 
-	# Header
-	var hdr := HBoxContainer.new()
-	root_vb.add_child(hdr)
-	var title := Label.new()
-	title.text = "✦  THE TAILOR OF VICES  ·  BOUTIQUE & ARMORY"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color(0.98, 0.82, 0.46))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hdr.add_child(title)
-
-	_balance_lbl = Label.new()
-	_balance_lbl.add_theme_font_size_override("font_size", 15)
-	_balance_lbl.add_theme_color_override("font_color", Color(1.0, 0.56, 0.78))
-	hdr.add_child(_balance_lbl)
-
-	var close_btn := Button.new()
-	close_btn.text = "  Close (B / Esc)  "
-	close_btn.pressed.connect(close)
-	hdr.add_child(close_btn)
-
-	# Character Tabs
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 8)
-	root_vb.add_child(tabs)
-	for t in CHAR_TABS:
-		var b := Button.new()
-		b.text = t["label"]
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var cid: String = t["id"]
-		b.pressed.connect(func():
-			_active_char = cid
-			var afx := get_node_or_null("/root/AudioFx")
-			if afx and afx.has_method("play"):
-				afx.play("ui_click", -8.0)
-			_refresh()
-		)
-		tabs.add_child(b)
-		_tab_buttons.append(b)
-
-	root_vb.add_child(HSeparator.new())
-
-	# Split-Screen Body: Left 3D Turntable Stage | Right Illustrated Catalog
 	var split := HBoxContainer.new()
-	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	split.add_theme_constant_override("separation", 16)
-	root_vb.add_child(split)
+	split.add_theme_constant_override("separation", 18)
+	_panel.add_child(split)
 
-	# LEFT: 3D Boutique Turntable + Stat Comparison Strip
+	# ========================================================================
+	# LEFT 40%: Live 3D Spotlight Turntable + Character Nameplate
+	# ========================================================================
 	var stage_col := VBoxContainer.new()
-	stage_col.custom_minimum_size = Vector2(300, 0)
+	stage_col.custom_minimum_size = Vector2(360, 0)
 	stage_col.add_theme_constant_override("separation", 8)
 	split.add_child(stage_col)
 
 	var stage_frame := PanelContainer.new()
 	stage_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var sf_st := StyleBoxFlat.new()
-	sf_st.bg_color = Color(0.06, 0.02, 0.09, 1.0)
-	sf_st.border_color = Color(0.76, 0.58, 0.30, 0.85)
+	sf_st.bg_color = Color(0.05, 0.025, 0.065, 1.0)
+	sf_st.border_color = Color(0.769, 0.620, 0.353, 0.72)
 	sf_st.set_border_width_all(1)
-	sf_st.set_corner_radius_all(8)
+	sf_st.set_corner_radius_all(6)
 	stage_frame.add_theme_stylebox_override("panel", sf_st)
 	stage_col.add_child(stage_frame)
 
@@ -193,70 +168,191 @@ func _build_ui() -> void:
 		_vp_container.add_child(_vp)
 		_build_turntable_world()
 
-	_preview_name_lbl = Label.new()
-	_preview_name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_preview_name_lbl.add_theme_font_size_override("font_size", 14)
-	_preview_name_lbl.add_theme_color_override("font_color", Color(0.98, 0.84, 0.52))
-	_preview_name_lbl.text = "Drag stage to rotate · Hover to preview"
-	stage_col.add_child(_preview_name_lbl)
+	var rot_hint := Label.new()
+	rot_hint.text = "◄  DRAG TO ROTATE  ►"
+	rot_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rot_hint.add_theme_font_size_override("font_size", 11)
+	rot_hint.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
+	stage_col.add_child(rot_hint)
 
-	# Stat Comparison Strip
-	var stats_panel := PanelContainer.new()
-	var sp_st := StyleBoxFlat.new()
-	sp_st.bg_color = Color(0.12, 0.06, 0.16, 0.90)
-	sp_st.border_color = Color(0.48, 0.34, 0.56, 0.55)
-	sp_st.set_border_width_all(1)
-	sp_st.set_corner_radius_all(6)
-	sp_st.content_margin_left = 10
-	sp_st.content_margin_right = 10
-	sp_st.content_margin_top = 8
-	sp_st.content_margin_bottom = 8
-	stats_panel.add_theme_stylebox_override("panel", sp_st)
-	stage_col.add_child(stats_panel)
+	var plaque := PanelContainer.new()
+	var pl_st := StyleBoxFlat.new()
+	pl_st.bg_color = Color(0.11, 0.06, 0.13, 0.95)
+	pl_st.border_color = Color(0.769, 0.620, 0.353, 0.85)
+	pl_st.set_border_width_all(1)
+	pl_st.set_corner_radius_all(4)
+	pl_st.content_margin_top = 6
+	pl_st.content_margin_bottom = 6
+	plaque.add_theme_stylebox_override("panel", pl_st)
+	stage_col.add_child(plaque)
 
-	var stats_vb := VBoxContainer.new()
-	stats_vb.add_theme_constant_override("separation", 5)
-	stats_panel.add_child(stats_vb)
-	_stat_allure = _make_stat_bar(stats_vb, "Allure Gain", Color(0.98, 0.34, 0.62))
-	_stat_agility = _make_stat_bar(stats_vb, "Agility / Aura", Color(0.45, 0.82, 1.0))
-	_stat_power = _make_stat_bar(stats_vb, "Combat Edge", Color(0.98, 0.78, 0.30))
+	_char_plaque_lbl = Label.new()
+	_char_plaque_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_char_plaque_lbl.add_theme_font_size_override("font_size", 13)
+	_char_plaque_lbl.add_theme_color_override("font_color", Color(0.910, 0.776, 0.478))
+	plaque.add_child(_char_plaque_lbl)
 
-	# RIGHT: Scrollable Illustrated Catalog
+	# ========================================================================
+	# RIGHT 60%: Boutique Header + Tabs + 2x3 Gilded Grid + Pip Detail Box
+	# ========================================================================
+	var right_col := VBoxContainer.new()
+	right_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_col.add_theme_constant_override("separation", 10)
+	split.add_child(right_col)
+
+	var hdr := HBoxContainer.new()
+	right_col.add_child(hdr)
+	var title_box := VBoxContainer.new()
+	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_box.add_theme_constant_override("separation", 0)
+	hdr.add_child(title_box)
+
+	var title := Label.new()
+	title.text = "THE TAILOR OF VICES"
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.910, 0.776, 0.478))
+	title_box.add_child(title)
+
+	var sub := Label.new()
+	sub.text = "✦  ATTIRE  ·  SPECIALTY COUTURE & ARMORY  ✦"
+	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
+	title_box.add_child(sub)
+
+	var close_btn := Button.new()
+	close_btn.text = "  Close (B / Esc)  "
+	close_btn.pressed.connect(close)
+	hdr.add_child(close_btn)
+
+	# Character Category Tabs
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	right_col.add_child(tabs)
+	for t in CHAR_TABS:
+		var b := Button.new()
+		b.text = t["label"]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var cid: String = t["id"]
+		b.pressed.connect(func():
+			_active_char = cid
+			_selected_item_id = ""
+			var afx := get_node_or_null("/root/AudioFx")
+			if afx and afx.has_method("play"):
+				afx.play("ui_click", -8.0)
+			_refresh()
+		)
+		tabs.add_child(b)
+		_tab_buttons.append(b)
+
+	# 2x3 Gilded Square Medallion Grid
 	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	split.add_child(scroll)
+	right_col.add_child(scroll)
 
-	_items_box = VBoxContainer.new()
-	_items_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_items_box.add_theme_constant_override("separation", 10)
-	scroll.add_child(_items_box)
+	_grid = GridContainer.new()
+	_grid.columns = 3
+	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_grid.add_theme_constant_override("h_separation", 10)
+	_grid.add_theme_constant_override("v_separation", 10)
+	scroll.add_child(_grid)
 
-func _make_stat_bar(parent: VBoxContainer, label_txt: String, fill_col: Color) -> ProgressBar:
+	# Bottom Selected Item Detail Box + Segmented Gold Pip Bars + BUY & EQUIP CTA
+	var detail_panel := PanelContainer.new()
+	var dp_st := StyleBoxFlat.new()
+	dp_st.bg_color = Color(0.115, 0.065, 0.145, 0.96)
+	dp_st.border_color = Color(0.769, 0.620, 0.353, 0.85)
+	dp_st.set_border_width_all(1)
+	dp_st.set_corner_radius_all(6)
+	dp_st.content_margin_left = 14
+	dp_st.content_margin_right = 14
+	dp_st.content_margin_top = 10
+	dp_st.content_margin_bottom = 10
+	detail_panel.add_theme_stylebox_override("panel", dp_st)
+	right_col.add_child(detail_panel)
+
+	var detail_hb := HBoxContainer.new()
+	detail_hb.add_theme_constant_override("separation", 14)
+	detail_panel.add_child(detail_hb)
+
+	var stats_col := VBoxContainer.new()
+	stats_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_col.add_theme_constant_override("separation", 4)
+	detail_hb.add_child(stats_col)
+
+	_detail_title = Label.new()
+	_detail_title.add_theme_font_size_override("font_size", 15)
+	_detail_title.add_theme_color_override("font_color", Color(0.937, 0.878, 0.761))
+	stats_col.add_child(_detail_title)
+
+	_detail_perk = Label.new()
+	_detail_perk.add_theme_font_size_override("font_size", 11)
+	_detail_perk.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
+	stats_col.add_child(_detail_perk)
+
+	_pip_vitality = _make_pip_row(stats_col, "VITALITY")
+	_pip_allure = _make_pip_row(stats_col, "ALLURE")
+	_pip_power = _make_pip_row(stats_col, "COMBAT EDGE")
+
+	var cta_col := VBoxContainer.new()
+	cta_col.custom_minimum_size = Vector2(185, 0)
+	cta_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	cta_col.add_theme_constant_override("separation", 6)
+	detail_hb.add_child(cta_col)
+
+	_detail_cost = Label.new()
+	_detail_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_detail_cost.add_theme_font_size_override("font_size", 13)
+	_detail_cost.add_theme_color_override("font_color", Color(0.910, 0.776, 0.478))
+	cta_col.add_child(_detail_cost)
+
+	_buy_btn = Button.new()
+	_buy_btn.custom_minimum_size = Vector2(175, 40)
+	var cta_st := StyleBoxFlat.new()
+	cta_st.bg_color = Color(0.62, 0.48, 0.22, 0.96)
+	cta_st.border_color = Color(0.96, 0.84, 0.54, 1.0)
+	cta_st.set_border_width_all(2)
+	cta_st.set_corner_radius_all(5)
+	_buy_btn.add_theme_stylebox_override("normal", cta_st)
+	_buy_btn.add_theme_color_override("font_color", Color(0.99, 0.95, 0.86))
+	_buy_btn.pressed.connect(_on_buy_or_equip_pressed)
+	cta_col.add_child(_buy_btn)
+
+	# Footer Balance Strip
+	var footer := HBoxContainer.new()
+	right_col.add_child(footer)
+	_balance_lbl = Label.new()
+	_balance_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_balance_lbl.add_theme_font_size_override("font_size", 13)
+	_balance_lbl.add_theme_color_override("font_color", Color(0.910, 0.776, 0.478))
+	footer.add_child(_balance_lbl)
+	var foot_hint := Label.new()
+	foot_hint.text = "[CLICK CARD] PREVIEW  ·  [B / ESC] CLOSE"
+	foot_hint.add_theme_font_size_override("font_size", 11)
+	foot_hint.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
+	footer.add_child(foot_hint)
+
+func _make_pip_row(parent: VBoxContainer, label_txt: String) -> Array[ColorRect]:
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 8)
+	hb.add_theme_constant_override("separation", 3)
 	parent.add_child(hb)
 	var l := Label.new()
-	l.text = label_txt
-	l.custom_minimum_size = Vector2(96, 0)
+	l.text = "• %s" % label_txt
+	l.custom_minimum_size = Vector2(104, 0)
 	l.add_theme_font_size_override("font_size", 11)
-	l.add_theme_color_override("font_color", Color(0.88, 0.84, 0.94))
+	l.add_theme_color_override("font_color", Color(0.84, 0.78, 0.70))
 	hb.add_child(l)
-	var bar := ProgressBar.new()
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.custom_minimum_size = Vector2(0, 12)
-	bar.max_value = 100.0
-	bar.show_percentage = false
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.06, 0.03, 0.08, 0.9)
-	bg.set_corner_radius_all(3)
-	var fg := StyleBoxFlat.new()
-	fg.bg_color = fill_col
-	fg.set_corner_radius_all(3)
-	bar.add_theme_stylebox_override("background", bg)
-	bar.add_theme_stylebox_override("fill", fg)
-	hb.add_child(bar)
-	return bar
+	var pips: Array[ColorRect] = []
+	for i in range(12):
+		var cr := ColorRect.new()
+		cr.custom_minimum_size = Vector2(10, 8)
+		cr.color = Color(0.22, 0.16, 0.26, 0.85)
+		hb.add_child(cr)
+		pips.append(cr)
+	return pips
+
+func _set_pips(pips: Array[ColorRect], count: int, lit_col: Color) -> void:
+	for i in range(pips.size()):
+		pips[i].color = lit_col if i < count else Color(0.20, 0.14, 0.24, 0.80)
 
 func _build_turntable_world() -> void:
 	if _vp == null:
@@ -268,30 +364,30 @@ func _build_turntable_world() -> void:
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(0.07, 0.03, 0.10)
+	e.background_color = Color(0.06, 0.03, 0.08)
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.45, 0.34, 0.52)
-	e.ambient_light_energy = 0.95
+	e.ambient_light_color = Color(0.46, 0.36, 0.50)
+	e.ambient_light_energy = 0.90
 	env.environment = e
 	stage.add_child(env)
 
 	var key := DirectionalLight3D.new()
-	key.light_color = Color(1.0, 0.92, 0.80)
-	key.light_energy = 1.45
-	key.rotation_degrees = Vector3(-32, 28, 0)
+	key.light_color = Color(1.0, 0.90, 0.74)
+	key.light_energy = 1.55
+	key.rotation_degrees = Vector3(-34, 24, 0)
 	stage.add_child(key)
 
 	var rim := OmniLight3D.new()
-	rim.light_color = Color(1.0, 0.28, 0.56)
-	rim.light_energy = 2.6
+	rim.light_color = Color(0.92, 0.32, 0.52)
+	rim.light_energy = 2.4
 	rim.omni_range = 8.0
 	rim.position = Vector3(-1.8, 1.9, -1.6)
 	stage.add_child(rim)
 
 	var cam := Camera3D.new()
-	cam.fov = 38.0
-	cam.position = Vector3(0.0, 1.12, 3.15)
-	cam.look_at(Vector3(0.0, 0.82, 0.0), Vector3.UP)
+	cam.fov = 36.0
+	cam.position = Vector3(0.0, 1.08, 3.25)
+	cam.look_at(Vector3(0.0, 0.80, 0.0), Vector3.UP)
 	cam.current = true
 	stage.add_child(cam)
 
@@ -299,34 +395,35 @@ func _build_turntable_world() -> void:
 	_turntable.name = "Turntable"
 	stage.add_child(_turntable)
 
-	# Gilded Marble Pedestal
+	# Obsidian-Marble Pedestal with Concentric Golden Zodiac Rings (ref_05_boutique_ui.jpg)
 	var ped := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.78
-	cyl.bottom_radius = 0.88
+	cyl.top_radius = 0.86
+	cyl.bottom_radius = 0.96
 	cyl.height = 0.22
 	ped.mesh = cyl
 	var pm := StandardMaterial3D.new()
-	pm.albedo_color = Color(0.20, 0.14, 0.24)
-	pm.roughness = 0.28
-	pm.metallic = 0.25
+	pm.albedo_color = Color(0.10, 0.08, 0.13)
+	pm.roughness = 0.24
+	pm.metallic = 0.32
 	ped.material_override = pm
 	ped.position = Vector3(0, -0.11, 0)
 	_turntable.add_child(ped)
 
-	var ring := MeshInstance3D.new()
-	var rc := CylinderMesh.new()
-	rc.top_radius = 0.81
-	rc.bottom_radius = 0.81
-	rc.height = 0.04
-	ring.mesh = rc
-	var rm := StandardMaterial3D.new()
-	rm.albedo_color = Color(0.95, 0.76, 0.34)
-	rm.metallic = 0.85
-	rm.roughness = 0.22
-	ring.material_override = rm
-	ring.position = Vector3(0, -0.01, 0)
-	_turntable.add_child(ring)
+	for rad in [0.85, 0.62, 0.38]:
+		var ring := MeshInstance3D.new()
+		var rc := CylinderMesh.new()
+		rc.top_radius = rad
+		rc.bottom_radius = rad
+		rc.height = 0.025
+		ring.mesh = rc
+		var rm := StandardMaterial3D.new()
+		rm.albedo_color = Color(0.88, 0.70, 0.34)
+		rm.metallic = 0.88
+		rm.roughness = 0.22
+		ring.material_override = rm
+		ring.position = Vector3(0, -0.005, 0)
+		_turntable.add_child(ring)
 
 func _on_stage_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -352,11 +449,6 @@ func _rebuild_preview_actor(tint: Color) -> void:
 		actor.set_script(VISUAL_SCRIPTS[_active_char])
 	_turntable.add_child(actor)
 	_preview_actor = actor
-	_apply_preview_tint(tint)
-
-func _apply_preview_tint(tint: Color) -> void:
-	if _preview_actor == null or not is_instance_valid(_preview_actor):
-		return
 	for mi in _preview_actor.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m and m.material_override is StandardMaterial3D:
@@ -364,103 +456,126 @@ func _apply_preview_tint(tint: Color) -> void:
 			dup.albedo_color = dup.albedo_color.lerp(tint, 0.56)
 			m.material_override = dup
 
-func _update_stats_for_item(it: Dictionary) -> void:
-	var cost: int = int(it.get("cost", 0))
+func _select_item(it: Dictionary) -> void:
+	_selected_item_id = str(it.get("id", ""))
+	_rebuild_preview_actor(it.get("tint", Color.WHITE))
+	_update_detail_panel(it)
+
+func _update_detail_panel(it: Dictionary) -> void:
+	var sm := get_node_or_null("/root/SaveManager")
 	var iid: String = str(it.get("id", ""))
-	var allure_v := 40.0 + float(cost) * 1.1
-	var agil_v := 45.0 + (35.0 if ("sovereign" in iid or "collar" in iid or "leather" in iid) else float(cost) * 0.65)
-	var pow_v := 45.0 + (45.0 if ("whip" in iid or "velvet" in iid or "primal" in iid or "obsidian" in iid) else float(cost) * 0.55)
-	if _stat_allure:
-		_stat_allure.value = clampf(allure_v, 10.0, 100.0)
-	if _stat_agility:
-		_stat_agility.value = clampf(agil_v, 10.0, 100.0)
-	if _stat_power:
-		_stat_power.value = clampf(pow_v, 10.0, 100.0)
-	if _preview_name_lbl:
-		_preview_name_lbl.text = "%s  ·  Drag to Spin" % str(it.get("name", ""))
+	var cost: int = int(it.get("cost", 0))
+	var owned: bool = sm != null and (iid in sm.owned_items)
+	var equipped_id: String = str(sm.equipped_outfits.get(_active_char, "")) if sm else ""
+
+	_detail_title.text = str(it.get("name", "")).to_upper()
+	_detail_perk.text = str(it.get("perk", ""))
+	var vit_pips := clampi(4 + int(cost / 10), 4, 12)
+	var all_pips := clampi(5 + int(cost / 6), 5, 12)
+	var pow_pips := clampi(5 + (5 if ("whip" in iid or "velvet" in iid or "primal" in iid or "obsidian" in iid) else int(cost / 12)), 4, 12)
+	_set_pips(_pip_vitality, vit_pips, Color(0.910, 0.776, 0.478))
+	_set_pips(_pip_allure, all_pips, Color(0.92, 0.34, 0.58))
+	_set_pips(_pip_power, pow_pips, Color(0.86, 0.68, 0.34))
+
+	if iid == equipped_id:
+		_detail_cost.text = "✦ CURRENTLY EQUIPPED"
+		_buy_btn.text = "✓ EQUIPPED"
+		_buy_btn.disabled = true
+	elif owned:
+		_detail_cost.text = "✦ OWNED IN WARDROBE"
+		_buy_btn.text = "EQUIP NOW"
+		_buy_btn.disabled = false
+	else:
+		_detail_cost.text = "♦ %d DESIRE FRAGMENTS" % cost
+		_buy_btn.text = "BUY & EQUIP"
+		_buy_btn.disabled = (sm == null or int(sm.desire_fragments) < cost)
+
+func _on_buy_or_equip_pressed() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm == null or _selected_item_id == "":
+		return
+	if sm.buy_and_equip(_active_char, _selected_item_id):
+		var afx := get_node_or_null("/root/AudioFx")
+		if afx and afx.has_method("play"):
+			afx.play("buy", -5.0)
+		_refresh()
 
 func _refresh() -> void:
-	for c in _items_box.get_children():
+	for c in _grid.get_children():
 		c.queue_free()
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm == null:
 		return
-	_balance_lbl.text = "♦ %d Desire Fragments   " % int(sm.desire_fragments)
+	_balance_lbl.text = "DESIRE FRAGMENTS:  ♦ %d" % int(sm.desire_fragments)
+	_char_plaque_lbl.text = CHAR_TITLES.get(_active_char, _active_char.to_upper())
 	for i in range(CHAR_TABS.size()):
-		_tab_buttons[i].modulate = Color(1.0, 0.88, 0.48) if CHAR_TABS[i]["id"] == _active_char else Color(0.76, 0.70, 0.84)
+		_tab_buttons[i].modulate = Color(0.98, 0.86, 0.54) if CHAR_TABS[i]["id"] == _active_char else Color(0.72, 0.66, 0.78)
 
 	var items: Array = sm.SHOP_CATALOG.get(_active_char, [])
 	var equipped_id: String = str(sm.equipped_outfits.get(_active_char, ""))
-	var active_item: Dictionary = items[0] if not items.is_empty() else {}
+	var selected_it: Dictionary = items[0] if not items.is_empty() else {}
 	for it in items:
-		if str(it.get("id", "")) == equipped_id:
-			active_item = it
+		if str(it.get("id", "")) == (_selected_item_id if _selected_item_id != "" else equipped_id):
+			selected_it = it
 			break
-	if not active_item.is_empty():
-		_rebuild_preview_actor(active_item.get("tint", Color.WHITE))
-		_update_stats_for_item(active_item)
+	if not selected_it.is_empty():
+		_selected_item_id = str(selected_it.get("id", ""))
+		_rebuild_preview_actor(selected_it.get("tint", Color.WHITE))
+		_update_detail_panel(selected_it)
 
 	for it in items:
-		var pc := PanelContainer.new()
-		var pst := StyleBoxFlat.new()
-		pst.bg_color = Color(0.14, 0.08, 0.18, 0.92)
-		pst.border_color = Color(0.95, 0.76, 0.34, 0.85) if str(it["id"]) == equipped_id else Color(0.45, 0.32, 0.52, 0.55)
-		pst.set_border_width_all(1)
-		pst.set_corner_radius_all(8)
-		pst.content_margin_left = 12
-		pst.content_margin_right = 12
-		pst.content_margin_top = 8
-		pst.content_margin_bottom = 8
-		pc.add_theme_stylebox_override("panel", pst)
-		var preview_it: Dictionary = it
-		pc.mouse_entered.connect(func():
-			_rebuild_preview_actor(preview_it.get("tint", Color.WHITE))
-			_update_stats_for_item(preview_it)
-		)
-		_items_box.add_child(pc)
-
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		pc.add_child(row)
-
-		var icon := ShopItemIcon.new()
-		icon.setup(str(it["id"]), it.get("tint", Color.WHITE), str(it["id"]) == equipped_id)
-		row.add_child(icon)
-
-		var info := VBoxContainer.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(info)
-
-		var n_lbl := Label.new()
-		n_lbl.text = str(it["name"])
-		n_lbl.add_theme_font_size_override("font_size", 15)
-		n_lbl.add_theme_color_override("font_color", Color(0.98, 0.88, 0.58))
-		info.add_child(n_lbl)
-
-		var p_lbl := Label.new()
-		p_lbl.text = str(it["perk"])
-		p_lbl.add_theme_font_size_override("font_size", 12)
-		p_lbl.add_theme_color_override("font_color", Color(0.86, 0.82, 0.92))
-		info.add_child(p_lbl)
-
 		var iid: String = str(it["id"])
-		var cost: int = int(it["cost"])
-		var owned: bool = iid in sm.owned_items
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(138, 36)
-		if iid == equipped_id:
-			btn.text = "✓ Equipped"
-			btn.disabled = true
-		elif owned:
-			btn.text = "Equip"
-		else:
-			btn.text = "Buy (♦ %d)" % cost
-			btn.disabled = int(sm.desire_fragments) < cost
-		btn.pressed.connect(func():
-			if sm.buy_and_equip(_active_char, iid):
-				var afx := get_node_or_null("/root/AudioFx")
-				if afx and afx.has_method("play"):
-					afx.play("buy", -5.0)
-				_refresh()
+		var is_eq: bool = (iid == equipped_id)
+		var is_sel: bool = (iid == _selected_item_id)
+		var card := Button.new()
+		card.custom_minimum_size = Vector2(182, 134)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var cst := StyleBoxFlat.new()
+		cst.bg_color = Color(0.17, 0.10, 0.21, 0.96) if is_sel else Color(0.12, 0.07, 0.15, 0.92)
+		cst.border_color = Color(0.95, 0.80, 0.44, 1.0) if (is_sel or is_eq) else Color(0.55, 0.44, 0.26, 0.65)
+		cst.set_border_width_all(2 if is_sel else 1)
+		cst.set_corner_radius_all(6)
+		card.add_theme_stylebox_override("normal", cst)
+		card.add_theme_stylebox_override("hover", cst)
+		card.add_theme_stylebox_override("pressed", cst)
+		var item_ref: Dictionary = it
+		card.pressed.connect(func():
+			var afx := get_node_or_null("/root/AudioFx")
+			if afx and afx.has_method("play"):
+				afx.play("ui_click", -8.0)
+			_select_item(item_ref)
+			_refresh()
 		)
-		row.add_child(btn)
+		card.mouse_entered.connect(func():
+			_rebuild_preview_actor(item_ref.get("tint", Color.WHITE))
+			_update_detail_panel(item_ref)
+		)
+		_grid.add_child(card)
+
+		var vb := VBoxContainer.new()
+		vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		vb.offset_left = 8
+		vb.offset_right = -8
+		vb.offset_top = 8
+		vb.offset_bottom = -8
+		vb.alignment = BoxContainer.ALIGNMENT_CENTER
+		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_theme_constant_override("separation", 6)
+		card.add_child(vb)
+
+		var icon_center := CenterContainer.new()
+		icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(icon_center)
+		var icon := ShopItemIcon.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.setup(iid, it.get("tint", Color.WHITE), is_eq)
+		icon_center.add_child(icon)
+
+		var lbl := Label.new()
+		lbl.text = ("✓ " if is_eq else "") + str(it["name"])
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_color_override("font_color", Color(0.96, 0.86, 0.56) if is_sel else Color(0.90, 0.84, 0.74))
+		vb.add_child(lbl)

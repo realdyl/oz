@@ -5,6 +5,8 @@ const ThreatRadarScript := preload("res://ui/widgets/threat_radar.gd")
 const PauseMenuScript := preload("res://ui/shell/pause_menu.gd")
 const GrimoireMenuScript := preload("res://ui/grimoire_menu.gd")
 const ShopMenuScript := preload("res://ui/shop_menu.gd")
+const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
+const RoseVitalityBar := preload("res://ui/widgets/rose_vitality_bar.gd")
 const WorldKit := preload("res://systems/world_kit.gd")
 const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
@@ -38,6 +40,7 @@ var pause_menu: CanvasLayer
 var grimoire_menu: CanvasLayer
 var shop_menu: CanvasLayer
 var _vitality_panel: PanelContainer
+var _rose_bar: Control
 var _petal_labels: Array[Label] = []
 var _allure_bar: ProgressBar
 var _desire_lbl: Label
@@ -682,44 +685,52 @@ func _build_vitality_ribbon() -> void:
 	_vitality_panel = PanelContainer.new()
 	_vitality_panel.name = "VitalityRibbon"
 	_vitality_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_vitality_panel.offset_left = -315.0
+	_vitality_panel.offset_left = -326.0
 	_vitality_panel.offset_right = -16.0
 	_vitality_panel.offset_top = 14.0
-	_vitality_panel.offset_bottom = 118.0
+	_vitality_panel.offset_bottom = 132.0
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.07, 0.05, 0.11, 0.86)
-	st.border_color = Color(0.86, 0.70, 0.34, 0.88)
+	st.bg_color = Color(0.086, 0.051, 0.102, 0.90) # #160D1A Smoked Glass
+	st.border_color = Color(0.769, 0.620, 0.353, 0.92) # #C49E5A Antique Brass
 	st.set_border_width_all(2)
-	st.set_corner_radius_all(8)
-	st.content_margin_left = 12
-	st.content_margin_right = 12
+	st.set_corner_radius_all(6)
+	st.content_margin_left = 14
+	st.content_margin_right = 14
 	st.content_margin_top = 8
 	st.content_margin_bottom = 8
 	_vitality_panel.add_theme_stylebox_override("panel", st)
 	safe.add_child(_vitality_panel)
 
+	var v_frame := OrnateFrame.new()
+	v_frame.inset = 4.0
+	v_frame.corner_size = 10.0
+	v_frame.show_diamonds = false
+	_vitality_panel.add_child(v_frame)
+
+	if objective_panel and objective_panel.get_node_or_null("OrnateObjFrame") == null:
+		var o_frame := OrnateFrame.new()
+		o_frame.name = "OrnateObjFrame"
+		o_frame.inset = 4.0
+		o_frame.corner_size = 10.0
+		o_frame.show_diamonds = false
+		objective_panel.add_child(o_frame)
+
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 4)
 	_vitality_panel.add_child(vb)
 
-	# Row 1: 5 Silver-Rose Vitality Petals (Alice-inspired organic meter)
+	# Row 1: 5 Crimson-Silver Rose Buds on a thorny silver vine (ref_03_gameplay_hud.jpg)
 	var petal_row := HBoxContainer.new()
-	petal_row.add_theme_constant_override("separation", 5)
+	petal_row.add_theme_constant_override("separation", 6)
 	vb.add_child(petal_row)
 	var vit_tag := Label.new()
 	vit_tag.text = "VITALITY"
 	vit_tag.add_theme_font_size_override("font_size", 11)
-	vit_tag.add_theme_color_override("font_color", Color(0.86, 0.78, 0.56))
+	vit_tag.add_theme_color_override("font_color", Color(0.910, 0.776, 0.478))
 	vit_tag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	petal_row.add_child(vit_tag)
-	_petal_labels.clear()
-	for i in range(5):
-		var pl := Label.new()
-		pl.text = "✿"
-		pl.add_theme_font_size_override("font_size", 17)
-		pl.add_theme_color_override("font_color", Color(0.98, 0.24, 0.44))
-		petal_row.add_child(pl)
-		_petal_labels.append(pl)
+	_rose_bar = RoseVitalityBar.new()
+	petal_row.add_child(_rose_bar)
 
 	# Row 2: Allure / Desire Filigree Progress Bar
 	_allure_bar = ProgressBar.new()
@@ -853,11 +864,8 @@ func _refresh_vitality_ribbon() -> void:
 	if sm == null:
 		return
 	var cur_hp: int = int(sm.hp)
-	for i in range(_petal_labels.size()):
-		if i < cur_hp:
-			_petal_labels[i].add_theme_color_override("font_color", Color(0.94, 0.94, 0.98) if kansas_mode else Color(0.98, 0.24, 0.44))
-		else:
-			_petal_labels[i].add_theme_color_override("font_color", Color(0.30, 0.26, 0.34))
+	if _rose_bar and _rose_bar.has_method("set_vitality"):
+		_rose_bar.call("set_vitality", cur_hp, int(sm.max_hp), kansas_mode)
 	if _allure_bar:
 		_allure_bar.value = float(sm.allure)
 	if _desire_lbl:

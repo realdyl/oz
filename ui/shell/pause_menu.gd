@@ -2,6 +2,7 @@ extends CanvasLayer
 
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const SettingsMenuScript := preload("res://ui/shell/settings_menu.gd")
+const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 
 ## Full in-game Pause Shell for Oz: The Road Home.
 ## Handles Esc toggle, tree pause, mouse capture release/restore,
@@ -95,11 +96,16 @@ func _build_ui() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 
-	# Full-screen dark vignette backdrop
+	# Full-screen dark obsidian-plum backdrop + ornate filigree frame (ref_02_main_menu_ui.jpg)
 	_backdrop = ColorRect.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.04, 0.03, 0.05, 0.72)
+	_backdrop.color = Color(0.071, 0.035, 0.078, 0.84)
 	_root.add_child(_backdrop)
+
+	var screen_frame := OrnateFrame.new()
+	screen_frame.inset = 14.0
+	screen_frame.corner_size = 24.0
+	_root.add_child(screen_frame)
 
 	# Full-screen CenterContainer guarantees dead-center modals at any resolution / UI scale
 	var center := CenterContainer.new()
@@ -109,16 +115,28 @@ func _build_ui() -> void:
 
 	# Main card container
 	_main_card = PanelContainer.new()
-	_main_card.custom_minimum_size = Vector2(480, 440)
+	_main_card.custom_minimum_size = Vector2(500, 460)
 	center.add_child(_main_card)
+
+	var card_frame := OrnateFrame.new()
+	card_frame.inset = 6.0
+	card_frame.corner_size = 14.0
+	_main_card.add_child(card_frame)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
 	_main_card.add_child(vbox)
 
-	# Title & Subtitle
+	# Silver-Rose Crest Title & Subtitle (ref_02_main_menu_ui.jpg)
 	var header := VBoxContainer.new()
-	header.add_theme_constant_override("separation", 2)
+	header.add_theme_constant_override("separation", 3)
+	var crest := Label.new()
+	crest.text = "✦   ✿   ✦"
+	crest.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	crest.add_theme_font_size_override("font_size", 18)
+	crest.add_theme_color_override("font_color", Color(0.784, 0.831, 0.902))
+	header.add_child(crest)
+
 	_title = Label.new()
 	_title.text = "OZ: THE ROAD HOME"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
