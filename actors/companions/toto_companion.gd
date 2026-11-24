@@ -109,8 +109,12 @@ static func build_dog_visual(parent: Node3D, is_grey: bool = false) -> Dictionar
 	var eye_m := _m(Color(0.05, 0.04, 0.04), 0.12, 0.15, is_grey)
 	var shine_m := _m(Color(0.98, 0.98, 1.0), 0.1, 0.0, is_grey)
 	var tongue_m := _m(Color(0.88, 0.42, 0.48), 0.45, 0.0, is_grey)
-	var collar_m := _m(Color(0.62, 0.16, 0.20), 0.55, 0.05, is_grey)
-	var tag_m := _m(Color(0.92, 0.78, 0.30), 0.25, 0.85, is_grey)
+	var collar_m := _m(Color(0.26, 0.16, 0.10), 0.45, 0.10, is_grey) # dark leather collar (char_06_toto.jpg)
+	var tag_m := _m(Color(0.92, 0.95, 1.0), 0.15, 0.95, is_grey) # gleaming sterling silver star charm
+	if not is_grey:
+		tag_m.emission_enabled = true
+		tag_m.emission = Color(0.85, 0.90, 1.0)
+		tag_m.emission_energy_multiplier = 0.35
 
 	var body_root := Node3D.new()
 	body_root.name = "BodyRoot"
@@ -122,7 +126,10 @@ static func build_dog_visual(parent: Node3D, is_grey: bool = false) -> Dictionar
 	_mi(body_root, _sph(0.11, 0.20), fur_ruff, Vector3(0, -0.02, -0.17))
 
 	_mi(body_root, _cyl(0.095, 0.10, 0.045), collar_m, Vector3(0, 0.07, -0.17), Vector3(38, 0, 0))
-	_mi(body_root, _sph(0.025, 0.045), tag_m, Vector3(0, 0.02, -0.24))
+	# Sculpted silver 5-point star charm pendant (2 crossed flattened star bars)
+	_mi(body_root, _cyl(0.008, 0.022, 0.055), tag_m, Vector3(0, 0.015, -0.245))
+	_mi(body_root, _cyl(0.008, 0.022, 0.055), tag_m, Vector3(0, 0.015, -0.245), Vector3(0, 0, 72))
+	_mi(body_root, _cyl(0.008, 0.022, 0.055), tag_m, Vector3(0, 0.015, -0.245), Vector3(0, 0, -72))
 
 	var head := Node3D.new()
 	head.position = Vector3(0, 0.14, -0.22)

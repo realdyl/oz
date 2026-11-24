@@ -153,6 +153,20 @@ func _build() -> void:
 		_mi(_body, _sph(0.15, 12), fur, Vector3(s * 0.20, 0.04, -0.24), Vector3.ZERO, Vector3(0.8, 1.1, 1.05))
 		_mi(_body, _sph(0.16, 12), fur, Vector3(s * 0.19, 0.04, 0.32), Vector3.ZERO, Vector3(0.8, 1.15, 1.15))
 
+	# Ornate dark-leather & antique-gold courage-medal harness (char_04_cowardly_lion.jpg)
+	var leather := _mat(Color(0.24, 0.15, 0.10), 0.52)
+	var brass_m := _mat(Color(0.90, 0.72, 0.30), 0.25)
+	brass_m.metallic = 0.88
+	var crimson_m := _mat(Color(0.76, 0.12, 0.20), 0.55)
+	_mi(_body, _cyl(0.275, 0.275, 0.065, 18), leather, Vector3(0, 0.07, -0.04), Vector3(90, 0, 0)) # girth strap
+	_mi(_body, _cyl(0.285, 0.285, 0.045, 18), leather, Vector3(0, 0.08, -0.28), Vector3(58, 0, 0)) # chest strap
+	# Courage Medal & Crimson Ribbon hanging at chest center
+	var ribbon_box := BoxMesh.new()
+	ribbon_box.size = Vector3(0.065, 0.12, 0.018)
+	_mi(_body, ribbon_box, crimson_m, Vector3(0, -0.02, -0.53))
+	_mi(_body, _cyl(0.055, 0.055, 0.02, 12), brass_m, Vector3(0, -0.08, -0.545), Vector3(90, 0, 0)) # gold courage medal
+	_mi(_body, _sph(0.024, 10), crimson_m, Vector3(0, -0.08, -0.558)) # ruby medal center
+
 	# Sculpted Head + 2-tier 18-tuft windswept mane + articulated jaw + whiskers
 	var head := Node3D.new()
 	head.position = Vector3(0, 0.24, -0.50)

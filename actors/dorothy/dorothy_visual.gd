@@ -188,9 +188,11 @@ func _build() -> void:
 	var skin_rgb := Color(0.94, 0.74, 0.62)
 	var skin := _mat(skin_rgb, 0.46)
 	var fishnet := WorldKit.make_fishnet_material(skin_rgb, greyscale)
-	var dress := _mat(Color(0.28, 0.44, 0.74), 0.70)
+	var dress := _make_gingham_material(Color(0.24, 0.42, 0.76), Color(0.92, 0.94, 0.98))
+	var corset_plum := _mat(Color(0.20, 0.11, 0.24), 0.55)
+	var gold_trim := _mat(Color(0.88, 0.72, 0.36), 0.28, 0.85)
 	var apron := _mat(Color(0.96, 0.94, 0.90), 0.62)
-	var gingham := _mat(Color(0.42, 0.54, 0.80), 0.68)
+	var gingham := _make_gingham_material(Color(0.32, 0.48, 0.82), Color(0.95, 0.96, 0.99))
 	var hair := _mat(Color(0.16, 0.08, 0.05), 0.74)
 	var heel_dark := _mat(Color(0.14, 0.10, 0.12), 0.36, 0.25)
 	var shoe_s := _mat(Color(0.88, 0.92, 0.98), 0.14, 0.95, 0.75 if show_silver_shoes else 0.0)
@@ -210,22 +212,26 @@ func _build() -> void:
 	var trim_mat := _mat(Color(0.16, 0.26, 0.54), 0.62)
 
 	_mi(_hip, _cyl(hip_w, hip_w * 0.92, 0.16), dress, Vector3(0, -0.04, 0))
-	# Flared shorter gingham skirt (so fishnet stockings & silver stiletto heels are clearly visible!)
+	# Flared Victorian gingham skirt with dark-plum underskirt + double white lace ruffle (char_05_dorothy_seeker.jpg)
 	_mi(_hip, _cyl(0.22, 0.36, 0.28), dress, Vector3(0, -0.22, 0))
-	_mi(_hip, _cyl(0.35, 0.37, 0.038), trim_mat, Vector3(0, -0.35, 0))
-	_mi(_hip, _cyl(0.33, 0.39, 0.05), apron, Vector3(0, -0.38, 0))
+	_mi(_hip, _cyl(0.34, 0.37, 0.04), trim_mat, Vector3(0, -0.34, 0))
+	_mi(_hip, _cyl(0.35, 0.40, 0.048), apron, Vector3(0, -0.375, 0)) # scalloped white lace ruffle
+	_mi(_hip, _cyl(0.36, 0.41, 0.036), corset_plum, Vector3(0, -0.41, 0)) # dark-plum petticoat peek
 
-	# Front apron + wrap-around waist sash + sculpted storybook back bow & flowing ribbon tails
+	# Dark-plum Victorian velvet corset waist-cincher + antique-gold filigree buckle & back bow
 	_mi(_hip, _box(Vector3(0.26, 0.24, 0.045)), apron, Vector3(0, -0.17, -0.20))
-	_mi(_hip, _cyl(0.15, 0.16, 0.06), apron, Vector3(0, 0.06, 0))
-	_mi(_hip, _sphere(0.052), apron, Vector3(0, 0.06, 0.17))
-	var bow_l := _mi(_hip, _sphere(0.075), apron, Vector3(-0.08, 0.07, 0.20), Vector3(1.15, 0.65, 0.45))
+	_mi(_hip, _cyl(0.142, 0.162, 0.14), corset_plum, Vector3(0, 0.08, 0))
+	_mi(_hip, _box(Vector3(0.09, 0.075, 0.04)), gold_trim, Vector3(0, 0.08, -0.155)) # ornate gold corset buckle
+	_mi(_hip, _cyl(0.146, 0.166, 0.02), gold_trim, Vector3(0, 0.145, 0)) # upper gold corset rim
+	_mi(_hip, _cyl(0.162, 0.168, 0.02), gold_trim, Vector3(0, 0.015, 0)) # lower gold corset rim
+	_mi(_hip, _sphere(0.052), corset_plum, Vector3(0, 0.06, 0.17))
+	var bow_l := _mi(_hip, _sphere(0.080), corset_plum, Vector3(-0.085, 0.07, 0.205), Vector3(1.18, 0.68, 0.45))
 	bow_l.rotation_degrees = Vector3(0, 18, 16)
-	var bow_r := _mi(_hip, _sphere(0.075), apron, Vector3(0.08, 0.07, 0.20), Vector3(1.15, 0.65, 0.45))
+	var bow_r := _mi(_hip, _sphere(0.080), corset_plum, Vector3(0.085, 0.07, 0.205), Vector3(1.18, 0.68, 0.45))
 	bow_r.rotation_degrees = Vector3(0, -18, -16)
-	var tail_l := _mi(_hip, _box(Vector3(0.06, 0.24, 0.022)), apron, Vector3(-0.055, -0.07, 0.22))
+	var tail_l := _mi(_hip, _box(Vector3(0.065, 0.26, 0.022)), corset_plum, Vector3(-0.058, -0.08, 0.225))
 	tail_l.rotation_degrees = Vector3(14, 0, -12)
-	var tail_r := _mi(_hip, _box(Vector3(0.06, 0.24, 0.022)), apron, Vector3(0.055, -0.07, 0.22))
+	var tail_r := _mi(_hip, _box(Vector3(0.065, 0.26, 0.022)), corset_plum, Vector3(0.058, -0.08, 0.225))
 	tail_r.rotation_degrees = Vector3(14, 0, 12)
 
 	_torso = Node3D.new()
@@ -325,4 +331,26 @@ func _make_leg(parent: Node3D, left: bool, stocking_mat: Material, heel_mat: Mat
 	vamp.rotation_degrees = Vector3(14, 0, 0)
 	var heel_spike := _mi(shoe, _cyl(0.016, 0.009, 0.115), heel_mat, Vector3(0, -0.035, 0.042))
 	heel_spike.rotation_degrees = Vector3(-6, 0, 0)
+	# Ornate Silver Shoe instep filigree buckle (char_05_dorothy_seeker.jpg)
+	_mi(shoe, _box(Vector3(0.055, 0.028, 0.028)), _mat(Color(0.95, 0.97, 1.0), 0.15, 0.95), Vector3(0, 0.01, -0.045))
 	return root
+
+func _make_gingham_material(c_dark: Color, c_light: Color) -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+uniform vec4 col_a : source_color = vec4(0.24, 0.42, 0.76, 1.0);
+uniform vec4 col_b : source_color = vec4(0.92, 0.94, 0.98, 1.0);
+void fragment() {
+	float u = floor(fract(UV.x * 16.0) * 2.0);
+	float v = floor(fract(UV.y * 16.0) * 2.0);
+	float mix_f = (u + v) * 0.5;
+	ALBEDO = mix(col_a.rgb, col_b.rgb, mix_f);
+	ROUGHNESS = 0.72;
+}
+"""
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	sm.set_shader_parameter("col_a", _col(c_dark))
+	sm.set_shader_parameter("col_b", _col(c_light))
+	return sm

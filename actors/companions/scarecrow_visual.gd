@@ -135,17 +135,31 @@ func _build() -> void:
 	_hip.add_child(head)
 	_head = head
 	_mi(head, _sph(0.165), burlap, Vector3(0, 0.08, 0), Vector3(1.05, 1.12, 1.0))
-	# Wide floppy brimmed farm/witch hat + bent peak + ribbon band
+	# Wide floppy brimmed farm/witch hat + bent peak + ribbon band + brass gear badge & raven feather (char_01_scarecrow.jpg)
 	var brim := _mi(head, _cyl(0.36, 0.38, 0.035), hat, Vector3(0, 0.22, 0))
 	brim.rotation_degrees = Vector3(-6, 0, 8)
 	var hband := _mi(head, _cyl(0.17, 0.18, 0.05), patch, Vector3(0, 0.25, 0))
 	hband.rotation_degrees = Vector3(-6, 0, 8)
+	_mi(head, _cyl(0.038, 0.038, 0.025), brass_btn, Vector3(0.11, 0.26, -0.15)).rotation_degrees = Vector3(82, 0, -24) # brass gear badge
+	var feather := _mi(head, _box(Vector3(0.03, 0.22, 0.012)), _mat(Color(0.14, 0.13, 0.18), 0.55), Vector3(0.16, 0.34, -0.08))
+	feather.rotation_degrees = Vector3(12, 18, -32) # tucked raven feather
 	var peak := _mi(head, _cyl(0.03, 0.17, 0.32), hat, Vector3(0.03, 0.40, 0.02))
 	peak.rotation_degrees = Vector3(-14, 0, 18)
-	_mi(head, _sph(0.042), eye, Vector3(-0.06, 0.10, -0.145))
-	_mi(head, _sph(0.042), eye, Vector3(0.07, 0.09, -0.145))
+	# Cross-stitched leather button eyes + stitched grin
+	_mi(head, _sph(0.044), eye, Vector3(-0.06, 0.10, -0.145))
+	_mi(head, _sph(0.044), eye, Vector3(0.07, 0.09, -0.145))
+	_mi(head, _box(Vector3(0.048, 0.010, 0.014)), straw, Vector3(-0.06, 0.10, -0.182)).rotation_degrees = Vector3(0, 0, 45)
+	_mi(head, _box(Vector3(0.048, 0.010, 0.014)), straw, Vector3(-0.06, 0.10, -0.182)).rotation_degrees = Vector3(0, 0, -45)
+	_mi(head, _box(Vector3(0.048, 0.010, 0.014)), straw, Vector3(0.07, 0.09, -0.182)).rotation_degrees = Vector3(0, 0, 45)
+	_mi(head, _box(Vector3(0.048, 0.010, 0.014)), straw, Vector3(0.07, 0.09, -0.182)).rotation_degrees = Vector3(0, 0, -45)
 	_mi(head, _box(Vector3(0.16, 0.025, 0.03)), stitch, Vector3(0, 0.01, -0.155))
 	_mi(head, _box(Vector3(0.03, 0.22, 0.03)), stitch, Vector3(0, 0.08, -0.15))
+	# Crossed rope bandolier straps + brass belt buckle on chest
+	var rope_a := _mi(_hip, _cyl(0.018, 0.018, 0.44), pole, Vector3(0, 0.28, -0.19))
+	rope_a.rotation_degrees = Vector3(0, 0, 38)
+	var rope_b := _mi(_hip, _cyl(0.018, 0.018, 0.44), pole, Vector3(0, 0.28, -0.19))
+	rope_b.rotation_degrees = Vector3(0, 0, -38)
+	_mi(_hip, _box(Vector3(0.09, 0.07, 0.04)), brass_btn, Vector3(0, 0.06, -0.21))
 	# Straw tufts bursting from hat sides
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
@@ -156,6 +170,10 @@ func _build() -> void:
 
 	_arm_l = _limb(_hip, true, true, burlap, straw)
 	_arm_r = _limb(_hip, false, true, burlap, straw)
+	# Gnarled wooden walking staff + hanging brass key in right hand (char_01_scarecrow.jpg)
+	_mi(_arm_r, _cyl(0.022, 0.028, 1.18), pole, Vector3(0.04, -0.62, -0.06))
+	_mi(_arm_r, _sph(0.042), pole, Vector3(0.04, -0.02, -0.08))
+	_mi(_arm_r, _cyl(0.012, 0.012, 0.10), brass_btn, Vector3(0.08, -0.22, -0.09))
 	_leg_l = _limb(_hip, true, false, burlap, straw)
 	_leg_r = _limb(_hip, false, false, burlap, straw)
 

@@ -85,7 +85,10 @@ func _build() -> void:
 	var tin := _mat(tin_c if not rusted else rust_c, 0.9 if not rusted else 0.4, 0.3 if not rusted else 0.75)
 	var dark := _mat(Color(0.25, 0.28, 0.32), 0.7, 0.4)
 	var axe := _mat(Color(0.55, 0.58, 0.62), 0.95, 0.25)
-	var eye := _mat(Color(0.15, 0.35, 0.45), 0.2, 0.2)
+	var eye := _mat(Color(0.98, 0.72, 0.24), 0.15, 0.15) # glowing amber-gold clockwork eyes (char_02_tin_woodman.jpg)
+	eye.emission_enabled = true
+	eye.emission = Color(1.0, 0.68, 0.18)
+	eye.emission_energy_multiplier = 1.6 if not rusted else 0.15
 
 	_hip = Node3D.new()
 	_hip.position = Vector3(0, 0.88, 0)
@@ -98,16 +101,24 @@ func _build() -> void:
 	_mi(_hip, _cyl(0.24, 0.20, 0.52), tin, Vector3(0, 0.29, 0))
 	_mi(_hip, _cyl(0.245, 0.245, 0.05), dark, Vector3(0, 0.12, 0))
 	_mi(_hip, _cyl(0.25, 0.25, 0.05), dark, Vector3(0, 0.48, 0))
-	_mi(_hip, _box(Vector3(0.12, 0.14, 0.05)), brass, Vector3(-0.07, 0.34, -0.22)) # hollow heart door
-	var heart_glow := _mat(Color(0.92, 0.22, 0.28), 0.15, 0.15)
+	# Center gilded filigree clockwork heart cage + glowing crimson heart (char_02_tin_woodman.jpg)
+	_mi(_hip, _box(Vector3(0.18, 0.20, 0.05)), brass, Vector3(0.0, 0.34, -0.22))
+	_mi(_hip, _box(Vector3(0.14, 0.16, 0.055)), dark, Vector3(0.0, 0.34, -0.23))
+	var heart_glow := _mat(Color(0.95, 0.16, 0.24), 0.12, 0.15)
 	heart_glow.emission_enabled = true
-	heart_glow.emission = Color(0.95, 0.18, 0.24)
-	heart_glow.emission_energy_multiplier = 1.2 if not rusted else 0.15
-	_mi(_hip, _sph(0.042), heart_glow, Vector3(-0.07, 0.34, -0.245)) # glowing clockwork heart jewel
-	# Shoulder pauldrons
+	heart_glow.emission = Color(1.0, 0.18, 0.24)
+	heart_glow.emission_energy_multiplier = 2.2 if not rusted else 0.15
+	_mi(_hip, _sph(0.056), heart_glow, Vector3(0.0, 0.34, -0.248))
+	_mi(_hip, _cyl(0.008, 0.008, 0.18), brass, Vector3(0.0, 0.34, -0.265)) # vertical filigree bar
+	_mi(_hip, _cyl(0.008, 0.008, 0.16), brass, Vector3(0.0, 0.34, -0.265)).rotation_degrees = Vector3(0, 0, 90)
+	# Twin brass-and-iron steam exhaust pipes on his back
+	for ex in [-0.11, 0.11]:
+		_mi(_hip, _cyl(0.032, 0.036, 0.36), brass, Vector3(float(ex), 0.40, 0.23))
+		_mi(_hip, _cyl(0.044, 0.044, 0.06), dark, Vector3(float(ex), 0.56, 0.23))
+	# Layered riveted shoulder pauldrons with brass spikes
 	for px in [-1.0, 1.0]:
-		_mi(_hip, _sph(0.12), tin, Vector3(float(px) * 0.28, 0.48, 0), Vector3(1.15, 0.78, 1.05))
-		_mi(_hip, _sph(0.03), brass, Vector3(float(px) * 0.30, 0.52, 0))
+		_mi(_hip, _sph(0.13), tin, Vector3(float(px) * 0.28, 0.48, 0), Vector3(1.18, 0.80, 1.08))
+		_mi(_hip, _cyl(0.005, 0.025, 0.09), brass, Vector3(float(px) * 0.34, 0.54, 0)).rotation_degrees = Vector3(0, 0, -float(px) * 42.0)
 	# Rivets
 	for x in [-0.14, 0.14]:
 		for y in [0.18, 0.38]:

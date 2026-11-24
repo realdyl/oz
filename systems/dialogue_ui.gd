@@ -16,6 +16,9 @@ var _hint_cap: PanelContainer
 var _hint_key: Label
 var _hint_lbl: Label
 var _divider: ColorRect
+var _portrait_frame: PanelContainer
+var _portrait_tex: TextureRect
+var _portrait_cache: Dictionary = {}
 
 var _visible_t: float = 0.0
 var _tts_voice: String = ""
@@ -61,10 +64,39 @@ func _build() -> void:
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	anchor.add_child(_panel)
 
+	var card_hbox := HBoxContainer.new()
+	card_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_hbox.add_theme_constant_override("separation", 16)
+	_panel.add_child(card_hbox)
+
+	# Gilded Speaker Portrait Medallion (auto-shown for Dorothy, Scarecrow, Tin Man, Lion, Toto!)
+	_portrait_frame = PanelContainer.new()
+	_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_frame.visible = false
+	var pf_st := StyleBoxFlat.new()
+	pf_st.bg_color = Color(0.08, 0.04, 0.10, 1.0)
+	pf_st.border_color = Color(0.769, 0.620, 0.353, 0.96)
+	pf_st.set_border_width_all(2)
+	pf_st.set_corner_radius_all(6)
+	pf_st.content_margin_left = 3
+	pf_st.content_margin_right = 3
+	pf_st.content_margin_top = 3
+	pf_st.content_margin_bottom = 3
+	_portrait_frame.add_theme_stylebox_override("panel", pf_st)
+	card_hbox.add_child(_portrait_frame)
+
+	_portrait_tex = TextureRect.new()
+	_portrait_tex.custom_minimum_size = Vector2(92, 92)
+	_portrait_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_frame.add_child(_portrait_tex)
+
 	var vbox := VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_theme_constant_override("separation", 8)
-	_panel.add_child(vbox)
+	card_hbox.add_child(vbox)
 
 	# Top breathing room below raised nameplate + subtle hairline divider
 	var top_pad := Control.new()
@@ -212,6 +244,7 @@ func say(speaker: String, text: String, also_tts: bool = true, hold: float = 0.0
 	_panel.visible = true
 	_speaker.text = speaker.to_upper()
 	_nameplate.visible = speaker.strip_edges() != ""
+	_update_speaker_portrait(speaker)
 	_body.text = text
 	_visible_t = hold
 
@@ -263,6 +296,40 @@ func speak_tts(text: String) -> void:
 func stop_tts() -> void:
 	if DisplayServer.has_method("tts_stop"):
 		DisplayServer.tts_stop()
+
+func _update_speaker_portrait(speaker: String) -> void:
+	if _portrait_frame == null or _portrait_tex == null:
+		return
+	var s := speaker.to_lower()
+	var key := ""
+	if "dorothy" in s:
+		key = "dorothy"
+	elif "scarecrow" in s:
+		key = "scarecrow"
+	elif "tin" in s:
+		key = "tinman"
+	elif "lion" in s:
+		key = "lion"
+	elif "toto" in s:
+		key = "toto"
+	if key == "":
+		_portrait_frame.visible = false
+		return
+	var tex: Texture2D = _portrait_cache.get(key, null)
+	if tex == null:
+		var path := "res://assets/art/portraits/%s.png" % key
+		if ResourceLoader.exists(path):
+			tex = ResourceLoader.load(path) as Texture2D
+		else:
+			var abs_p := ProjectSettings.globalize_path(path)
+			if FileAccess.file_exists(abs_p):
+				var img := Image.load_from_file(abs_p)
+				if img != null and not img.is_empty():
+					tex = ImageTexture.create_from_image(img)
+		if tex != null:
+			_portrait_cache[key] = tex
+	_portrait_tex.texture = tex
+	_portrait_frame.visible = (tex != null)
 
 func _is_headless() -> bool:
 	var n := DisplayServer.get_name()

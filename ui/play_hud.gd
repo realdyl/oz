@@ -187,6 +187,19 @@ func _build_lead_bar() -> void:
 		hbox.add_theme_constant_override("separation", 6)
 		slot.add_child(hbox)
 
+		# Painted 36x36 character portrait medallion (Phase P3.1)
+		var cid_str := str(def["id"])
+		var tex := _load_hud_portrait("res://assets/art/portraits/%s.png" % cid_str)
+		var port_tr: TextureRect = null
+		if tex != null:
+			port_tr = TextureRect.new()
+			port_tr.texture = tex
+			port_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			port_tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			port_tr.custom_minimum_size = Vector2(36, 36)
+			port_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hbox.add_child(port_tr)
+
 		var k_lbl := Label.new()
 		k_lbl.text = def["key"]
 		k_lbl.add_theme_font_size_override("font_size", 12)
@@ -200,7 +213,7 @@ func _build_lead_bar() -> void:
 		hbox.add_child(n_lbl)
 
 		lead_bar.add_child(slot)
-		_lead_slots[def["id"]] = {"panel": slot, "key": k_lbl, "name": n_lbl, "verb": def["verb"]}
+		_lead_slots[def["id"]] = {"panel": slot, "key": k_lbl, "name": n_lbl, "portrait": port_tr, "verb": def["verb"]}
 
 	# Attached Kit Verb Chip ([F] KICK / CAW / AXE / ROAR)
 	_kit_panel = PanelContainer.new()
@@ -264,6 +277,10 @@ func _refresh_lead_bar() -> void:
 		)
 		key_lbl.add_theme_color_override("font_color", OzThemeFactory.accent_color(kansas_mode) if is_active else OzThemeFactory.muted_text_color(kansas_mode))
 		name_lbl.add_theme_color_override("font_color", col)
+		var port_tr = entry.get("portrait", null)
+		if port_tr is TextureRect:
+			(port_tr as TextureRect).custom_minimum_size = Vector2(44, 44) if is_active else Vector2(32, 32)
+			(port_tr as TextureRect).modulate = Color(1, 1, 1, 1.0) if not locked else Color(0.45, 0.42, 0.48, 0.55)
 		if is_active:
 			active_verb = str(def["verb"])
 
@@ -929,6 +946,18 @@ func _toggle_quick_wheel(force_state = null) -> void:
 	_wheel_root.visible = _wheel_open
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if _wheel_open else Input.MOUSE_MODE_CAPTURED
+
+func _load_hud_portrait(res_path: String) -> Texture2D:
+	if ResourceLoader.exists(res_path):
+		var loaded := ResourceLoader.load(res_path) as Texture2D
+		if loaded != null:
+			return loaded
+	var abs_path := ProjectSettings.globalize_path(res_path)
+	if FileAccess.file_exists(abs_path):
+		var img := Image.load_from_file(abs_path)
+		if img != null and not img.is_empty():
+			return ImageTexture.create_from_image(img)
+	return null
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
