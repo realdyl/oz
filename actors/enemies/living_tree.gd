@@ -187,13 +187,18 @@ func take_damage(amount: int, _source_position: Vector3, tags: Dictionary = {}) 
 
 func _die() -> void:
 	alive = false
-	collision_layer = 0
+	# Switch to solid world-only layer 1 with a horizontal fallen-log collider so characters walk AROUND the fallen trunk!
+	collision_layer = 1
 	set_physics_process(false)
 	add_to_group("enemies_dead")
-	# Topple naturally onto the grass and remain fallen (just like defeated Munchkins — never pop out of existence!)
+	for c in get_children():
+		if c is CollisionShape3D:
+			var cs := c as CollisionShape3D
+			cs.rotation_degrees = Vector3(0, 0, 86.0)
+			cs.position = Vector3(-1.45, 0.52, 0.0)
 	var tw := create_tween()
 	tw.tween_property(visual, "rotation:z", deg_to_rad(86.0), 0.65).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(visual, "position:y", 0.42, 0.65)
+	tw.parallel().tween_property(visual, "position:y", 0.48, 0.65)
 	var land := get_tree().current_scene
 	if land and land.has_method("on_enemy_down"):
 		land.on_enemy_down(self)

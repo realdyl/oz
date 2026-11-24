@@ -198,6 +198,12 @@ func _expand_world() -> void:
 		{"pos": Vector3(-34.0, 0.0, 82.0), "radius": 13.0, "height": 2.8},
 	], Color(0.38, 0.58, 0.30))
 	WorldKit.dress_ybr_spine(self, -54.0, 126.0, 2.75)
+	# Phase P11: Destructible Gilded Porcelain Urns along Munchkinland + Forward+ ACES Post-Processing!
+	for up in [Vector3(-4.2, 0, -22), Vector3(4.2, 0, 12), Vector3(-4.2, 0, 46), Vector3(4.2, 0, 82)]:
+		WorldKit.spawn_destructible_urn(self, up)
+	var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if we and we.environment:
+		WorldKit.apply_aaa_post_processing(we.environment, "munchkin")
 	_add_whimsy_activities()
 	_ensure_whimsy_hud()
 	call_deferred("_cull_world_labels")
@@ -1666,9 +1672,15 @@ func _set_beat(next: Beat) -> void:
 		Beat.FREE_TIN:
 			hud.set_objective("Follow the Yellow Brick Road south — oil can, then free the Tin Man (E).")
 		Beat.TREE_GATE:
-			hud.set_objective("Lead Tin Man — F = AXE the Living Tree blocking the Yellow Brick Road.")
+			if tree_down:
+				_set_beat(Beat.MARSHAL)
+				return
+			hud.set_objective("Lead Tin Man — F = AXE the Living Tree flanking the Yellow Brick Road.")
 			_spawn_tin_wave()
 		Beat.MARSHAL:
+			if marshal_down:
+				_set_beat(Beat.OPEN_ROAD)
+				return
 			hud.set_objective("Marshal blocks the Yellow Brick Road south — axe or roar recommended.")
 			if marshal == null:
 				_spawn_marshal()
@@ -1716,8 +1728,8 @@ func _ensure_west_road_gate() -> void:
 	mat.emission_energy_multiplier = 0.85
 	pad.material_override = mat
 	_west_road_gate.add_child(pad)
-	# Ornate gilded Poppy-Road archway crest (NO giant floating sky Label3D!)
-	WorldKit.make_building_crest_sign(_west_road_gate, Vector3(0, 4.2, 0), "ROAD TO POPPY FIELD", Color(0.95, 0.78, 0.24), false)
+	# Ornate gilded Poppy-Road Portal Archway Checkpoint!
+	WorldKit.build_grand_portal_arch(_west_road_gate, Vector3.ZERO, Color(0.95, 0.78, 0.24), "Road to Poppy Field")
 	# Tall emissive post so gate reads from far up the road
 	var post := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()

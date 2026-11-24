@@ -250,6 +250,7 @@ func _build_world() -> void:
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.22, 0.42, 0.3)
 	e.ambient_light_energy = 0.75
+	WorldKit.apply_aaa_post_processing(e, "emerald")
 	env.environment = e
 	add_child(env)
 	_add_map_border(48.0, 58.0)

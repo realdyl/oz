@@ -950,13 +950,14 @@ static func dress_ybr_spine(parent: Node3D, z_start: float, z_end: float, road_h
 	yroot.name = "YBRAdornments"
 	parent.add_child(yroot)
 
-	var curb_mat := _mat(Color(0.86, 0.68, 0.22), 0.62, 0.18)
+	# Continuous flush golden-stone YBR curb rails (NO random gaps/pegs!) + street lanterns
+	var curb_mat := _mat(Color(0.86, 0.68, 0.22), 0.52, 0.22)
 	var z := z_start
 	var idx := 0
 	while z <= z_end:
 		for sx in [-1.0, 1.0]:
-			var cx: float = float(sx) * (road_half_w + 0.18)
-			_mi(yroot, _box(Vector3(0.32, 0.14, 3.6)), curb_mat, Vector3(cx, 0.06, z))
+			var cx: float = float(sx) * (road_half_w + 0.16)
+			_mi(yroot, _box(Vector3(0.28, 0.06, 4.25)), curb_mat, Vector3(cx, 0.03, z))
 		if idx % 5 == 0:
 			var side: float = -1.0 if (idx / 5) % 2 == 0 else 1.0
 			var lpos := Vector3(side * (road_half_w + 1.15), 0.0, z)
@@ -1261,6 +1262,7 @@ static func build_lion_sanctuary(parent: Node3D, at: Vector3) -> Node3D:
 ## Sculpted 3D Kansas Chicken (plump feathered body, tail fan, comb, beak, wings & legs — matches Toto's detail!).
 static func build_chicken_visual(parent: Node3D, pos: Vector3, yaw_deg: float = 0.0) -> Node3D:
 	var ch := Node3D.new()
+	ch.set_script(preload("res://systems/chicken_actor.gd"))
 	ch.name = "Chicken"
 	ch.position = pos
 	ch.rotation_degrees.y = yaw_deg
@@ -1957,6 +1959,44 @@ static func build_grand_portal_arch(parent: Node3D, at: Vector3, accent_col: Col
 	_mi(root, _sph(0.55, 0.95, 14), glow, Vector3(0, 6.75, 0))
 	make_building_crest_sign(root, Vector3(0, 5.85, 0.45), title.to_upper(), accent_col, false)
 	return root
+
+## Phase P11: Forward+ ACES Filmic Tonemapping, Subtle Glow/Bloom & SSAO Post-Processing!
+static func apply_aaa_post_processing(env: Environment, biome: String = "oz") -> void:
+	if env == null:
+		return
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 1.05
+	env.glow_enabled = true
+	env.glow_intensity = 0.55
+	env.glow_bloom = 0.18
+	env.glow_hdr_threshold = 1.05
+	env.ssao_enabled = true
+	env.ssao_radius = 1.2
+	env.ssao_intensity = 1.15
+	if biome == "munchkin":
+		env.fog_enabled = true
+		env.fog_density = 0.0025
+
+## Phase P11: Destructible Gilded Porcelain Urn — shatters on F/C hit & drops +5 Desire Fragments!
+static func spawn_destructible_urn(parent: Node3D, at: Vector3) -> StaticBody3D:
+	var urn := StaticBody3D.new()
+	urn.set_script(preload("res://systems/destructible_prop.gd"))
+	urn.name = "PorcelainUrn"
+	parent.add_child(urn)
+	urn.global_position = at
+	var porc := _mat(Color(0.92, 0.88, 0.96), 0.18, 0.12)
+	var gold := _mat(Color(0.95, 0.78, 0.30), 0.22, 0.90)
+	_mi(urn, _cyl(0.28, 0.18, 0.22, 14), gold, Vector3(0, 0.11, 0))
+	_mi(urn, _sph(0.36, 0.68, 14), porc, Vector3(0, 0.52, 0))
+	_mi(urn, _cyl(0.24, 0.16, 0.22, 14), gold, Vector3(0, 0.92, 0))
+	var col := CollisionShape3D.new()
+	var sh := CylinderShape3D.new()
+	sh.radius = 0.38
+	sh.height = 1.05
+	col.shape = sh
+	col.position = Vector3(0, 0.52, 0)
+	urn.add_child(col)
+	return urn
 
 ## Theatrical crimson-velvet parting curtain on gilded brass rod with pleated folds, rings & gold tassels.
 ## Returns {"root": Node3D, "left": Node3D, "right": Node3D} so callers can animate both drapes drawing back!

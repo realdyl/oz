@@ -211,6 +211,7 @@ func _build_world() -> void:
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.55, 0.4, 0.55)
 	e.ambient_light_energy = 0.9
+	WorldKit.apply_aaa_post_processing(e, "glinda")
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)

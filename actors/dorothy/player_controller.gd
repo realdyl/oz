@@ -510,10 +510,23 @@ func empower_shoes() -> void:
 	shoes_claimed = true
 	blink_distance = 5.0
 	blink_cooldown = 0.32
+	if visual:
+		visual.position.y = 0.03 # ensures Dorothy's entire Silver Shoes sit cleanly ON TOP of every road & floor!
 	if body:
 		body.set("show_silver_shoes", true)
-		# Rebuild visual so silver shoes show
+		# Rebuild visual so gleaming Silver Shoes show on her feet
 		if body.has_method("_ready"):
 			for c in body.get_children():
 				c.free()
 			body.call("_build")
+	# Choreographed "putting on the Silver Shoes" dip-twirl + ankle sparkle ring!
+	if visual and DisplayServer.get_name() not in ["headless", "Dummy"]:
+		var tw := create_tween()
+		tw.tween_property(visual, "position:y", -0.14, 0.22).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(visual, "rotation_degrees:x", 18.0, 0.22)
+		tw.tween_property(visual, "position:y", 0.03, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(visual, "rotation_degrees:x", 0.0, 0.28)
+		tw.parallel().tween_property(visual, "rotation:y", visual.rotation.y + TAU, 0.45)
+		if CombatFx and CombatFx.has_method("flash_sphere"):
+			CombatFx.flash_sphere(self, global_position + Vector3(0, 0.16, 0), Color(0.92, 0.96, 1.0), 0.95, 0.45)
+			CombatFx.label(self, global_position, "✦ SILVER SHOES EQUIPPED ✦", Color(0.94, 0.98, 1.0))

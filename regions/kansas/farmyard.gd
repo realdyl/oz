@@ -888,9 +888,8 @@ func _talk_aunt() -> void:
 	if phase < Phase.NEED_AUNT:
 		_dlg("Aunt Em", "Find Toto and his wicker basket first, Dorothy — the wind's turning mean!")
 		return
-	# After her quest lines, idle chat only — and guarantee phase never stays stuck in NEED_AUNT!
+	# After her quest lines, stop repeating idle lines on E (matching Locasta's clean behavior!)
 	if aunt_talked or _aunt_line >= AUNT_LINES.size():
-		_dlg("Aunt Em", AUNT_IDLE)
 		aunt_talked = true
 		if phase == Phase.NEED_AUNT:
 			phase = Phase.NEED_SHUTTER
