@@ -1025,6 +1025,13 @@ static func build_locasta_visual(parent: Node3D) -> void:
 		var sh := 0.20 if i == 0 else 0.12
 		_mi(parent, _cyl(0.008, 0.03, sh, 8), gold, Vector3(sin(a) * 0.13, 1.78 + sh * 0.5, -cos(a) * 0.13))
 	_mi(parent, _sph(0.045, 0.09, 12), crystal, Vector3(0, 2.02, -0.13))
+	# High scalloped Victorian lace ruff collar + celestial Northern Star halo ring (npc_06_locasta.jpg)
+	_mi(parent, _cyl(0.24, 0.14, 0.14, 18), gown, Vector3(0, 1.50, 0.06), Vector3(-22, 0, 0))
+	var halo_m := _mat(Color(0.88, 0.96, 1.0), 0.10, 0.2, Color(0.75, 0.92, 1.0), 2.4)
+	_mi(parent, _torus(0.32, 0.34, 16), halo_m, Vector3(0, 1.72, 0.12), Vector3(90, 0, 0))
+	for hi in range(6):
+		var ha := float(hi) * TAU / 6.0
+		_mi(parent, _sph(0.028, 0.056, 8), halo_m, Vector3(cos(ha) * 0.33, 1.72 + sin(ha) * 0.33, 0.12))
 
 ## High-fashion dark-storybook Wicked Witch of the West (Baum book canon: eye-patch, umbrella/staff, obsidian & crimson velvet).
 static func build_west_witch_visual(parent: Node3D) -> void:
@@ -2071,11 +2078,18 @@ static func build_humbug_wizard(parent: Node3D) -> void:
 	for sx in [-1.0, 1.0]:
 		_mi(parent, _cyl(0.048, 0.042, 0.48, 10), coat, Vector3(float(sx) * 0.27, 1.06, 0.12), Vector3(-34, 0, -float(sx) * 14))
 		_mi(parent, _sph(0.048, 0.095, 10), skin, Vector3(float(sx) * 0.30, 0.88, 0.26))
-	# Head + bald crown + white side tufts + moustache + spectacles facing +Z
+	# Head + dark tousled hair + silk top hat with tucked Omaha Fair ticket + spectacles facing +Z (npc_07_oscar_diggs.jpg)
+	var dark_hair := _mat(Color(0.18, 0.14, 0.12), 0.72)
+	var hat_m := _mat(Color(0.12, 0.11, 0.13), 0.58)
+	var ticket_m := _mat(Color(0.92, 0.84, 0.66), 0.80)
 	_mi(parent, _sph(0.165, 0.34, 18), skin, Vector3(0, 1.54, 0))
-	_mi(parent, _sph(0.17, 0.13, 14), hair, Vector3(0, 1.52, -0.05)) # white hair fringe around bald crown
+	_mi(parent, _sph(0.172, 0.18, 14), dark_hair, Vector3(0, 1.56, -0.04))
+	_mi(parent, _cyl(0.24, 0.24, 0.028, 18), hat_m, Vector3(0, 1.69, 0), Vector3(-6, 0, 5)) # top hat brim
+	_mi(parent, _cyl(0.16, 0.14, 0.26, 18), hat_m, Vector3(0, 1.83, -0.01), Vector3(-6, 0, 5)) # silk top hat crown
+	_mi(parent, _cyl(0.146, 0.146, 0.045, 18), vest, Vector3(0, 1.72, -0.01), Vector3(-6, 0, 5)) # hat band
+	_mi(parent, _box(Vector3(0.055, 0.085, 0.012)), ticket_m, Vector3(0.12, 1.78, 0.09), Vector3(-6, 28, -14)) # tucked Omaha Fair ticket
 	_mi(parent, _sph(0.035, 0.06, 10), skin, Vector3(0, 1.52, 0.165)) # nose
-	_mi(parent, _box(Vector3(0.14, 0.04, 0.04)), hair, Vector3(0, 1.46, 0.155)) # white moustache
+	_mi(parent, _box(Vector3(0.14, 0.036, 0.04)), dark_hair, Vector3(0, 1.46, 0.155)) # dark showman moustache
 	for sx in [-0.055, 0.055]:
 		_mi(parent, _sph(0.022, 0.044, 10), eye_m, Vector3(float(sx), 1.56, 0.148))
 		_mi(parent, _cyl(0.042, 0.042, 0.015, 12), brass, Vector3(float(sx), 1.56, 0.162), Vector3(90, 0, 0)) # gold spectacles
@@ -2132,7 +2146,13 @@ static func build_glinda_visual(parent: Node3D) -> void:
 	_mi(parent, _sph(0.148, 0.28, 20), auburn, Vector3(0, 1.70, 0.025))
 	_mi(parent, _cyl(0.09, 0.12, 0.56, 14), auburn, Vector3(0, 1.38, 0.12), Vector3(16, 0, 0))
 	_mi(parent, _cyl(0.15, 0.15, 0.045, 20), gold, Vector3(0, 1.80, 0))
+	for gi in range(5):
+		var ga := float(gi) / 5.0 * TAU
+		var gh := 0.18 if gi == 0 else 0.11
+		_mi(parent, _cyl(0.008, 0.026, gh, 8), gold, Vector3(sin(ga) * 0.135, 1.82 + gh * 0.5, -cos(ga) * 0.135))
 	_mi(parent, _sph(0.055, 0.10, 12), ruby, Vector3(0, 1.94, -0.13))
+	# High Victorian lace ruff collar (npc_03_glinda.jpg)
+	_mi(parent, _cyl(0.25, 0.14, 0.14, 18), gown_w, Vector3(0, 1.54, 0.06), Vector3(-22, 0, 0))
 
 ## Royal Quadling Country beautification: 8-column Alabaster Rotunda, Reflecting Pools, Rose Trees & Compass Altar.
 static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Vector3) -> void:
