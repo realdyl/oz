@@ -1427,6 +1427,17 @@ static func build_water_cistern(parent: Node3D) -> void:
 	_mi(parent, _cyl(1.52, 1.52, 0.08, 16), water, Vector3(0, 0.98, 0))
 	_mi(parent, _cyl(0.65, 0.65, 0.02, 12), water, Vector3(1.85, 0.03, 0.95))
 	_mi(parent, _cyl(0.42, 0.42, 0.02, 10), water, Vector3(-1.45, 0.03, 1.55))
+	# Arched forged-iron dome canopy, spoked winch wheel & twin hanging water buckets (we_04_winkie_courtyard.jpg)
+	for ai in range(4):
+		var aa := float(ai) * PI * 0.5
+		_mi(parent, _cyl(0.06, 0.075, 2.25, 8), iron, Vector3(cos(aa) * 1.62, 2.15, sin(aa) * 1.62))
+	_mi(parent, _torus(1.58, 1.66, 16), iron, Vector3(0, 3.25, 0))
+	_mi(parent, _cyl(0.06, 0.20, 0.65, 8), iron, Vector3(0, 3.65, 0)) # spiked dome finial
+	_mi(parent, _cyl(0.14, 0.14, 2.6, 10), wood, Vector3(0, 2.45, 0), Vector3(0, 0, 90)) # winch drum
+	_mi(parent, _torus(0.42, 0.48, 12), iron, Vector3(1.45, 2.45, 0), Vector3(0, 0, 90)) # spoked winch wheel
+	for bx in [-0.55, 0.55]:
+		_mi(parent, _cyl(0.014, 0.014, 0.92, 6), iron, Vector3(float(bx), 1.98, 0))
+		_mi(parent, _cyl(0.24, 0.18, 0.34, 10), wood, Vector3(float(bx), 1.48, 0)) # hanging bucket
 
 	# Wrought-iron wellhead arch + windlass bar + hanging chain & wooden water bucket
 	for sx in [-1.52, 1.52]:
@@ -2066,6 +2077,14 @@ static func build_velvet_curtain(parent: Node3D, pos: Vector3, width: float = 5.
 	# Pelmet / scalloped valance across top
 	_mi(root, _box(Vector3(width + 0.3, 0.55, 0.38)), velvet_hi, Vector3(0, height - 0.05, 0.12))
 	_mi(root, _box(Vector3(width + 0.32, 0.09, 0.40)), gold, Vector3(0, height - 0.34, 0.12))
+	# Colossal interlocking brass clockwork gears behind the crimson velvet curtain (we_01_wizard_throne_room.jpg)
+	var gear_brass := _mat(Color(0.68, 0.52, 0.24), 0.36, 0.85)
+	for gspec in [[Vector3(-1.1, 3.6, -1.8), 1.15], [Vector3(0.95, 2.4, -1.85), 1.35], [Vector3(-0.35, 1.5, -1.9), 0.88]]:
+		var gp: Vector3 = gspec[0]
+		var gr: float = float(gspec[1])
+		_mi(root, _torus(gr * 0.78, gr, 16), gear_brass, gp, Vector3(90, 0, 0))
+		_mi(root, _cyl(0.10, 0.10, gr * 1.9, 6), gear_brass, gp)
+		_mi(root, _cyl(0.10, 0.10, gr * 1.9, 6), gear_brass, gp, Vector3(0, 0, 90))
 
 	# Two parting drape panels (left & right), each pivoted at its outer edge so scaling X compresses folds!
 	var half_w := width * 0.5
