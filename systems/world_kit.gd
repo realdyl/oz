@@ -623,6 +623,11 @@ static func dress_cottage_exterior(
 	_mi(trim_root, _box(Vector3(2.55, 0.18, 1.45)), roof_mat, Vector3(0, 2.58, porch_z), Vector3(14, 0, 0))
 	for px_sign in [-1.0, 1.0]:
 		_mi(trim_root, _cyl(0.08, 0.10, 2.45, 8), timber_mat, Vector3(float(px_sign) * 1.12, 1.28, half_d + 1.25))
+	# Leaning spoked wooden wagon wheel beside porch (bldg_01_gale_farmhouse.jpg)
+	var wheel_pos := Vector3(1.75, 0.56, half_d + 0.35)
+	_mi(trim_root, _torus(0.46, 0.52, 14), timber_mat, wheel_pos, Vector3(78, 14, 0))
+	for wi in range(4):
+		_mi(trim_root, _cyl(0.024, 0.024, 0.96, 6), timber_mat, wheel_pos, Vector3(-12, 14, float(wi) * 45.0))
 
 	for wx_sign in [-1.0, 1.0]:
 		var wx: float = float(wx_sign) * (half_w * 0.56)
@@ -776,10 +781,16 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 		_mi(fit, _box(Vector3(1.85, 0.52, 1.35)), timber, Vector3(-half_w + 1.35, 0.32, 0.85))
 		_mi(fit, _box(Vector3(1.70, 0.22, 1.22)), _mat(wall_col.lightened(0.25), 0.88), Vector3(-half_w + 1.35, 0.66, 0.85))
 		_mi(fit, _box(Vector3(0.45, 0.16, 0.85)), parchment, Vector3(-half_w + 0.72, 0.82, 0.85))
-		# Round tea table
+		# Round tea table + braided oval parlor rug + cast-iron pot-belly stove (bldg_05_farmhouse_interior.jpg)
+		_mi(fit, _cyl(1.45, 1.48, 0.025, 20), _mat(wall_col.darkened(0.22), 0.94), Vector3(0.2, 0.055, -0.35), Vector3.ZERO, Vector3(1.25, 1.0, 0.92))
 		_mi(fit, _cyl(0.62, 0.62, 0.08, 14), timber, Vector3(0.2, 0.82, -0.35))
 		_mi(fit, _cyl(0.10, 0.18, 0.76, 10), timber, Vector3(0.2, 0.42, -0.35))
 		_mi(fit, _sph(0.14, 0.22, 10), brass, Vector3(0.15, 0.96, -0.35))
+		var stove_iron := _mat(Color(0.16, 0.15, 0.17), 0.42, 0.72)
+		var stove_pos := Vector3(half_w - 0.95, 0.0, -half_d + 0.95)
+		_mi(fit, _cyl(0.32, 0.36, 0.95, 14), stove_iron, stove_pos + Vector3(0, 0.52, 0))
+		_mi(fit, _sph(0.34, 0.42, 12), stove_iron, stove_pos + Vector3(0, 0.62, 0))
+		_mi(fit, _cyl(0.11, 0.11, wall_h - 1.1, 10), stove_iron, stove_pos + Vector3(0, 1.0 + (wall_h - 1.1) * 0.5, 0)) # tall stovepipe
 
 	# Framed wall painting / brass title plaque on back wall (NO giant overlapping ceiling text!)
 	_mi(fit, _box(Vector3(1.85, 0.78, 0.08)), brass, Vector3(0.65, 2.15, -half_d + 0.18))
@@ -1529,6 +1540,11 @@ static func build_lattice_windmill(parent: Node3D, at: Vector3) -> Node3D:
 		rotor.add_child(spoke)
 		_mi(spoke, _box(Vector3(0.08, 2.4, 0.05)), iron, Vector3(0, 1.2, 0))
 		_mi(spoke, _box(Vector3(0.48, 1.45, 0.04)), vane_m, Vector3(0.14, 1.65, 0.04), Vector3(0, 18, 0))
+	# Cast-iron hand water pump & wooden water trough at tower base (bldg_06_windmill_clothesline.jpg)
+	_mi(root, _box(Vector3(1.55, 0.48, 0.72)), timber, Vector3(-1.85, 0.24, 0.45))
+	_mi(root, _box(Vector3(1.38, 0.08, 0.56)), _mat(Color(0.26, 0.30, 0.34), 0.18), Vector3(-1.85, 0.44, 0.45)) # water surface
+	_mi(root, _cyl(0.08, 0.11, 1.05, 10), iron, Vector3(-1.15, 0.52, 0.45)) # pump column
+	_mi(root, _cyl(0.03, 0.03, 0.62, 6), iron, Vector3(-0.92, 0.85, 0.45), Vector3(0, 0, -48)) # pump lever handle
 	return rotor
 
 ## Sculpted woven wicker Toto Basket (replaces plain brown box in Kansas).
