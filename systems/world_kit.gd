@@ -1057,21 +1057,24 @@ static func build_west_witch_visual(parent: Node3D) -> void:
 		_mi(parent, _sph(0.095, 0.16, 12), obsidian, Vector3(s * 0.24, 1.48, 0)) # dramatic puffed gothic shoulders
 		_mi(parent, _cyl(0.05, 0.036, 0.54, 12), obsidian, Vector3(s * 0.28, 1.22, -0.08), Vector3(24, 0, -s * 16))
 		_mi(parent, _sph(0.042, 0.084, 10), pale_skin, Vector3(s * 0.34, 0.98, -0.20))
-	# Dark iron umbrella/staff in right hand
-	_mi(parent, _cyl(0.02, 0.026, 1.75, 10), obsidian, Vector3(0.38, 1.15, -0.26), Vector3(14, 0, -6))
-	_mi(parent, _cyl(0.015, 0.14, 0.34, 10), crimson, Vector3(0.42, 1.85, -0.42), Vector3(14, 0, -6))
+	# Dark iron-ribbed umbrella-staff topped with a sculpted raven head (enemy_04_wicked_witch.jpg)
+	_mi(parent, _cyl(0.022, 0.028, 1.82, 10), obsidian, Vector3(0.38, 1.15, -0.26), Vector3(14, 0, -6))
+	_mi(parent, _cyl(0.018, 0.16, 0.42, 10), obsidian, Vector3(0.41, 1.52, -0.34), Vector3(14, 0, -6)) # folded dark umbrella canopy
+	_mi(parent, _sph(0.055, 0.10, 10), obsidian, Vector3(0.44, 2.02, -0.46)) # raven pommel head
+	_mi(parent, _cyl(0.006, 0.022, 0.11, 6), brass, Vector3(0.44, 2.01, -0.54), Vector3(-90, 0, 0)) # raven beak
 
-	# Gaunt head + ONE fierce glowing ember eye + black eye-patch (Baum book canon!)
+	# Gaunt chalk-pale head + silver-grey braid + ONE fierce amber eye + forged-iron eyepatch (Baum book canon!)
+	var silver_hair := _mat(Color(0.56, 0.58, 0.62), 0.65)
 	_mi(parent, _sph(0.14, 0.31, 18), pale_skin, Vector3(0, 1.72, 0))
-	_mi(parent, _sph(0.15, 0.29, 18), hair, Vector3(0, 1.76, 0.03))
+	_mi(parent, _sph(0.15, 0.29, 18), silver_hair, Vector3(0, 1.76, 0.03))
+	_mi(parent, _cyl(0.036, 0.022, 0.46, 10), silver_hair, Vector3(0.0, 1.45, 0.15), Vector3(12, 0, 0)) # silver braid
 	_mi(parent, _sph(0.026, 0.052, 10), eye_ember, Vector3(-0.048, 1.74, -0.125)) # fierce single eye
-	_mi(parent, _box(Vector3(0.075, 0.055, 0.03)), obsidian, Vector3(0.048, 1.74, -0.13)) # eye-patch
+	_mi(parent, _box(Vector3(0.075, 0.055, 0.03)), obsidian, Vector3(0.048, 1.74, -0.13)) # forged-iron eyepatch
 	_mi(parent, _box(Vector3(0.28, 0.02, 0.02)), obsidian, Vector3(0.0, 1.76, -0.12), Vector3(0, 0, -14)) # patch strap
 
-	# Sweeping buckled gothic witch hat (wide curved brim + bent spire)
+	# Sweeping crown-banded gothic witch hat (wide curved brim + dark iron crown + bent spire)
 	_mi(parent, _cyl(0.46, 0.48, 0.04, 22), obsidian, Vector3(0, 1.86, 0), Vector3(-8, 0, 6))
-	_mi(parent, _cyl(0.165, 0.175, 0.06, 18), crimson, Vector3(0, 1.91, 0), Vector3(-8, 0, 6))
-	_mi(parent, _box(Vector3(0.08, 0.08, 0.04)), brass, Vector3(0, 1.91, -0.17))
+	_mi(parent, _cyl(0.17, 0.18, 0.07, 18), brass, Vector3(0, 1.91, 0), Vector3(-8, 0, 6))
 	_mi(parent, _cyl(0.025, 0.17, 0.52, 18), obsidian, Vector3(0.04, 2.15, 0.04), Vector3(-16, 0, 16))
 
 # ============================================================================
@@ -1793,12 +1796,17 @@ static func build_oz_projection_head(parent: Node3D) -> void:
 		var rlen := 2.4 if ri % 2 == 0 else 1.45
 		_mi(halo_outer, _cyl(0.03, 0.18, rlen, 6), gold if ri % 2 == 0 else holo_flame, Vector3(cos(a) * (4.5 + rlen * 0.45), sin(a) * (4.5 + rlen * 0.45), 0), Vector3(0, 0, rad_to_deg(a) - 90.0))
 
-	# 2) Twin Flanking Brass & Emerald Projector Pylons casting volumetric light cones toward the visage
+	# 2) Twin Flanking Coiled Brass Tesla Towers + Giant Interlocking Brass Projector Gears (enemy_02_oz_hologram.jpg)
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(parent, _cyl(0.32, 0.52, 6.8, 10), gold, Vector3(s * 6.2, -3.6, 1.2))
-		_mi(parent, _sph(0.45, 0.85, 10), holo_flame, Vector3(s * 6.2, -0.1, 1.2))
-		_mi(parent, _cyl(1.85, 0.22, 6.2, 12), beam_mat, Vector3(s * 3.2, -0.1, 0.5), Vector3(0, 0, s * 84.0))
+		_mi(parent, _cyl(0.34, 0.54, 6.8, 12), gold, Vector3(s * 6.2, -3.6, 1.2))
+		for ci in range(7):
+			_mi(parent, _torus(0.56, 0.72, 12), gold, Vector3(s * 6.2, -5.8 + float(ci) * 0.72, 1.2))
+		_mi(parent, _sph(0.55, 1.05, 12), holo_flame, Vector3(s * 6.2, 0.05, 1.2))
+		_mi(parent, _cyl(1.85, 0.22, 6.2, 12), beam_mat, Vector3(s * 3.2, 0.05, 0.5), Vector3(0, 0, s * 84.0))
+		# Giant interlocking brass projector gears flanking the dais
+		_mi(parent, _torus(1.15, 1.45, 16), gold, Vector3(s * 3.2, -4.4, 0.4), Vector3(90, 0, 0))
+		_mi(parent, _cyl(0.45, 0.52, 2.2, 12), gold, Vector3(s * 3.8, -4.4, 1.2), Vector3(90, s * -22, 0)) # projector lens barrel
 
 	# 3) Multi-Plane Chiseled Titan Cranium & Face (NO single smooth egg sphere!)
 	_mi(parent, _cyl(1.85, 2.15, 2.2, 12), holo_face, Vector3(0, 1.65, 0.0), Vector3.ZERO, Vector3(1.05, 1.0, 0.92)) # angular upper cranium

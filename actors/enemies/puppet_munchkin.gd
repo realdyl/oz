@@ -597,38 +597,70 @@ func _build_detailed_visual() -> void:
 		es.height = 0.064
 		_pm(_p_head, es, eye_glow, Vector3(float(ex), 0.09, -0.155))
 
-	# Hat: Gilded Shako with plume for Marshal, Crooked Cabaret Top Hat for Rogues
+	# Hat: Spiked Candied-Crimson Marshal Shako vs Bell-Tipped Rose Munchkin Enforcer Hat
 	if is_marshal:
 		var shako := CylinderMesh.new()
-		shako.top_radius = 0.17
-		shako.bottom_radius = 0.15
-		shako.height = 0.30
-		_pm(_p_head, shako, licorice, Vector3(0, 0.32, 0))
+		shako.top_radius = 0.18
+		shako.bottom_radius = 0.16
+		shako.height = 0.32
+		_pm(_p_head, shako, crimson, Vector3(0, 0.33, 0))
 		var band := CylinderMesh.new()
-		band.top_radius = 0.175
-		band.bottom_radius = 0.175
+		band.top_radius = 0.185
+		band.bottom_radius = 0.185
 		band.height = 0.06
 		_pm(_p_head, band, brass, Vector3(0, 0.22, 0))
+		# Lollipop swirl gold emblem on shako front
+		var emblem := CylinderMesh.new()
+		emblem.top_radius = 0.055
+		emblem.bottom_radius = 0.055
+		emblem.height = 0.025
+		_pm(_p_head, emblem, brass, Vector3(0, 0.32, -0.175), Vector3(90, 0, 0))
 		var plume := SphereMesh.new()
-		plume.radius = 0.075
-		plume.height = 0.22
-		_pm(_p_head, plume, crimson, Vector3(0, 0.54, -0.04))
+		plume.radius = 0.085
+		plume.height = 0.26
+		_pm(_p_head, plume, crimson, Vector3(0, 0.56, -0.04))
+		# Spiked candied-crimson armored pauldrons (enemy_06_marshal_boss.jpg)
+		for px in [-1.0, 1.0]:
+			var ps := SphereMesh.new()
+			ps.radius = 0.14
+			ps.height = 0.18
+			_pm(visual, ps, crimson, Vector3(float(px) * 0.28, 0.90, 0))
+			var spk := CylinderMesh.new()
+			spk.top_radius = 0.005
+			spk.bottom_radius = 0.028
+			spk.height = 0.11
+			_pm(visual, spk, brass, Vector3(float(px) * 0.34, 0.98, 0), Vector3(0, 0, -float(px) * 38.0))
 	else:
+		# Ruffled cream neck collar + rosy porcelain cheeks + bell-tipped pointed hat (enemy_05_munchkin_enforcer.jpg)
+		var neck_ruff := CylinderMesh.new()
+		neck_ruff.top_radius = 0.18
+		neck_ruff.bottom_radius = 0.14
+		neck_ruff.height = 0.07
+		_pm(_p_head, neck_ruff, porcelain, Vector3(0, -0.08, 0))
+		for cx in [-0.095, 0.095]:
+			var ch := SphereMesh.new()
+			ch.radius = 0.028
+			ch.height = 0.044
+			_pm(_p_head, ch, crimson, Vector3(float(cx), 0.03, -0.145))
 		var brim := CylinderMesh.new()
-		brim.top_radius = 0.25
-		brim.bottom_radius = 0.25
+		brim.top_radius = 0.26
+		brim.bottom_radius = 0.26
 		brim.height = 0.035
-		_pm(_p_head, brim, licorice, Vector3(0, 0.21, 0), Vector3(-6, 0, 8))
+		_pm(_p_head, brim, crimson, Vector3(0, 0.21, 0), Vector3(-6, 0, 8))
 		var crown := CylinderMesh.new()
-		crown.top_radius = 0.16
-		crown.bottom_radius = 0.12
-		crown.height = 0.24
-		_pm(_p_head, crown, licorice, Vector3(0.02, 0.34, 0), Vector3(-6, 0, 10))
+		crown.top_radius = 0.035
+		crown.bottom_radius = 0.15
+		crown.height = 0.32
+		_pm(_p_head, crown, crimson, Vector3(0.03, 0.36, 0), Vector3(-10, 0, 18))
 		var rib := CylinderMesh.new()
-		rib.top_radius = 0.135
-		rib.bottom_radius = 0.135
+		rib.top_radius = 0.155
+		rib.bottom_radius = 0.155
 		rib.height = 0.05
-		_pm(_p_head, rib, crimson, Vector3(0.01, 0.24, 0), Vector3(-6, 0, 10))
+		_pm(_p_head, rib, brass, Vector3(0.01, 0.24, 0), Vector3(-6, 0, 10))
+		var bell := SphereMesh.new()
+		bell.radius = 0.036
+		bell.height = 0.072
+		_pm(_p_head, bell, brass, Vector3(0.11, 0.50, 0.04))
 
 	# Articulated Arms + Weapon (Licorice Cane / Marshal Halberd)
 	_p_arm_l = _build_arm(-1.0, licorice, porcelain, brass, crimson)
@@ -659,14 +691,21 @@ func _build_arm(side: float, licorice: Material, porcelain: Material, brass: Mat
 		staff.height = 0.95 if is_marshal else 0.62
 		_pm(arm, staff, licorice, Vector3(0.02, -0.44, -0.26), Vector3(72, 0, 0))
 		if is_marshal:
+			# Massive serrated ceremonial cleaver (enemy_06_marshal_boss.jpg)
 			var blade := BoxMesh.new()
-			blade.size = Vector3(0.04, 0.26, 0.18)
-			_pm(arm, blade, brass, Vector3(0.02, -0.58, -0.68), Vector3(72, 0, 0))
+			blade.size = Vector3(0.045, 0.42, 0.24)
+			_pm(arm, blade, porcelain, Vector3(0.02, -0.58, -0.72), Vector3(72, 0, 0))
+			var guard := BoxMesh.new()
+			guard.size = Vector3(0.06, 0.08, 0.26)
+			_pm(arm, guard, brass, Vector3(0.02, -0.42, -0.52), Vector3(72, 0, 0))
 		else:
-			var knob := SphereMesh.new()
-			knob.radius = 0.055
-			knob.height = 0.11
-			_pm(arm, knob, crimson, Vector3(0.02, -0.54, -0.52))
+			# Gold-filigree short hatchet blade (enemy_05_munchkin_enforcer.jpg)
+			var hatchet := BoxMesh.new()
+			hatchet.size = Vector3(0.032, 0.18, 0.16)
+			_pm(arm, hatchet, porcelain, Vector3(0.02, -0.54, -0.52), Vector3(72, 0, 0))
+			var collar := BoxMesh.new()
+			collar.size = Vector3(0.042, 0.07, 0.07)
+			_pm(arm, collar, brass, Vector3(0.02, -0.50, -0.44), Vector3(72, 0, 0))
 	return arm
 
 func _build_leg(side: float, licorice: Material, porcelain: Material) -> Node3D:
