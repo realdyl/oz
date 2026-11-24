@@ -8,22 +8,25 @@ extends RefCounted
 static var _theme_oz: Theme = null
 static var _theme_kansas: Theme = null
 
-# --- Color Tokens: Oz Storybook ---
-const OZ_SURFACE := Color(0.08, 0.06, 0.10, 0.86)
-const OZ_SURFACE_DEEP := Color(0.06, 0.04, 0.08, 0.94)
-const OZ_BORDER_GOLD := Color(0.84, 0.69, 0.36, 0.72)
-const OZ_BORDER_SUBTLE := Color(0.84, 0.69, 0.36, 0.30)
-const OZ_PARCHMENT := Color(0.96, 0.92, 0.84, 0.96)
-const OZ_INK := Color(0.16, 0.09, 0.14, 1.0)
-const OZ_TEXT := Color(0.97, 0.95, 0.90, 1.0)
-const OZ_TEXT_MUTED := Color(0.76, 0.72, 0.66, 0.92)
-const OZ_GOLD_BRIGHT := Color(0.98, 0.82, 0.38, 1.0)
-const OZ_FINAL_SURFACE := Color(0.20, 0.05, 0.10, 0.94)
-const OZ_FINAL_BORDER := Color(0.98, 0.82, 0.38, 0.95)
-const OZ_KEYCAP_BG := Color(0.95, 0.90, 0.80, 0.98)
-const OZ_KEYCAP_BEVEL := Color(0.65, 0.54, 0.34, 1.0)
-const OZ_THREAT := Color(0.92, 0.28, 0.34, 1.0)
-const OZ_MARSHAL := Color(0.98, 0.76, 0.28, 1.0)
+# --- Color Tokens: Oz Storybook (Sampled from Approved Master GUI References) ---
+const OZ_SURFACE := Color(0.086, 0.051, 0.102, 0.88)      # #160D1A Smoked Glass HUD
+const OZ_SURFACE_DEEP := Color(0.071, 0.035, 0.078, 0.96) # #120914 Obsidian Plum
+const OZ_VELVET_CARD := Color(0.157, 0.094, 0.188, 0.94)  # #281830 Velvet Parchment
+const OZ_BORDER_GOLD := Color(0.769, 0.620, 0.353, 0.88)  # #C49E5A Hammered Antique Brass
+const OZ_BORDER_SUBTLE := Color(0.769, 0.620, 0.353, 0.36)
+const OZ_PARCHMENT := Color(0.937, 0.878, 0.761, 0.96)    # #EFE0C2 Warm Ivory Serif
+const OZ_INK := Color(0.110, 0.060, 0.125, 1.0)
+const OZ_TEXT := Color(0.937, 0.878, 0.761, 1.0)          # #EFE0C2 Warm Ivory
+const OZ_TEXT_MUTED := Color(0.722, 0.659, 0.604, 0.92)   # #B8A89A Muted Parchment
+const OZ_GOLD_BRIGHT := Color(0.910, 0.776, 0.478, 1.0)   # #E8C67A Burnished Gold
+const OZ_ROSE_CRIMSON := Color(0.851, 0.220, 0.376, 1.0)  # #D93860 Crimson Silver-Rose
+const OZ_SILVER_MIST := Color(0.784, 0.831, 0.902, 1.0)   # #C8D4E6 Silver Mist
+const OZ_FINAL_SURFACE := Color(0.19, 0.05, 0.11, 0.95)
+const OZ_FINAL_BORDER := Color(0.910, 0.776, 0.478, 0.96)
+const OZ_KEYCAP_BG := Color(0.937, 0.878, 0.761, 0.98)
+const OZ_KEYCAP_BEVEL := Color(0.65, 0.52, 0.30, 1.0)
+const OZ_THREAT := Color(0.851, 0.220, 0.376, 1.0)
+const OZ_MARSHAL := Color(0.910, 0.776, 0.478, 1.0)
 
 # --- Color Tokens: Kansas Prairie (Film-Noir Monochrome) ---
 const KS_SURFACE := Color(0.09, 0.10, 0.11, 0.88)
