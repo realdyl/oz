@@ -136,11 +136,12 @@ func _build_world() -> void:
 	_add_box(Vector3(0, 0.05, -30), Vector3(5.6, 0.1, 28), Color(0.92, 0.78, 0.2), "YellowBrickRoadN")
 	_add_box(Vector3(0, 0.05, -50), Vector3(5.8, 0.12, 16), Color(0.95, 0.82, 0.22), "YellowBrickRoadGate")
 	# Outer walls — north wall has a WALKABLE gate gap on the YBR (x≈0).
-	_add_box(Vector3(-18, 4, -42), Vector3(20, 10, 3), Color(0.1, 0.08, 0.09), "WallN_L")
-	_add_box(Vector3(18, 4, -42), Vector3(20, 10, 3), Color(0.1, 0.08, 0.09), "WallN_R")
-	_add_box(Vector3(0, 4, 42), Vector3(52, 10, 3), Color(0.1, 0.08, 0.09), "WallS")
-	_add_box(Vector3(-48, 4, 0), Vector3(3, 10, 86), Color(0.1, 0.08, 0.09), "WallW")
-	_add_box(Vector3(48, 4, 0), Vector3(3, 10, 86), Color(0.1, 0.08, 0.09), "WallE")
+	# Align north castle walls cleanly flush with the GatePillar line (z = -36) so no giant slabs jut into the courtyard!
+	_add_box(Vector3(-27, 4, -36), Vector3(38, 9, 3), Color(0.10, 0.08, 0.09), "WallN_L")
+	_add_box(Vector3(27, 4, -36), Vector3(38, 9, 3), Color(0.10, 0.08, 0.09), "WallN_R")
+	_add_box(Vector3(0, 4, 42), Vector3(96, 9, 3), Color(0.10, 0.08, 0.09), "WallS")
+	_add_box(Vector3(-48, 4, 3), Vector3(3, 9, 80), Color(0.10, 0.08, 0.09), "WallW")
+	_add_box(Vector3(48, 4, 3), Vector3(3, 9, 80), Color(0.10, 0.08, 0.09), "WallE")
 	# Keep towers (offset off the brick)
 	for xz in [Vector3(-22, 0, -22), Vector3(22, 0, -22), Vector3(-22, 0, 18), Vector3(22, 0, 18)]:
 		_add_box(xz + Vector3(0, 6, 0), Vector3(5, 12, 5), Color(0.14, 0.1, 0.11), "Tower")
@@ -151,6 +152,7 @@ func _build_world() -> void:
 	_add_box(Vector3(0, 10.5, -36), Vector3(16, 2.5, 5), Color(0.18, 0.12, 0.11), "GateArch")
 	# Glowing end-gate pad past the arch (story-gated E after melt).
 	_add_box(gate_pos + Vector3(0, -0.02, 0), Vector3(6.5, 0.08, 6.5), Color(0.35, 0.9, 0.45), "EmeraldGatePad")
+	WorldKit.build_grand_portal_arch(self, gate_pos, Color(0.28, 0.96, 0.55), "Road to Emerald City")
 	WorldKit.make_world_badge(self, gate_pos + Vector3(0, 3.2, 0), "✦  Emerald City Gate (E)", Color(0.45, 0.96, 0.58), 16.0)
 	var em_sign := WorldKit.make_wooden_signpost(Vector3(-3.8, 0.0, -20.0), "EMERALD CITY", Color(0.45, 0.95, 0.55), gate_pos)
 	add_child(em_sign)

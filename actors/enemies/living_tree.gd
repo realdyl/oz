@@ -9,6 +9,7 @@ extends StaticBody3D
 var alive: bool = true
 var visual: Node3D
 var body_mat: StandardMaterial3D
+var _throw_arm: Node3D = null
 var _pod_cd: float = 2.6
 
 func _physics_process(delta: float) -> void:
@@ -36,9 +37,15 @@ func _throw_seed_pod(target_pos: Vector3) -> void:
 	pm.emission_energy_multiplier = 0.7
 	pod.material_override = pm
 	get_parent().add_child(pod)
-	var start_p := global_position + Vector3(0, 3.1, 0)
+	var start_p := _throw_arm.global_position + Vector3(0, 0.6, 0) if _throw_arm else (global_position + Vector3(0, 3.1, 0))
 	pod.global_position = start_p
-	if visual:
+	# Articulated tree arm visibly winds back and flings the seed-pod!
+	if _throw_arm:
+		var atw := create_tween()
+		atw.tween_property(_throw_arm, "rotation_degrees:x", -48.0, 0.14).set_ease(Tween.EASE_OUT)
+		atw.tween_property(_throw_arm, "rotation_degrees:x", 52.0, 0.16).set_ease(Tween.EASE_IN)
+		atw.tween_property(_throw_arm, "rotation_degrees:x", 0.0, 0.25)
+	elif visual:
 		var sway := create_tween()
 		sway.tween_property(visual, "rotation_degrees:z", 12.0, 0.14)
 		sway.tween_property(visual, "rotation_degrees:z", 0.0, 0.24)
@@ -136,6 +143,23 @@ func _build() -> void:
 			eye.position = Vector3(float(sx), 2.15, float(fz))
 			visual.add_child(eye)
 
+	# Articulated throwing tree-arm boughs on left & right shoulders!
+	for sx in [-1.0, 1.0]:
+		var arm_piv := Node3D.new()
+		arm_piv.position = Vector3(float(sx) * 0.55, 2.35, 0.0)
+		visual.add_child(arm_piv)
+		var arm_m := MeshInstance3D.new()
+		var ac := CylinderMesh.new()
+		ac.top_radius = 0.09
+		ac.bottom_radius = 0.18
+		ac.height = 1.65
+		arm_m.mesh = ac
+		arm_m.material_override = body_mat
+		arm_m.position = Vector3(float(sx) * 0.45, 0.35, 0.25)
+		arm_m.rotation_degrees = Vector3(24, 0, -float(sx) * 58)
+		arm_piv.add_child(arm_m)
+		if sx > 0:
+			_throw_arm = arm_piv
 	var col := CollisionShape3D.new()
 	var shape := CylinderShape3D.new()
 	shape.radius = 0.85
@@ -164,11 +188,12 @@ func take_damage(amount: int, _source_position: Vector3, tags: Dictionary = {}) 
 func _die() -> void:
 	alive = false
 	collision_layer = 0
+	set_physics_process(false)
 	add_to_group("enemies_dead")
+	# Topple naturally onto the grass and remain fallen (just like defeated Munchkins — never pop out of existence!)
 	var tw := create_tween()
-	tw.tween_property(visual, "rotation:z", 1.2, 0.5)
-	tw.parallel().tween_property(visual, "position:y", -0.5, 0.5)
-	tw.tween_callback(queue_free)
+	tw.tween_property(visual, "rotation:z", deg_to_rad(86.0), 0.65).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(visual, "position:y", 0.42, 0.65)
 	var land := get_tree().current_scene
 	if land and land.has_method("on_enemy_down"):
 		land.on_enemy_down(self)

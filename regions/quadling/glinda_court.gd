@@ -169,6 +169,7 @@ func _build_world() -> void:
 	_add_box(Vector3(0, 0.00, 10), Vector3(5.6, 0.06, 55), Color(0.95, 0.82, 0.25), "YellowBrickRoad")
 	_add_box(Vector3(0, 0.00, -30), Vector3(5.8, 0.06, 30), Color(0.96, 0.84, 0.28), "YellowBrickRoadS")
 	_add_box(ROAD_HOME_PAD + Vector3(0, -0.02, 0), Vector3(7.5, 0.08, 7.5), Color(1.0, 0.75, 0.9), "RoadHomePad")
+	WorldKit.build_grand_portal_arch(self, ROAD_HOME_PAD, Color(1.0, 0.72, 0.92), "The Road Home")
 	# Tall emissive marker so the pad never reads as “just floor”
 	var post := MeshInstance3D.new()
 	post.name = "RoadHomeMarker"

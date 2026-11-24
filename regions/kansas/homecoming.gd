@@ -227,6 +227,18 @@ func _build_world() -> void:
 	WorldKit.dress_cottage_exterior(barn, 3.5, 3.0, 4.5, Color(0.36, 0.36, 0.39), Color(0.22, 0.22, 0.25), true)
 	WorldKit.make_building_crest_sign(barn, Vector3(0, 4.6, 3.3), "BARN", Color(0.45, 0.45, 0.48), true)
 	_build_barn_interior(barn)
+	# Matching L1 Kansas Chicken Coop + Swinging Fence Gate + 5 sculpted 3D chickens!
+	var coop := StaticBody3D.new()
+	coop.name = "ChickenCoop"
+	add_child(coop)
+	coop.global_position = Vector3(22.0, 0.0, -14.0)
+	WorldKit.build_chicken_coop(coop)
+	var cc := CollisionShape3D.new()
+	var csh := BoxShape3D.new()
+	csh.size = Vector3(3.4, 2.2, 2.6)
+	cc.shape = csh
+	cc.position = Vector3(0, 1.1, 0)
+	coop.add_child(cc)
 	_wind_clothes = WorldKit.build_clothesline(self, Vector3(8.0, 0.0, 4.0))
 	_windmill_rotor = WorldKit.build_lattice_windmill(self, Vector3(-26.0, 0.0, -10.0))
 	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 4), 32.0, 100, 4.8)

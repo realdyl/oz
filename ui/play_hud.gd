@@ -4,6 +4,7 @@ const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const ThreatRadarScript := preload("res://ui/widgets/threat_radar.gd")
 const PauseMenuScript := preload("res://ui/shell/pause_menu.gd")
 const GrimoireMenuScript := preload("res://ui/grimoire_menu.gd")
+const ShopMenuScript := preload("res://ui/shop_menu.gd")
 const WorldKit := preload("res://systems/world_kit.gd")
 const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
@@ -35,6 +36,7 @@ var kansas_mode: bool = false
 var threat_compass: Label
 var pause_menu: CanvasLayer
 var grimoire_menu: CanvasLayer
+var shop_menu: CanvasLayer
 var _vitality_panel: PanelContainer
 var _petal_labels: Array[Label] = []
 var _allure_bar: ProgressBar
@@ -649,6 +651,9 @@ func _ensure_grimoire_menu() -> void:
 	grimoire_menu = GrimoireMenuScript.new()
 	grimoire_menu.name = "GrimoireMenu"
 	add_child(grimoire_menu)
+	shop_menu = ShopMenuScript.new()
+	shop_menu.name = "ShopMenu"
+	add_child(shop_menu)
 
 func _connect_save_manager() -> void:
 	var sm := get_node_or_null("/root/SaveManager")
@@ -830,10 +835,18 @@ func show_boss_bar(boss_name: String, phase_label: String, cur_hp: float, max_hp
 	_boss_phase_lbl.text = phase_label
 	_boss_bar.max_value = maxf(1.0, max_hp_val)
 	_boss_bar.value = clampf(cur_hp, 0.0, max_hp_val)
+	var lc := get_node_or_null("LevelCompass") as Control
+	if lc:
+		lc.offset_top = 86.0
+		lc.offset_bottom = 114.0
 
 func hide_boss_bar() -> void:
 	if _boss_panel:
 		_boss_panel.visible = false
+	var lc := get_node_or_null("LevelCompass") as Control
+	if lc:
+		lc.offset_top = 48.0
+		lc.offset_bottom = 78.0
 
 func _refresh_vitality_ribbon() -> void:
 	var sm := get_node_or_null("/root/SaveManager")
@@ -848,7 +861,7 @@ func _refresh_vitality_ribbon() -> void:
 	if _allure_bar:
 		_allure_bar.value = float(sm.allure)
 	if _desire_lbl:
-		_desire_lbl.text = "♦ %d Desire  ·  [J] Grimoire  ·  [Q] Wheel" % int(sm.desire_fragments)
+		_desire_lbl.text = "♦ %d Desire · [B] Shop · [J] Codex · [Q] Wheel" % int(sm.desire_fragments)
 
 func _build_quick_wheel() -> void:
 	_wheel_root = CenterContainer.new()

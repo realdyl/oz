@@ -247,7 +247,8 @@ func _drop_dorothy_asleep() -> void:
 	dorothy_sleep = 0.0
 	var drop := player.global_position if player else DOROTHY_FALL
 	drop.y = 0.08
-	drop.x = clampf(drop.x, -2.5, 2.5)
+	# Dorothy falls asleep IN the scarlet poppy meadow beside the Yellow Brick Road (not dead-center on bricks!)
+	drop.x = -5.4
 	if drop.z < POPPY_START_Z + 2.0:
 		drop.z = POPPY_START_Z + 4.0
 	if player and player.has_method("set_parked"):
@@ -256,7 +257,6 @@ func _drop_dorothy_asleep() -> void:
 		player.global_position = drop
 	if player and player.has_method("set_sleeping"):
 		player.call("set_sleeping", true)
-	_ensure_asleep_marker("DorothyAsleepLab", drop, "✦ Dorothy — Asleep (needs Clear Air south)", Color(1.0, 0.78, 0.88))
 	if not lion_asleep and not lion_safe:
 		_drop_lion_asleep()
 	if hud and hud.has_method("show_toast"):
@@ -292,13 +292,13 @@ func _drop_lion_asleep() -> void:
 	lion_asleep = true
 	lion_sleep = 0.0
 	if lion:
+		var lion_meadow := Vector3(5.8, 0.08, LION_FALL.z)
 		if lion.has_method("set_parked"):
-			lion.call("set_parked", true, LION_FALL)
+			lion.call("set_parked", true, lion_meadow)
 		else:
-			lion.global_position = LION_FALL
+			lion.global_position = lion_meadow
 		if lion.has_method("set_sleeping"):
 			lion.call("set_sleeping", true)
-	_ensure_asleep_marker("LionAsleepLab", LION_FALL, "✦ Lion — Asleep (too heavy · need Mice Cart)", Color(1.0, 0.88, 0.45))
 	var party := get_node_or_null("/root/Party")
 	if party and party.has_method("set_leader"):
 		var lid: StringName = _lead_id()
@@ -430,14 +430,28 @@ func _finish_haul() -> void:
 	lion_asleep = false
 	lion_safe = true
 	var lion_safe_pos := SAFE_SOUTH + Vector3(2.0, 0, 0)
+	var cart_park_pos := SAFE_SOUTH + Vector3(4.8, 0, 0)
 	if lion:
 		if lion.has_method("set_sleeping"):
 			lion.call("set_sleeping", false)
-		if lion.has_method("set_parked"):
-			lion.call("set_parked", false)
-		lion.global_position = lion_safe_pos
-	if cart:
-		cart.global_position = SAFE_SOUTH + Vector3(4.0, 0, 0)
+		if DisplayServer.get_name() in ["headless", "Dummy"]:
+			if lion.has_method("set_parked"):
+				lion.call("set_parked", false)
+			lion.global_position = lion_safe_pos
+			if cart:
+				cart.global_position = cart_park_pos
+		else:
+			# Smooth Lion wake-up & step down off the cart + smooth cart roll to park (zero popping!)
+			var ltw := create_tween()
+			ltw.tween_property(lion, "global_position", lion.global_position + Vector3(0.6, 0.85, 0.6), 0.35).set_ease(Tween.EASE_OUT)
+			ltw.tween_property(lion, "global_position", lion_safe_pos, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			ltw.tween_callback(func():
+				if lion and lion.has_method("set_parked"):
+					lion.call("set_parked", false)
+			)
+			if cart:
+				var ctw := create_tween()
+				ctw.tween_property(cart, "global_position", cart_park_pos, 0.75).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if player and player.has_method("set_parked"):
 		player.call("set_parked", false)
 		player.global_position = SAFE_SOUTH + Vector3(-2.0, 0, 0)
@@ -579,7 +593,9 @@ func _build_world() -> void:
 	# Offset pads cleanly above road surface (y = 0.08m) so there is ZERO Z-fighting/blinking!
 	_add_box(Vector3(0, 0.01, 42), Vector3(40, 0.06, 24), Color(0.4, 0.65, 0.38), "SafeMeadow")
 	_add_box(WEST_GATE + Vector3(0, 0.06, 0), Vector3(7.0, 0.06, 7.0), Color(0.55, 0.2, 0.15), "WestGatePad")
+	WorldKit.build_grand_portal_arch(self, WEST_GATE, Color(0.95, 0.36, 0.28), "Winkie Castle Gate")
 	_add_box(CLEAR_AIR_POS + Vector3(0, 0.06, 0), Vector3(5.0, 0.06, 5.0), Color(0.35, 0.75, 1.0), "ClearAirPad")
+	WorldKit.build_grand_portal_arch(self, CLEAR_AIR_POS, Color(0.42, 0.88, 1.0), "Breezy Meadow Shrine")
 	var poppy_sign := WorldKit.make_wooden_signpost(Vector3(-3.8, 0.0, -46.0), "POPPY FIELD", Color(1.0, 0.40, 0.45), WEST_GATE)
 	add_child(poppy_sign)
 	var warn_sign := WorldKit.make_wooden_signpost(Vector3(3.8, 0.0, POPPY_START_Z - 2.0), "DEADLY SCENT", Color(1.0, 0.32, 0.38), WEST_GATE)

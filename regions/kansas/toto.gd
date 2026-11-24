@@ -58,22 +58,15 @@ func _stick_to_basket(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player == null:
 		return
-	# Trot right on the prairie ground beside Dorothy (never floating mid-air!)
-	var target: Vector3 = player.global_position + Vector3(0.95, 0.0, 0.55)
-	target.y = 0.0
-	var to_t := target - global_position
-	to_t.y = 0.0
-	var dist := to_t.length()
-	if dist > 0.35:
-		global_position = global_position.lerp(target, 1.0 - exp(-hop_speed * delta))
-		global_position.y = 0.0
-		_hop_t += delta * 12.0
-		visual.position.y = absf(sin(_hop_t)) * 0.05
-		# Godot 3D characters face -Z, so atan2(-x, -z) faces forward!
-		visual.rotation.y = atan2(-to_t.x, -to_t.z)
-	else:
-		global_position.y = 0.0
-		visual.position.y = 0.0
+	# Toto actually rides INSIDE Dorothy's carried wicker basket (head & ears peeking over the woven rim!)
+	var cb := player.find_child("CarriedBasket", true, false) as Node3D
+	var target: Vector3 = cb.global_position + Vector3(0.0, 0.16, 0.0) if cb else (player.global_position + Vector3(0.32, 0.85, -0.18))
+	global_position = global_position.lerp(target, 1.0 - exp(-12.0 * delta))
+	scale = scale.lerp(Vector3(0.62, 0.62, 0.62), 1.0 - exp(-8.0 * delta))
+	_hop_t += delta * 8.0
+	visual.position.y = absf(sin(_hop_t)) * 0.025
+	if player.has_node("Visual"):
+		visual.rotation.y = (player.get_node("Visual") as Node3D).rotation.y
 	var tail := _parts.get("tail") as Node3D
 	if tail:
-		tail.rotation.z = sin(Time.get_ticks_msec() * 0.015) * 0.42
+		tail.rotation.z = sin(Time.get_ticks_msec() * 0.015) * 0.45

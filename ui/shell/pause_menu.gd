@@ -156,6 +156,11 @@ func _build_ui() -> void:
 	_grimoire_btn.pressed.connect(_open_grimoire)
 	vbox.add_child(_grimoire_btn)
 
+	var shop_btn := Button.new()
+	shop_btn.text = "The Tailor of Vices — Shop (B)"
+	shop_btn.pressed.connect(_open_shop)
+	vbox.add_child(shop_btn)
+
 	_saves_btn = Button.new()
 	_saves_btn.text = "Save / Load Game (Slots 1–3)"
 	_saves_btn.pressed.connect(_show_saves)
@@ -211,6 +216,12 @@ func _open_grimoire() -> void:
 	var hud := get_parent()
 	if hud and hud.get("grimoire_menu"):
 		hud.get("grimoire_menu").call("open", 0)
+
+func _open_shop() -> void:
+	close()
+	var hud := get_parent()
+	if hud and hud.get("shop_menu"):
+		hud.get("shop_menu").call("open", "dorothy")
 
 func _show_saves() -> void:
 	_main_card.visible = false

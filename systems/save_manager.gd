@@ -16,8 +16,42 @@ var max_hp: int = 5
 var allure: float = 35.0
 var unlocked_memories: Array[String] = []
 var opened_chests: Array[String] = []
+var owned_items: Array[String] = ["dorothy_gingham", "scarecrow_classic", "tinman_classic", "lion_classic", "toto_classic"]
+var equipped_outfits: Dictionary = {
+	"dorothy": "dorothy_gingham",
+	"scarecrow": "scarecrow_classic",
+	"tinman": "tinman_classic",
+	"lion": "lion_classic",
+	"toto": "toto_classic",
+}
 var current_scene_path: String = "res://regions/kansas/farmyard.tscn"
 var current_chapter: String = "Act 0 · Kansas — The Gale Farm"
+
+const SHOP_CATALOG := {
+	"dorothy": [
+		{"id": "dorothy_gingham", "name": "Prairie Gingham", "cost": 0, "perk": "Classic blue-and-white gingham.", "tint": Color(0.24, 0.42, 0.86)},
+		{"id": "dorothy_velvet", "name": "Velvet Corset Couture", "cost": 25, "perk": "+25% Allure gain · Crimson-obsidian silk gown.", "tint": Color(0.68, 0.08, 0.24)},
+		{"id": "dorothy_sovereign", "name": "Silver-Lace Sovereign", "cost": 45, "perk": "+40% Allure & faster Blink · Silver-violet couture.", "tint": Color(0.66, 0.54, 0.88)},
+		{"id": "dorothy_whip_plus", "name": "Lace Whip Mastery (Weapon)", "cost": 30, "perk": "Upgrades Lace Whip pull & +8 bonus lash damage.", "tint": Color(0.95, 0.18, 0.42)},
+	],
+	"scarecrow": [
+		{"id": "scarecrow_classic", "name": "Cornfield Straw", "cost": 0, "perk": "Classic patched burlap tunic.", "tint": Color(0.72, 0.56, 0.34)},
+		{"id": "scarecrow_leather", "name": "Burlap & Leather", "cost": 25, "perk": "Dark-leather straps · Wider Crow Scatter radius.", "tint": Color(0.28, 0.18, 0.16)},
+		{"id": "scarecrow_obsidian", "name": "Obsidian Crowmaster", "cost": 45, "perk": "Raven-feathered coat · Longer enemy Confusion.", "tint": Color(0.14, 0.12, 0.20)},
+	],
+	"tinman": [
+		{"id": "tinman_classic", "name": "Polished Tin", "cost": 0, "perk": "Mirror-buffed silver tin plate.", "tint": Color(0.76, 0.80, 0.86)},
+		{"id": "tinman_velvet", "name": "Chrome & Crimson Velvet", "cost": 25, "perk": "+10 Axe Cleave · Dark chrome & crimson sash.", "tint": Color(0.32, 0.14, 0.22)},
+	],
+	"lion": [
+		{"id": "lion_classic", "name": "Golden Mane", "cost": 0, "perk": "Natural tawny mane & coat.", "tint": Color(0.84, 0.58, 0.24)},
+		{"id": "lion_primal", "name": "Primal Gold Harness", "cost": 25, "perk": "Gilded war-mane · Extended Roar Fear shockwave.", "tint": Color(0.95, 0.72, 0.18)},
+	],
+	"toto": [
+		{"id": "toto_classic", "name": "Cairn Terrier", "cost": 0, "perk": "Loyal dark-brindle prairie terrier.", "tint": Color(0.24, 0.18, 0.14)},
+		{"id": "toto_silver_collar", "name": "Silver-Spiked Collar", "cost": 15, "perk": "Shimmering silver-star collar · Wider bark aura.", "tint": Color(0.55, 0.58, 0.68)},
+	],
+}
 
 const MEMORY_CATALOG := {
 	"kansas_locket": {
@@ -227,3 +261,43 @@ func has_any_save() -> bool:
 		if not get_slot_info(s).is_empty():
 			return true
 	return false
+
+func buy_and_equip(char_id: String, item_id: String) -> bool:
+	var catalog: Array = SHOP_CATALOG.get(char_id, [])
+	var item: Dictionary = {}
+	for it in catalog:
+		if str(it.get("id", "")) == item_id:
+			item = it
+			break
+	if item.is_empty():
+		return false
+	var cost: int = int(item.get("cost", 0))
+	if item_id not in owned_items:
+		if desire_fragments < cost:
+			return false
+		desire_fragments -= cost
+		owned_items.append(item_id)
+	equipped_outfits[char_id] = item_id
+	apply_outfit_to_world(char_id, item.get("tint", Color.WHITE))
+	state_changed.emit()
+	return true
+
+func apply_outfit_to_world(char_id: String, tint: Color) -> void:
+	var target: Node = null
+	if char_id == "dorothy":
+		target = get_tree().get_first_node_in_group("player")
+	elif char_id == "toto":
+		target = get_tree().get_first_node_in_group("toto")
+	else:
+		for n in get_tree().get_nodes_in_group("companions"):
+			if char_id in n.name.to_lower():
+				target = n
+				break
+	if target == null:
+		return
+	for mi in target.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m and m.material_override is StandardMaterial3D:
+			var dup := (m.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+			dup.albedo_color = dup.albedo_color.lerp(tint, 0.58)
+			m.material_override = dup

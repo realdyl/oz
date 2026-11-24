@@ -362,12 +362,14 @@ func _build_tailor_of_vices(at: Vector3) -> void:
 	cs.shape = sph
 	area.add_child(cs)
 	area.body_entered.connect(func(b):
-		if b.is_in_group("player") and not shop.has_meta("visited"):
-			shop.set_meta("visited", true)
-			var sm := get_node_or_null("/root/SaveManager")
-			if sm and sm.has_method("add_desire"):
-				sm.add_desire(25, "The Tailor of Vices")
-			_say("Tailor of Vices: \"Welcome to the Emerald Boulevard, darling. Take this velvet shimmer — the Wizard's guards won't know what hit them.\"")
+		if b.is_in_group("player"):
+			if not shop.has_meta("visited"):
+				shop.set_meta("visited", true)
+				var sm := get_node_or_null("/root/SaveManager")
+				if sm and sm.has_method("add_desire"):
+					sm.add_desire(25, "The Tailor of Vices")
+			if hud and hud.get("shop_menu"):
+				hud.get("shop_menu").call("open", "dorothy")
 	)
 
 func _add_limb(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
@@ -604,6 +606,6 @@ func _add_emerald_whimsy() -> void:
 		{"pos": Vector3(8, 0, 28), "kind": "bounce", "name": "Emerald toadstool"},
 		{"pos": Vector3(-9, 0, 20), "kind": "giggle", "name": "Green giggle"},
 		{"pos": Vector3(10, 0, 8), "kind": "chime", "name": "Glass chime"},
-		{"pos": Vector3(-8, 0, -2), "kind": "dance", "name": "Gate dance"},
+		{"pos": Vector3(-14.5, 0, 12), "kind": "dance", "name": "Gate dance"},
 		{"pos": Vector3(9, 0, -22), "kind": "giggle", "name": "Plaza giggle"},
 	], "emerald")

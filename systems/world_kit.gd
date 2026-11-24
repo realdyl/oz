@@ -1935,6 +1935,29 @@ static func dress_emerald_city_wall(parent: Node3D, z_pos: float = -8.0) -> void
 		_mi(root, _cyl(0.32, 0.55, 2.2, 12), crystal, Vector3(fx, 1.45, fz))
 		_mi(root, _sph(0.45, 0.75, 12), glass_glow, Vector3(fx, 2.85, fz))
 
+## Grandiose Ornate Level-Exit Portal Archway (replaces mundane flat exit pads across Oz!).
+static func build_grand_portal_arch(parent: Node3D, at: Vector3, accent_col: Color, title: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "GrandPortalArch"
+	root.position = at
+	parent.add_child(root)
+	var gold := _mat(Color(0.95, 0.80, 0.32), 0.22, 0.92, Color(0.92, 0.74, 0.24), 0.28)
+	var glow := _mat(accent_col, 0.12, 0.25, accent_col, 1.8)
+	var stone := _mat(Color(0.88, 0.86, 0.90), 0.38, 0.08)
+	# Glowing circular rune medallion on floor
+	_mi(root, _cyl(3.1, 3.3, 0.06, 24), gold, Vector3(0, 0.04, 0))
+	_mi(root, _cyl(2.7, 2.7, 0.07, 24), glow, Vector3(0, 0.05, 0))
+	# Flanking fluted gilded columns + curved portal arch + crystal crown star
+	for sx in [-1.0, 1.0]:
+		_mi(root, _cyl(0.42, 0.52, 0.45, 14), gold, Vector3(float(sx) * 3.1, 0.22, 0))
+		_mi(root, _cyl(0.28, 0.34, 5.2, 14), stone, Vector3(float(sx) * 3.1, 2.85, 0))
+		_mi(root, _cyl(0.48, 0.34, 0.42, 14), gold, Vector3(float(sx) * 3.1, 5.55, 0))
+		_mi(root, _sph(0.32, 0.52, 12), glow, Vector3(float(sx) * 3.1, 6.15, 0))
+	_mi(root, _box(Vector3(6.8, 0.55, 0.65)), gold, Vector3(0, 5.85, 0))
+	_mi(root, _sph(0.55, 0.95, 14), glow, Vector3(0, 6.75, 0))
+	make_building_crest_sign(root, Vector3(0, 5.85, 0.45), title.to_upper(), accent_col, false)
+	return root
+
 ## Theatrical crimson-velvet parting curtain on gilded brass rod with pleated folds, rings & gold tassels.
 ## Returns {"root": Node3D, "left": Node3D, "right": Node3D} so callers can animate both drapes drawing back!
 static func build_velvet_curtain(parent: Node3D, pos: Vector3, width: float = 5.4, height: float = 6.2) -> Dictionary:

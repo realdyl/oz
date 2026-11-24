@@ -41,6 +41,7 @@ func begin_fight() -> void:
 func begin_melt() -> void:
 	melting = true
 	fighting = false
+	_sync_boss_hud()
 	var lab := get_node_or_null("WestLabel") as Label3D
 	if lab:
 		lab.text = "I'M MELTING—"

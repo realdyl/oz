@@ -165,18 +165,64 @@ func _spawn(at: Vector3, kind: String, title: String) -> void:
 	mat.emission_energy_multiplier = 0.7
 	match kind:
 		"bounce":
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = 0.55
-			cyl.bottom_radius = 0.75
-			cyl.height = 0.55
-			mi.mesh = cyl
-			mi.position = Vector3(0, 0.3, 0)
+			# Storybook Spotted Toadstool Trampoline (curved stem + domed cap + glowing spots!)
+			var stem := CylinderMesh.new()
+			stem.top_radius = 0.22
+			stem.bottom_radius = 0.34
+			stem.height = 0.52
+			mi.mesh = stem
+			mi.position = Vector3(0, 0.26, 0)
+			var cap := MeshInstance3D.new()
+			var csph := SphereMesh.new()
+			csph.radius = 0.72
+			csph.height = 0.65
+			cap.mesh = csph
+			cap.material_override = mat
+			cap.position = Vector3(0, 0.54, 0)
+			area.add_child(cap)
+			var spot_m := StandardMaterial3D.new()
+			spot_m.albedo_color = Color(0.98, 0.96, 0.92)
+			spot_m.emission_enabled = true
+			spot_m.emission = Color(1.0, 0.96, 0.88)
+			spot_m.emission_energy_multiplier = 0.9
+			for si in range(5):
+				var sa := float(si) / 5.0 * TAU
+				var sp := MeshInstance3D.new()
+				var ss := SphereMesh.new()
+				ss.radius = 0.11
+				ss.height = 0.12
+				sp.mesh = ss
+				sp.material_override = spot_m
+				sp.position = Vector3(cos(sa) * 0.44, 0.72, sin(sa) * 0.44)
+				area.add_child(sp)
 		"giggle":
-			var sphm := SphereMesh.new()
-			sphm.radius = 0.35
-			sphm.height = 0.7
-			mi.mesh = sphm
-			mi.position = Vector3(0, 0.6, 0)
+			# Floating Crystal Fairy-Lantern with Gilded Filigree Halo Ring (replaces bare sphere!)
+			var core := CylinderMesh.new()
+			core.top_radius = 0.02
+			core.bottom_radius = 0.22
+			core.height = 0.42
+			core.radial_segments = 6
+			mi.mesh = core
+			mi.position = Vector3(0, 0.95, 0)
+			var bot := MeshInstance3D.new()
+			var bc := CylinderMesh.new()
+			bc.top_radius = 0.22
+			bc.bottom_radius = 0.02
+			bc.height = 0.42
+			bc.radial_segments = 6
+			bot.mesh = bc
+			bot.material_override = mat
+			bot.position = Vector3(0, 0.54, 0)
+			area.add_child(bot)
+			var halo := MeshInstance3D.new()
+			var ht := TorusMesh.new()
+			ht.inner_radius = 0.34
+			ht.outer_radius = 0.39
+			halo.mesh = ht
+			halo.material_override = mat
+			halo.position = Vector3(0, 0.75, 0)
+			halo.rotation_degrees = Vector3(32, 0, 22)
+			area.add_child(halo)
 		"chime":
 			# Fanciful sculpted storybook hanging Wind-Chime Arch (shepherd hook + gilded ring + 5 staggered chime tubes + crystal star!)
 			var pole := CylinderMesh.new()
