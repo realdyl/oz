@@ -632,6 +632,9 @@ static func dress_cottage_exterior(
 	for wx_sign in [-1.0, 1.0]:
 		var wx: float = float(wx_sign) * (half_w * 0.56)
 		_add_window(trim_root, Vector3(wx, 1.95, half_d + 0.17), 0.0, window_glow, timber_mat, shutter_mat, flower_pink, flower_gold)
+	# Glowing circular stained-glass rosette gable window (munch_04_cottage_exterior.jpg)
+	_mi(trim_root, _cyl(0.56, 0.56, 0.12, 16), timber_mat, Vector3(0, wall_h + roof_h * 0.42, half_d + 0.12), Vector3(90, 0, 0))
+	_mi(trim_root, _cyl(0.46, 0.46, 0.14, 16), window_glow, Vector3(0, wall_h + roof_h * 0.42, half_d + 0.13), Vector3(90, 0, 0))
 	for side_sign in [-1.0, 1.0]:
 		var sx: float = float(side_sign) * (half_w + 0.17)
 		var rot_y: float = 90.0 if side_sign > 0.0 else -90.0
@@ -792,8 +795,18 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 		_mi(fit, _sph(0.34, 0.42, 12), stove_iron, stove_pos + Vector3(0, 0.62, 0))
 		_mi(fit, _cyl(0.11, 0.11, wall_h - 1.1, 10), stove_iron, stove_pos + Vector3(0, 1.0 + (wall_h - 1.1) * 0.5, 0)) # tall stovepipe
 
-	# Framed wall painting / brass title plaque on back wall (NO giant overlapping ceiling text!)
+	# Framed wall painting / brass title plaque + 3 gilded smiling porcelain wall masks (munch_01_cottage_interior.jpg)
 	_mi(fit, _box(Vector3(1.85, 0.78, 0.08)), brass, Vector3(0.65, 2.15, -half_d + 0.18))
+	var mask_porc := _mat(Color(0.96, 0.94, 0.92), 0.25)
+	var rose_velvet := _mat(Color(0.62, 0.24, 0.36), 0.78)
+	for mi_i in range(3):
+		var mx := 0.05 + float(mi_i) * 0.58
+		_mi(fit, _torus(0.16, 0.20, 12), brass, Vector3(mx, 1.48, -half_d + 0.18), Vector3(90, 0, 0))
+		_mi(fit, _sph(0.14, 0.22, 10), mask_porc, Vector3(mx, 1.48, -half_d + 0.20), Vector3.ZERO, Vector3(0.9, 1.15, 0.45))
+	# Tufted rose-velvet parlor settee along left-center wall
+	_mi(fit, _box(Vector3(1.85, 0.42, 0.72)), rose_velvet, Vector3(-0.35, 0.28, -half_d + 0.95))
+	_mi(fit, _box(Vector3(1.85, 0.62, 0.18)), rose_velvet, Vector3(-0.35, 0.66, -half_d + 0.65))
+	_mi(fit, _box(Vector3(1.92, 0.08, 0.20)), brass, Vector3(-0.35, 0.98, -half_d + 0.65))
 	_mi(fit, _box(Vector3(1.68, 0.62, 0.09)), _mat(Color(0.14, 0.10, 0.12), 0.7), Vector3(0.65, 2.15, -half_d + 0.20))
 	var plaque := Label3D.new()
 	plaque.text = title.to_upper()
@@ -944,6 +957,9 @@ static func make_street_lantern(at: Vector3, glow_col: Color = Color(1.0, 0.86, 
 	_mi(root, _cyl(0.04, 0.24, 0.22, 6), brass, lpos + Vector3(0, 0.24, 0))
 	_mi(root, _cyl(0.16, 0.12, 0.34, 6), glass, lpos)
 	_mi(root, _cyl(0.14, 0.05, 0.12, 6), brass, lpos + Vector3(0, -0.22, 0))
+	# Hanging glowing Northern Star charm beneath lantern arm (munch_02_signpost_lantern.jpg)
+	_mi(root, _cyl(0.008, 0.008, 0.26, 6), brass, Vector3(0.28, 3.16, 0))
+	_mi(root, _sph(0.055, 0.11, 8), glass, Vector3(0.28, 3.00, 0))
 
 	if with_light:
 		var light := OmniLight3D.new()
