@@ -54,10 +54,10 @@ func _build() -> void:
 	# Center container at bottom so card has refined modern margins on 720p and 1080p+
 	var anchor := Control.new()
 	anchor.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	anchor.offset_left = 110.0
-	anchor.offset_right = -110.0
-	anchor.offset_top = -188.0
-	anchor.offset_bottom = -20.0
+	anchor.offset_left = 104.0
+	anchor.offset_right = -104.0
+	anchor.offset_top = -204.0
+	anchor.offset_bottom = -22.0
 	anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_box.add_child(anchor)
 
@@ -69,6 +69,7 @@ func _build() -> void:
 	anchor.add_child(_panel)
 
 	_ornate_frame = OrnateFrame.new()
+	_ornate_frame.outer_pad = 9.0
 	_ornate_frame.inset = 5.0
 	_ornate_frame.corner_size = 13.0
 	_ornate_frame.animated_sheen = true
@@ -76,7 +77,7 @@ func _build() -> void:
 
 	var card_hbox := HBoxContainer.new()
 	card_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card_hbox.add_theme_constant_override("separation", 16)
+	card_hbox.add_theme_constant_override("separation", 20)
 	_panel.add_child(card_hbox)
 
 	# Gilded Circular Speaker Portrait Medallion
@@ -156,7 +157,7 @@ func _build() -> void:
 	# Raised Speaker Nameplate overlapping top-left corner of the dialogue card
 	_nameplate = PanelContainer.new()
 	_nameplate.name = "Nameplate"
-	_nameplate.position = Vector2(22, 0)
+	_nameplate.position = Vector2(38, 0)
 	_nameplate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	anchor.add_child(_nameplate)
 
@@ -170,7 +171,12 @@ func _build() -> void:
 func _apply_palette(kansas: bool) -> void:
 	_kansas_cached = kansas
 	if _panel:
-		_panel.add_theme_stylebox_override("panel", OzThemeFactory.make_modal_style(kansas))
+		var dlg_sb := OzThemeFactory.make_modal_style(kansas)
+		dlg_sb.content_margin_left = 44
+		dlg_sb.content_margin_right = 44
+		dlg_sb.content_margin_top = 28
+		dlg_sb.content_margin_bottom = 24
+		_panel.add_theme_stylebox_override("panel", dlg_sb)
 	if _nameplate:
 		_nameplate.add_theme_stylebox_override("panel", OzThemeFactory.make_nameplate_style(kansas))
 	if _speaker:

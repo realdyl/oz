@@ -82,16 +82,16 @@ static func make_panel_style(kansas: bool, final_step: bool = false) -> StyleBox
 	if final_step:
 		if kansas:
 			return _make_box(
-				KS_FINAL_SURFACE, KS_FINAL_BORDER, 2, 8, 18, 12, 16,
+				KS_FINAL_SURFACE, KS_FINAL_BORDER, 2, 10, 26, 18, 16,
 				Color(0.92, 0.92, 0.96, 0.25), Vector2(0, 4)
 			)
 		return _make_box(
-			OZ_FINAL_SURFACE, OZ_FINAL_BORDER, 2, 8, 18, 12, 18,
+			OZ_FINAL_SURFACE, OZ_FINAL_BORDER, 2, 10, 26, 18, 18,
 			Color(0.98, 0.80, 0.32, 0.32), Vector2(0, 4)
 		)
 	if kansas:
-		return _make_box(KS_SURFACE, KS_BORDER, 1, 6, 16, 10, 12)
-	return _make_box(OZ_SURFACE, OZ_BORDER_GOLD, 2, 8, 16, 10, 14)
+		return _make_box(KS_SURFACE, KS_BORDER, 1, 8, 24, 16, 12)
+	return _make_box(OZ_SURFACE, OZ_BORDER_GOLD, 2, 10, 26, 18, 14)
 
 
 static func make_pill_style(kansas: bool, pad_x: int = 14, pad_y: int = 7) -> StyleBoxFlat:
@@ -142,13 +142,126 @@ static func make_roster_slot_style(active: bool, locked: bool, kansas: bool) -> 
 static func make_modal_style(kansas: bool) -> StyleBoxFlat:
 	if kansas:
 		return _make_box(
-			KS_SURFACE_DEEP, KS_BORDER, 2, 10, 28, 24, 24,
+			KS_SURFACE_DEEP, KS_BORDER, 2, 14, 38, 30, 24,
 			Color(0.0, 0.0, 0.0, 0.65), Vector2(0, 8)
 		)
 	return _make_box(
-		OZ_SURFACE_DEEP, OZ_BORDER_GOLD, 2, 12, 28, 24, 28,
-		Color(0.0, 0.0, 0.0, 0.70), Vector2(0, 10)
+		OZ_SURFACE_DEEP, OZ_BORDER_GOLD, 2, 16, 40, 30, 28,
+		Color(0.0, 0.0, 0.0, 0.72), Vector2(0, 10)
 	)
+
+
+## Unified 2026 Royal Jewel button styling shared across Pause Menu, Tailor of Vices Boutique,
+## Grimoire, and Save/Load panels so every screen shares ONE cohesive Obsidian-Plum,
+## Burnished Antique Gold, and Imperial Emerald luxury visual identity.
+static func style_royal_button(btn: Button, role: String = "secondary", kansas: bool = false, font_sz: int = 15, radius: int = 14) -> void:
+	if btn == null:
+		return
+	var bg_col := Color(0.135, 0.082, 0.175)
+	var bevel_col := Color(0.070, 0.038, 0.095)
+	var rim_col := OZ_GOLD_BRIGHT
+	var top_border := Color(0.769, 0.620, 0.353, 0.58)
+	if kansas:
+		match role:
+			"primary":
+				bg_col = Color(0.32, 0.34, 0.38)
+				bevel_col = Color(0.18, 0.19, 0.22)
+				rim_col = Color(0.92, 0.94, 0.98)
+			"featured", "crimson":
+				bg_col = Color(0.24, 0.25, 0.29)
+				bevel_col = Color(0.13, 0.14, 0.17)
+				rim_col = Color(0.84, 0.86, 0.90)
+			"danger":
+				bg_col = Color(0.26, 0.20, 0.22)
+				bevel_col = Color(0.14, 0.10, 0.12)
+				rim_col = Color(0.76, 0.60, 0.62)
+			_:
+				bg_col = Color(0.17, 0.18, 0.21)
+				bevel_col = Color(0.10, 0.11, 0.13)
+				rim_col = Color(0.72, 0.74, 0.78)
+		top_border = Color(0.68, 0.70, 0.74, 0.50)
+	else:
+		match role:
+			"primary":
+				# Imperial Emerald — singular hero CTA across Pause Menu & Boutique
+				bg_col = Color(0.086, 0.420, 0.294)
+				bevel_col = Color(0.035, 0.220, 0.150)
+				rim_col = Color(0.94, 0.82, 0.50)
+				top_border = Color(0.42, 0.82, 0.62, 0.75)
+			"featured":
+				# Royal Velvet Amethyst with Burnished Gold Trim (Grimoire / Active Shop Tab)
+				bg_col = Color(0.215, 0.118, 0.305)
+				bevel_col = Color(0.105, 0.052, 0.165)
+				rim_col = OZ_GOLD_BRIGHT
+				top_border = Color(0.84, 0.68, 0.38, 0.78)
+			"crimson":
+				# Velvet Crimson-Rose with Burnished Gold Trim (Boutique / Desire Accent)
+				bg_col = Color(0.390, 0.102, 0.192)
+				bevel_col = Color(0.205, 0.045, 0.098)
+				rim_col = Color(0.96, 0.82, 0.52)
+				top_border = Color(0.90, 0.66, 0.42, 0.76)
+			"danger":
+				# Muted Velvet Garnet (Quit / Delete)
+				bg_col = Color(0.265, 0.082, 0.122)
+				bevel_col = Color(0.135, 0.035, 0.060)
+				rim_col = Color(0.90, 0.52, 0.58)
+				top_border = Color(0.72, 0.38, 0.44, 0.55)
+			_:
+				# Unified Obsidian Velvet (All secondary utility buttons & inactive tabs)
+				bg_col = Color(0.135, 0.082, 0.175)
+				bevel_col = Color(0.068, 0.038, 0.094)
+				rim_col = OZ_GOLD_BRIGHT
+				top_border = Color(0.769, 0.620, 0.353, 0.52)
+
+	var norm := StyleBoxFlat.new()
+	norm.bg_color = bg_col
+	norm.border_color = bevel_col
+	norm.border_width_left = 2
+	norm.border_width_right = 2
+	norm.border_width_top = 2
+	norm.border_width_bottom = 5
+	norm.set_corner_radius_all(radius)
+	norm.content_margin_left = 22
+	norm.content_margin_right = 22
+	norm.content_margin_top = 12
+	norm.content_margin_bottom = 12
+	norm.shadow_size = 10
+	norm.shadow_color = Color(0.0, 0.0, 0.0, 0.44)
+	norm.shadow_offset = Vector2(0, 4)
+	norm.anti_aliasing = true
+
+	var hov := norm.duplicate() as StyleBoxFlat
+	hov.bg_color = bg_col.lightened(0.12)
+	hov.border_color = rim_col
+	hov.border_width_top = 2
+	hov.border_width_bottom = 5
+	hov.shadow_size = 14
+	hov.shadow_color = Color(rim_col.r, rim_col.g, rim_col.b, 0.26)
+
+	var prs := norm.duplicate() as StyleBoxFlat
+	prs.bg_color = bg_col.darkened(0.12)
+	prs.border_color = top_border
+	prs.border_width_top = 4
+	prs.border_width_bottom = 2
+	prs.shadow_size = 4
+
+	var dis := norm.duplicate() as StyleBoxFlat
+	dis.bg_color = bg_col.darkened(0.32)
+	dis.border_color = Color(bevel_col.r, bevel_col.g, bevel_col.b, 0.45)
+	dis.shadow_size = 2
+
+	btn.add_theme_stylebox_override("normal", norm)
+	btn.add_theme_stylebox_override("hover", hov)
+	btn.add_theme_stylebox_override("focus", hov)
+	btn.add_theme_stylebox_override("pressed", prs)
+	btn.add_theme_stylebox_override("disabled", dis)
+	btn.add_theme_font_size_override("font_size", font_sz)
+	btn.add_theme_color_override("font_color", Color(0.96, 0.93, 0.86))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.98, 0.92))
+	btn.add_theme_color_override("font_focus_color", Color(1.0, 0.98, 0.92))
+	btn.add_theme_color_override("font_disabled_color", Color(0.62, 0.58, 0.56, 0.72))
+	btn.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.06, 0.85))
+	btn.add_theme_constant_override("outline_size", 3)
 
 
 static func accent_color(kansas: bool) -> Color:

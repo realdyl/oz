@@ -9,6 +9,7 @@ const ShopItemIcon := preload("res://ui/widgets/shop_item_icon.gd")
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
 const TotoCompanion := preload("res://actors/companions/toto_companion.gd")
+const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 
 const VISUAL_SCRIPTS := {
 	"dorothy": preload("res://actors/dorothy/dorothy_visual.gd"),
@@ -132,20 +133,23 @@ func _build_ui() -> void:
 	add_child(center)
 
 	_panel = PanelContainer.new()
-	_panel.custom_minimum_size = Vector2(1040, 600)
+	_panel.custom_minimum_size = Vector2(1060, 620)
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.071, 0.035, 0.078, 0.98) # #120914 Obsidian Plum
-	st.border_color = Color(0.769, 0.620, 0.353, 0.96) # #C49E5A Antique Brass
-	st.set_border_width_all(2)
-	st.set_corner_radius_all(6)
-	st.content_margin_left = 20
-	st.content_margin_right = 20
-	st.content_margin_top = 18
-	st.content_margin_bottom = 16
+	st.bg_color = OzThemeFactory.OZ_SURFACE_DEEP
+	st.border_color = OzThemeFactory.OZ_BORDER_GOLD
+	st.set_border_width_all(3)
+	st.border_width_bottom = 6
+	st.set_corner_radius_all(18)
+	st.content_margin_left = 34
+	st.content_margin_right = 34
+	st.content_margin_top = 28
+	st.content_margin_bottom = 26
 	_panel.add_theme_stylebox_override("panel", st)
 	center.add_child(_panel)
 
 	var frame_overlay := OrnateFrame.new()
+	frame_overlay.outer_pad = 10.0
+	frame_overlay.inset = 5.0
 	_panel.add_child(frame_overlay)
 
 	var split := HBoxContainer.new()
@@ -238,7 +242,8 @@ func _build_ui() -> void:
 	title_box.add_child(sub)
 
 	var close_btn := Button.new()
-	close_btn.text = "  Close (B / Esc)  "
+	close_btn.text = "✕  Close (B / Esc)"
+	OzThemeFactory.style_royal_button(close_btn, "secondary", false, 13, 12)
 	close_btn.pressed.connect(close)
 	hdr.add_child(close_btn)
 
@@ -281,12 +286,13 @@ func _build_ui() -> void:
 	dp_st.border_color = Color(0.769, 0.620, 0.353, 0.85)
 	dp_st.set_border_width_all(1)
 	dp_st.set_corner_radius_all(6)
-	dp_st.content_margin_left = 14
-	dp_st.content_margin_right = 14
-	dp_st.content_margin_top = 10
-	dp_st.content_margin_bottom = 10
+	dp_st.content_margin_left = 22
+	dp_st.content_margin_right = 22
+	dp_st.content_margin_top = 16
+	dp_st.content_margin_bottom = 16
 	detail_panel.add_theme_stylebox_override("panel", dp_st)
 	var dp_frame := OrnateFrame.new()
+	dp_frame.outer_pad = 6.0
 	dp_frame.inset = 4.0
 	dp_frame.corner_size = 10.0
 	dp_frame.show_diamonds = false
@@ -329,14 +335,8 @@ func _build_ui() -> void:
 	cta_col.add_child(_detail_cost)
 
 	_buy_btn = Button.new()
-	_buy_btn.custom_minimum_size = Vector2(175, 40)
-	var cta_st := StyleBoxFlat.new()
-	cta_st.bg_color = Color(0.62, 0.48, 0.22, 0.96)
-	cta_st.border_color = Color(0.96, 0.84, 0.54, 1.0)
-	cta_st.set_border_width_all(2)
-	cta_st.set_corner_radius_all(5)
-	_buy_btn.add_theme_stylebox_override("normal", cta_st)
-	_buy_btn.add_theme_color_override("font_color", Color(0.99, 0.95, 0.86))
+	_buy_btn.custom_minimum_size = Vector2(180, 44)
+	OzThemeFactory.style_royal_button(_buy_btn, "primary", false, 14, 12)
 	_buy_btn.pressed.connect(_on_buy_or_equip_pressed)
 	cta_col.add_child(_buy_btn)
 
@@ -570,7 +570,9 @@ func _refresh() -> void:
 	_balance_lbl.text = "DESIRE FRAGMENTS:  ♦ %d" % int(sm.desire_fragments)
 	_char_plaque_lbl.text = CHAR_TITLES.get(_active_char, _active_char.to_upper())
 	for i in range(CHAR_TABS.size()):
-		_tab_buttons[i].modulate = Color(0.98, 0.86, 0.54) if CHAR_TABS[i]["id"] == _active_char else Color(0.72, 0.66, 0.78)
+		var is_active: bool = (CHAR_TABS[i]["id"] == _active_char)
+		OzThemeFactory.style_royal_button(_tab_buttons[i], "featured" if is_active else "secondary", false, 13, 10)
+		_tab_buttons[i].modulate = Color.WHITE
 
 	var items: Array = sm.SHOP_CATALOG.get(_active_char, [])
 	var equipped_id: String = str(sm.equipped_outfits.get(_active_char, ""))

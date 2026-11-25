@@ -98,42 +98,35 @@ func apply_theme_mode(p_kansas: bool) -> void:
 	if _main_card == null:
 		return
 	var modal_sb := StyleBoxFlat.new()
-	modal_sb.bg_color = Color(0.08, 0.09, 0.10, 0.97) if p_kansas else Color(0.085, 0.042, 0.112, 0.97)
-	modal_sb.border_color = Color(0.76, 0.78, 0.82, 0.95) if p_kansas else Color(0.90, 0.74, 0.36, 0.96)
+	modal_sb.bg_color = Color(0.08, 0.09, 0.10, 0.97) if p_kansas else OzThemeFactory.OZ_SURFACE_DEEP
+	modal_sb.border_color = Color(0.76, 0.78, 0.82, 0.95) if p_kansas else OzThemeFactory.OZ_BORDER_GOLD
 	modal_sb.set_border_width_all(3)
 	modal_sb.border_width_bottom = 6
-	modal_sb.set_corner_radius_all(22)
-	modal_sb.content_margin_left = 30
-	modal_sb.content_margin_right = 30
-	modal_sb.content_margin_top = 24
-	modal_sb.content_margin_bottom = 26
-	modal_sb.shadow_size = 32
-	modal_sb.shadow_color = Color(0.0, 0.0, 0.0, 0.72)
+	modal_sb.set_corner_radius_all(20)
+	modal_sb.content_margin_left = 46
+	modal_sb.content_margin_right = 46
+	modal_sb.content_margin_top = 38
+	modal_sb.content_margin_bottom = 36
+	modal_sb.shadow_size = 34
+	modal_sb.shadow_color = Color(0.0, 0.0, 0.0, 0.76)
 	modal_sb.shadow_offset = Vector2(0, 12)
 	_main_card.add_theme_stylebox_override("panel", modal_sb)
 	if _saves_card:
 		_saves_card.add_theme_stylebox_override("panel", modal_sb.duplicate())
 
-	_title.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98) if p_kansas else Color(0.98, 0.86, 0.48))
-	_subtitle.add_theme_color_override("font_color", Color(0.84, 0.86, 0.90) if p_kansas else Color(0.96, 0.88, 0.72))
+	_title.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98) if p_kansas else OzThemeFactory.OZ_GOLD_BRIGHT)
+	_subtitle.add_theme_color_override("font_color", Color(0.84, 0.86, 0.90) if p_kansas else OzThemeFactory.OZ_TEXT_MUTED)
 
-	if p_kansas:
-		_style_jewel_button(_resume_btn, Color(0.38, 0.40, 0.44), Color(0.24, 0.25, 0.28), Color(0.86, 0.88, 0.92), 18)
-		_style_jewel_button(_grimoire_btn, Color(0.26, 0.27, 0.30), Color(0.16, 0.17, 0.19), Color(0.72, 0.74, 0.78), 14)
-		_style_jewel_button(_shop_btn, Color(0.30, 0.31, 0.34), Color(0.18, 0.19, 0.21), Color(0.78, 0.80, 0.84), 14)
-		_style_jewel_button(_saves_btn, Color(0.20, 0.21, 0.24), Color(0.12, 0.13, 0.15), Color(0.60, 0.62, 0.66), 15)
-		_style_jewel_button(_settings_btn, Color(0.20, 0.21, 0.24), Color(0.12, 0.13, 0.15), Color(0.60, 0.62, 0.66), 15)
-		_style_jewel_button(_restart_btn, Color(0.22, 0.23, 0.26), Color(0.13, 0.14, 0.16), Color(0.64, 0.66, 0.70), 15)
-		_style_jewel_button(_quit_btn, Color(0.28, 0.22, 0.24), Color(0.16, 0.12, 0.14), Color(0.70, 0.56, 0.58), 15)
-	else:
-		# Glossy 2026 Candy-Jewel Hierarchy: Emerald Hero, Amethyst Grimoire, Crimson Boutique, Sapphire Utilities, Garnet Exit!
-		_style_jewel_button(_resume_btn, Color(0.14, 0.66, 0.42), Color(0.06, 0.38, 0.24), Color(0.62, 1.0, 0.78), 18)
-		_style_jewel_button(_grimoire_btn, Color(0.42, 0.20, 0.62), Color(0.24, 0.10, 0.38), Color(0.88, 0.74, 1.0), 14)
-		_style_jewel_button(_shop_btn, Color(0.74, 0.16, 0.32), Color(0.44, 0.08, 0.18), Color(1.0, 0.76, 0.56), 14)
-		_style_jewel_button(_saves_btn, Color(0.20, 0.26, 0.46), Color(0.12, 0.15, 0.28), Color(0.72, 0.82, 0.98), 15)
-		_style_jewel_button(_settings_btn, Color(0.22, 0.22, 0.38), Color(0.13, 0.13, 0.24), Color(0.78, 0.74, 0.92), 15)
-		_style_jewel_button(_restart_btn, Color(0.32, 0.24, 0.36), Color(0.19, 0.13, 0.22), Color(0.90, 0.76, 0.52), 15)
-		_style_jewel_button(_quit_btn, Color(0.42, 0.12, 0.18), Color(0.24, 0.06, 0.10), Color(0.96, 0.54, 0.60), 15)
+	# Unified 2026 Royal Jewel Palette matching The Tailor of Vices Boutique:
+	# Imperial Emerald Hero CTA, Royal Velvet Amethyst + Crimson-Gold Feature Tiles,
+	# Harmonized Obsidian-Velvet Utility Stack, Muted Garnet Exit.
+	OzThemeFactory.style_royal_button(_resume_btn, "primary", p_kansas, 18, 16)
+	OzThemeFactory.style_royal_button(_grimoire_btn, "featured", p_kansas, 14, 14)
+	OzThemeFactory.style_royal_button(_shop_btn, "crimson", p_kansas, 14, 14)
+	OzThemeFactory.style_royal_button(_saves_btn, "secondary", p_kansas, 15, 14)
+	OzThemeFactory.style_royal_button(_settings_btn, "secondary", p_kansas, 15, 14)
+	OzThemeFactory.style_royal_button(_restart_btn, "secondary", p_kansas, 15, 14)
+	OzThemeFactory.style_royal_button(_quit_btn, "danger", p_kansas, 15, 14)
 
 	if _settings_view:
 		_settings_view.call("apply_theme_mode", p_kansas)
@@ -222,11 +215,12 @@ func _build_ui() -> void:
 
 	# Generously padded 2026 Tactile Modal Card
 	_main_card = PanelContainer.new()
-	_main_card.custom_minimum_size = Vector2(560, 610)
+	_main_card.custom_minimum_size = Vector2(600, 648)
 	center.add_child(_main_card)
 
 	var card_frame := OrnateFrame.new()
-	card_frame.inset = 8.0
+	card_frame.outer_pad = 11.0
+	card_frame.inset = 6.0
 	card_frame.corner_size = 16.0
 	_main_card.add_child(card_frame)
 
@@ -275,14 +269,14 @@ func _build_ui() -> void:
 	# 2. Distinct Recessed Objective Ribbon Card
 	var recap_panel := PanelContainer.new()
 	var rsb := StyleBoxFlat.new()
-	rsb.bg_color = Color(0.13, 0.08, 0.17, 0.94)
-	rsb.border_color = Color(0.84, 0.68, 0.36, 0.72)
+	rsb.bg_color = Color(0.115, 0.068, 0.155, 0.96)
+	rsb.border_color = Color(0.84, 0.68, 0.36, 0.68)
 	rsb.set_border_width_all(2)
 	rsb.set_corner_radius_all(14)
-	rsb.content_margin_left = 18
-	rsb.content_margin_right = 18
-	rsb.content_margin_top = 12
-	rsb.content_margin_bottom = 12
+	rsb.content_margin_left = 22
+	rsb.content_margin_right = 22
+	rsb.content_margin_top = 14
+	rsb.content_margin_bottom = 14
 	recap_panel.add_theme_stylebox_override("panel", rsb)
 	var recap_vb := VBoxContainer.new()
 	recap_vb.add_theme_constant_override("separation", 4)
@@ -393,7 +387,7 @@ func _build_ui() -> void:
 	var sback := Button.new()
 	sback.text = "◀   Back to Pause Menu"
 	sback.custom_minimum_size = Vector2(0, 48)
-	_style_jewel_button(sback, Color(0.24, 0.22, 0.36), Color(0.14, 0.12, 0.22), Color(0.84, 0.74, 0.96), 15)
+	OzThemeFactory.style_royal_button(sback, "secondary", kansas_mode, 15, 14)
 	_wire_button_juice(sback)
 	sback.pressed.connect(_show_main_card)
 	svb.add_child(sback)
@@ -452,7 +446,7 @@ func _refresh_saves_list() -> void:
 		var s_idx := slot
 		var b_save := Button.new()
 		b_save.text = "Save"
-		_style_jewel_button(b_save, Color(0.14, 0.56, 0.36), Color(0.06, 0.32, 0.20), Color(0.62, 1.0, 0.78), 13)
+		OzThemeFactory.style_royal_button(b_save, "primary", kansas_mode, 13, 10)
 		b_save.pressed.connect(func():
 			sm.save_slot(s_idx)
 			_refresh_saves_list()
@@ -461,7 +455,7 @@ func _refresh_saves_list() -> void:
 		var b_load := Button.new()
 		b_load.text = "Load"
 		b_load.disabled = info.is_empty()
-		_style_jewel_button(b_load, Color(0.24, 0.32, 0.58), Color(0.14, 0.18, 0.36), Color(0.76, 0.86, 1.0), 13)
+		OzThemeFactory.style_royal_button(b_load, "featured", kansas_mode, 13, 10)
 		b_load.pressed.connect(func():
 			close()
 			sm.load_slot(s_idx)
@@ -470,7 +464,7 @@ func _refresh_saves_list() -> void:
 		var b_del := Button.new()
 		b_del.text = "✕"
 		b_del.disabled = info.is_empty()
-		_style_jewel_button(b_del, Color(0.46, 0.12, 0.18), Color(0.26, 0.06, 0.10), Color(1.0, 0.56, 0.62), 13)
+		OzThemeFactory.style_royal_button(b_del, "danger", kansas_mode, 13, 10)
 		b_del.pressed.connect(func():
 			sm.delete_slot(s_idx)
 			_refresh_saves_list()
