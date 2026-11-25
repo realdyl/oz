@@ -1834,13 +1834,8 @@ func _spawn_whimsy(at: Vector3, kind: String, title: String) -> void:
 			mat.emission_energy_multiplier = 0.8
 			mi.position = Vector3(0, 0.6, 0)
 		"chime":
-			var box := BoxMesh.new()
-			box.size = Vector3(0.25, 1.4, 0.25)
-			mi.mesh = box
-			mat.albedo_color = Color(0.6, 0.9, 1.0)
-			mat.emission = Color(0.5, 0.85, 1.0)
-			mat.emission_energy_multiplier = 0.7
-			mi.position = Vector3(0, 0.9, 0)
+			WorldKit.build_crystal_chimes(area)
+			mi.visible = false
 		_:
 			var tor := TorusMesh.new()
 			tor.inner_radius = 0.9

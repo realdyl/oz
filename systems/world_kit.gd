@@ -949,12 +949,15 @@ static func make_street_lantern(at: Vector3, glow_col: Color = Color(1.0, 0.86, 
 	var brass := _mat(Color(0.78, 0.62, 0.28), 0.34, 0.82)
 	var glass := _mat(glow_col, 0.2, 0.0, glow_col, 1.8)
 
-	_mi(root, _cyl(0.18, 0.24, 0.45, 8), iron, Vector3(0, 0.22, 0))
+	_mi(root, _cyl(0.22, 0.28, 0.22, 8), iron, Vector3(0, 0.11, 0)) # stepped Victorian base (prop_04_ybr_streetlamp.jpg)
+	_mi(root, _cyl(0.16, 0.22, 0.42, 8), iron, Vector3(0, 0.42, 0))
 	_mi(root, _cyl(0.055, 0.085, 3.1, 8), iron, Vector3(0, 1.85, 0), Vector3(0, 0, 2.5))
+	_mi(root, _box(Vector3(0.54, 0.04, 0.04)), iron, Vector3(0.04, 2.68, 0)) # twin Victorian ladder cross-bar
 	_mi(root, _cyl(0.11, 0.11, 0.12, 8), brass, Vector3(0.04, 2.85, 0))
 	_mi(root, _box(Vector3(0.75, 0.06, 0.06)), iron, Vector3(0.36, 3.38, 0), Vector3(0, 0, -8.0))
 	var lpos := Vector3(0.68, 3.06, 0)
 	_mi(root, _cyl(0.04, 0.24, 0.22, 6), brass, lpos + Vector3(0, 0.24, 0))
+	_mi(root, _cyl(0.014, 0.05, 0.16, 6), iron, lpos + Vector3(0, 0.40, 0)) # spiked crown finial
 	_mi(root, _cyl(0.16, 0.12, 0.34, 6), glass, lpos)
 	_mi(root, _cyl(0.14, 0.05, 0.12, 6), brass, lpos + Vector3(0, -0.22, 0))
 	# Hanging glowing Northern Star charm beneath lantern arm (munch_02_signpost_lantern.jpg)
@@ -2061,18 +2064,25 @@ static func apply_aaa_post_processing(env: Environment, biome: String = "oz") ->
 		env.fog_enabled = true
 		env.fog_density = 0.0025
 
-## Phase P11: Destructible Gilded Porcelain Urn — shatters on F/C hit & drops +5 Desire Fragments!
+## Phase P11/P12.1: Destructible Rococo Porcelain Amphora Urn (prop_03_porcelain_urn.jpg) — shatters on F/C hit for +5 Desire!
 static func spawn_destructible_urn(parent: Node3D, at: Vector3) -> StaticBody3D:
 	var urn := StaticBody3D.new()
 	urn.set_script(preload("res://systems/destructible_prop.gd"))
 	urn.name = "PorcelainUrn"
 	parent.add_child(urn)
 	urn.global_position = at
-	var porc := _mat(Color(0.92, 0.88, 0.96), 0.18, 0.12)
+	var porc := _mat(Color(0.94, 0.90, 0.92), 0.16, 0.12)
+	var mint := _mat(Color(0.74, 0.90, 0.84), 0.18, 0.10)
+	var rose := _mat(Color(0.92, 0.56, 0.68), 0.24, 0.08)
 	var gold := _mat(Color(0.95, 0.78, 0.30), 0.22, 0.90)
-	_mi(urn, _cyl(0.28, 0.18, 0.22, 14), gold, Vector3(0, 0.11, 0))
-	_mi(urn, _sph(0.36, 0.68, 14), porc, Vector3(0, 0.52, 0))
-	_mi(urn, _cyl(0.24, 0.16, 0.22, 14), gold, Vector3(0, 0.92, 0))
+	_mi(urn, _cyl(0.24, 0.30, 0.18, 14), gold, Vector3(0, 0.09, 0)) # scalloped gilded foot
+	_mi(urn, _sph(0.35, 0.66, 14), porc, Vector3(0, 0.50, 0))
+	_mi(urn, _cyl(0.16, 0.20, 0.24, 14), mint, Vector3(0, 0.84, 0)) # pastel mint fluted neck
+	_mi(urn, _cyl(0.26, 0.17, 0.12, 14), gold, Vector3(0, 0.98, 0)) # flared scalloped gold rim
+	# Twin gilded scrolling amphora handles + blush floral medallions
+	for sx in [-1.0, 1.0]:
+		_mi(urn, _torus(0.11, 0.145, 10), gold, Vector3(float(sx) * 0.34, 0.68, 0))
+		_mi(urn, _sph(0.085, 0.12, 8), rose, Vector3(0, 0.52, float(sx) * 0.32))
 	var col := CollisionShape3D.new()
 	var sh := CylinderShape3D.new()
 	sh.radius = 0.38
@@ -2081,6 +2091,25 @@ static func spawn_destructible_urn(parent: Node3D, at: Vector3) -> StaticBody3D:
 	col.position = Vector3(0, 0.52, 0)
 	urn.add_child(col)
 	return urn
+
+## Phase P12.1: Munchkinland Crystal Wind Chimes on scrolling wrought-iron hanger (prop_01_crystal_chimes.jpg).
+static func build_crystal_chimes(parent: Node3D) -> void:
+	var iron := _mat(Color(0.16, 0.15, 0.19), 0.45, 0.80)
+	var silver := _mat(Color(0.84, 0.88, 0.92), 0.18, 0.92)
+	var crystal := _mat(Color(0.76, 0.94, 1.0), 0.08, 0.20, Color(0.70, 0.92, 1.0), 1.45)
+	_mi(parent, _cyl(0.04, 0.055, 2.05, 8), iron, Vector3(-0.34, 1.02, 0))
+	_mi(parent, _box(Vector3(0.46, 0.04, 0.04)), iron, Vector3(-0.12, 2.02, 0), Vector3(0, 0, -10))
+	_mi(parent, _torus(0.26, 0.30, 14), iron, Vector3(0.08, 1.68, 0)) # chandelier crown ring
+	for ci in range(6):
+		var a := float(ci) / 6.0 * TAU
+		var px := 0.08 + cos(a) * 0.25
+		var pz := sin(a) * 0.25
+		var drop := 0.42 + float(ci % 3) * 0.14
+		_mi(parent, _cyl(0.008, 0.008, drop, 6), silver, Vector3(px, 1.68 - drop * 0.5, pz))
+		if ci % 2 == 0:
+			_mi(parent, _cyl(0.025, 0.075, 0.14, 8), silver, Vector3(px, 1.68 - drop, pz)) # silver bell
+		else:
+			_mi(parent, _sph(0.048, 0.13, 8), crystal, Vector3(px, 1.68 - drop, pz)) # faceted crystal prism
 
 ## Theatrical crimson-velvet parting curtain on gilded brass rod with pleated folds, rings & gold tassels.
 ## Returns {"root": Node3D, "left": Node3D, "right": Node3D} so callers can animate both drapes drawing back!
