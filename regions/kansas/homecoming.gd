@@ -60,10 +60,12 @@ var _epilogue_t: float = 0.0
 var _ended: bool = false
 
 const AUNT_LINES := [
-	"Aunt Em: \"Dorothy! My darling child — where have you been?\"",
-	"Aunt Em: \"We thought the cyclone had taken you for good. Toto too!\"",
-	"Aunt Em: \"You're home now. The prairie is grey, but it's ours.\"",
-	"Aunt Em: \"Come to the house. Henry's fixing the shutter you always hated.\"",
+	"Aunt Em: \"Dorothy! My darling child — where in the world have you come from?!\"",
+	"Dorothy: \"From the Land of Oz, Aunt Em! And look — Toto never left my side for a single second!\"",
+	"Toto: \"*yip! yip!*\"",
+	"Aunt Em: \"We thought the cyclone had carried you off for good. Oh, let me look at you — you're really home!\"",
+	"Dorothy: \"I'm so glad to be home, Aunt Em. Even the grey prairie looks wonderful to me now.\"",
+	"Aunt Em: \"Come on up to the porch, sweetheart. Henry's fixing that shutter you always hated.\"",
 ]
 
 func _enter_tree() -> void:

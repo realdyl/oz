@@ -56,6 +56,7 @@ var _near_aunt: bool = false
 var _near_uncle: bool = false
 var _near_door: bool = false
 var _aunt_line: int = 0
+var _uncle_line: int = 0
 var wind_t: float = 0.0
 var _house_base_y: float = 0.0
 var _near_build_door: Area3D = null
@@ -70,16 +71,20 @@ var _lightning_cd: float = 1.8
 var _lightning_flash: float = 0.0
 var whimsy_score: int = 0
 
-# Spoken AFTER Toto is already in the basket — never "go get Toto" again.
+# Spoken AFTER Toto is already in the basket — back-and-forth between Aunt Em & Dorothy.
 const AUNT_LINES := [
-	"There you are — and Toto's safe in the basket. Good girl.",
-	"Henry's gone to look after the stock. Latch that shutter before the wind takes it.",
-	"When the shutter's done, check the cellar. I'll be waiting below.",
+	"Aunt Em: \"There you are — and Toto's safe in the basket. Good girl.\"",
+	"Dorothy: \"The grass is lying flat, Aunt Em, and the sky's turned an awful shade of green. Where's Uncle Henry?\"",
+	"Aunt Em: \"He's out seeing to the stock. Latch that east shutter before the wind tears it off the hinges.\"",
+	"Dorothy: \"I'll latch it right now! Should I bring Toto straight down to the cellar after?\"",
+	"Aunt Em: \"Yes, child — check the cellar doors the moment that shutter's fast. I'll be waiting below!\"",
 ]
 const AUNT_IDLE := "Keep Toto close, Dorothy. This prairie wind is mean today."
 const UNCLE_LINES := [
-	"Stock's restless. If the sky goes green, you run for the house — not the cellar.",
-	"Em's on the porch. Don't keep her waiting.",
+	"Uncle Henry: \"Stock's restless, Dorothy. There's a cyclone coming — if the sky goes green, you run for the house, not the cellar.\"",
+	"Dorothy: \"What about the horses, Uncle Henry? Are they going to be alright?\"",
+	"Uncle Henry: \"I'll see to the barn. Em's calling for you on the porch — don't keep her waiting!\"",
+	"Dorothy: \"I'm on my way, Uncle Henry. Stay safe!\"",
 ]
 
 func _ready() -> void:
@@ -745,8 +750,13 @@ func _try_interact() -> void:
 		w.call("try_collect", player)
 
 func _talk_uncle() -> void:
-	var line: String = UNCLE_LINES[0] if phase <= Phase.NEED_AUNT else UNCLE_LINES[mini(1, UNCLE_LINES.size() - 1)]
-	_dlg("Uncle Henry", line)
+	var line: String = UNCLE_LINES[_uncle_line % UNCLE_LINES.size()]
+	_uncle_line += 1
+	var d := get_node_or_null("/root/DialogueUI")
+	if d and d.has_method("say_line"):
+		d.say_line(line, true)
+	else:
+		_dlg("Uncle Henry", line)
 
 func _update_prompts() -> void:
 	if _inside_building and _active_build_door:
@@ -912,7 +922,11 @@ func _talk_aunt() -> void:
 			if shutter:
 				_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
 		return
-	_dlg("Aunt Em", AUNT_LINES[_aunt_line])
+	var d := get_node_or_null("/root/DialogueUI")
+	if d and d.has_method("say_line"):
+		d.say_line(AUNT_LINES[_aunt_line], true)
+	else:
+		_dlg("Aunt Em", AUNT_LINES[_aunt_line])
 	_aunt_line += 1
 	if _aunt_line >= AUNT_LINES.size():
 		aunt_talked = true

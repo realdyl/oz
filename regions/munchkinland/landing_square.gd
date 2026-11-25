@@ -92,13 +92,14 @@ var whimsy_points: int = 0
 var _whimsy_label: Label
 var _near_whimsy: Area3D = null
 var _locasta_lines: PackedStringArray = PackedStringArray([
-	"Locasta: \"Welcome to Munchkinland, child. The house has done what armies could not — the Wicked Witch of the East is gone.\"",
-	"Locasta: \"Her Silver Shoes are yours now. Claim them under the grey house ahead on this road — they chose the one who landed.\"",
-	"Locasta: \"Then follow the Yellow Brick Road. First you will find a Scarecrow bound to a pole. Free him with kindness (E).\"",
-	"Locasta: \"Further along the same road: a Lion hides in fear, then a Tin Man rusts. Calm and oil them when you reach them.\"",
-	"Locasta: \"Rogue Munchkins will march near the landing. Kick them (F). Each friend teaches a counter. I keep the North — walk the road.\"",
-	"Locasta: \"When your friends stand with you, keep following the Yellow Brick Road south to the West. The glowing pad is your FINAL STEP.\"",
-	"Locasta: \"The Wicked Witch of the West watches later. For now: Shoes, clear the rogues, free the bound. Follow the brick.\"",
+	"Locasta: \"Welcome to Munchkinland, child. Your falling house has done what armies could not — the Wicked Witch of the East is gone.\"",
+	"Dorothy: \"A witch? Oh no — I didn't mean to hurt anyone! Where are we, Toto? This isn't Kansas at all…\"",
+	"Locasta: \"You are in the Land of Oz, and I am Locasta, the Good Witch of the North. Look beneath the grey house — her Silver Shoes are yours now.\"",
+	"Dorothy: \"Silver Shoes? They're gleaming so brightly… Wait — can they take me back home to Aunt Em and Uncle Henry?\"",
+	"Locasta: \"Their secret belongs to the road, not to me. Follow the Yellow Brick Road to the great Wizard of Oz — he alone may know the way.\"",
+	"Dorothy: \"Then I'll start right away! Are those little men near the wreckage friends of yours?\"",
+	"Locasta: \"No — those rogues still serve the East's old debts! Strike them back (F), and look for kindred souls bound along the road: a Scarecrow, a Lion, and a rusted Tin Man.\"",
+	"Dorothy: \"A Scarecrow and a Tin Man? Well, Toto and I could use the company. Thank you, Locasta!\"",
 ])
 
 func _enter_tree() -> void:
@@ -1019,9 +1020,9 @@ func _advance_locasta_talk() -> void:
 		dui.say_line(line, true)
 	_locasta_line += 1
 	if _locasta_line >= _locasta_lines.size():
-		hud.set_objective("Press E again when you are ready — then claim the Silver Shoes.")
+		hud.set_objective("Press E again to say farewell — then claim the Silver Shoes.")
 	else:
-		hud.set_objective("Locasta speaks — press E to continue (%d/%d)" % [_locasta_line, _locasta_lines.size()])
+		hud.set_objective("Speaking with Locasta — press E to continue (%d/%d)" % [_locasta_line, _locasta_lines.size()])
 
 func _finish_locasta_greet() -> void:
 	if locasta_done:

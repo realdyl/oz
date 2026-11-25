@@ -44,11 +44,15 @@ var _heel_clicks: int = 0
 var _going_home: bool = false
 var _splash_cd: float = 0.0
 var _glinda_lines: PackedStringArray = PackedStringArray([
-	"Glinda: \"Welcome, Dorothy. I am Glinda, the Good Witch of the South.\"",
-	"Glinda: \"You have walked the Yellow Brick Road with true friends. The West is gone. The Wizard is only a man — his balloon is already his own road.\"",
-	"Glinda: \"The Silver Shoes on your feet have always been the way home — you needed to be ready to use them.\"",
-	"Glinda: \"Click your heels three times with intention. Say you want Aunt Em. The shoes will know.\"",
-	"Glinda: \"When you are ready, walk the last stretch of the Yellow Brick Road south — that is your FINAL STEP.\"",
+	"Glinda: \"Welcome to the South, Dorothy. I am Glinda — and your journey down the Yellow Brick Road has been watched with admiration.\"",
+	"Dorothy: \"Oh, Glinda! The Wizard's balloon drifted away without me. Can you help me get back home to Kansas?\"",
+	"Glinda: \"Your Silver Shoes have always held the power to carry you anywhere in the world in three steps — you had it from your very first day in Oz.\"",
+	"Dorothy: \"From the very first day?! Why didn't anyone tell me?\"",
+	"Scarecrow: \"If they had, Dorothy, I'd still be stuffed on a pole in that cornfield — and I never would have found my wits!\"",
+	"Tin Man: \"And I would have rusted solid in the forest without a heart to feel how much I'll miss you.\"",
+	"Lion: \"And I'd still be hiding in the brambles, jumping at my own shadow. You gave us our courage, Dorothy.\"",
+	"Dorothy: \"Oh, I'm going to miss you all terribly… Glinda, how do I use the shoes?\"",
+	"Glinda: \"Step onto the Road Home altar ahead, click your heels three times, and command them to carry you to Aunt Em. Farewell, brave Seeker.\"",
 ])
 
 func _enter_tree() -> void:

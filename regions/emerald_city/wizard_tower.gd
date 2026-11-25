@@ -52,12 +52,13 @@ var _in_hall: bool = false
 var _audience_line: int = 0
 var _head_pulse: float = 0.0
 var _audience_lines: PackedStringArray = PackedStringArray([
-	"OZ (projection): \"I AM OZ — THE GREAT AND POWERFUL.\"",
-	"OZ: \"You want heart, brain, courage, home? Then prove you can unmake the West.\"",
-	"OZ: \"…She is already gone? Then approach the curtain, if you dare.\"",
-	"Scarecrow: \"The voice is coming from behind the drapes — not the head.\"",
-	"Tin Man: \"I hear gears. Small gears.\"",
-	"Lion: \"He smells afraid.\"",
+	"OZ (projection): \"I AM OZ — THE GREAT AND TERRIBLE! WHO DARES SEEK AN AUDIENCE?\"",
+	"Dorothy: \"I am Dorothy, the Small and Meek. We did what you asked — the Wicked Witch of the West is melted! Now keep your promise!\"",
+	"OZ (projection): \"…Melted? Already?! Er — return tomorrow! Great Wizards require time to ponder such trifles!\"",
+	"Scarecrow: \"Hold on a second — the booming voice isn't coming from that floating head at all. It's coming from behind the green drapes!\"",
+	"Dorothy: \"Behind the curtain? Toto, don't bark — wait, what is that clicking noise?\"",
+	"Tin Man: \"I hear brass gears and bellows turning. Small gears — like a music box.\"",
+	"Lion: \"And I smell sweat and peppermint… The Great Oz is terrified! Pull that curtain back, Dorothy!\"",
 ])
 
 func _enter_tree() -> void:
