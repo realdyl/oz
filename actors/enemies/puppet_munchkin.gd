@@ -583,19 +583,38 @@ func _build_detailed_visual() -> void:
 	h_sph.radius = 0.175
 	h_sph.height = 0.36
 	_pm(_p_head, h_sph, porcelain, Vector3(0, 0.06, 0))
-	# Porcelain crack line + stitched mouth
-	var crk := BoxMesh.new()
-	crk.size = Vector3(0.015, 0.18, 0.02)
-	_pm(_p_head, crk, licorice, Vector3(0.06, 0.10, -0.165), Vector3(0, 0, 18))
-	var grin := BoxMesh.new()
-	grin.size = Vector3(0.14, 0.022, 0.02)
-	_pm(_p_head, grin, licorice, Vector3(0, -0.02, -0.165))
-	# Glowing button eyes
+	# Porcelain crack + exposed golden brass clockwork gears + multi-stitch grin (mem_04_porcelain_mask.jpg!)
+	var crk := CylinderMesh.new()
+	crk.top_radius = 0.006
+	crk.bottom_radius = 0.006
+	crk.height = 0.18
+	_pm(_p_head, crk, licorice, Vector3(0.062, 0.10, -0.165), Vector3(0, 0, 18))
+	var gear_t := TorusMesh.new()
+	gear_t.inner_radius = 0.018
+	gear_t.outer_radius = 0.032
+	_pm(_p_head, gear_t, brass, Vector3(0.068, 0.095, -0.162), Vector3(90, 0, 0))
+	for gi in range(-2, 3):
+		var gt := float(gi) / 2.0
+		var st := CylinderMesh.new()
+		st.top_radius = 0.0045
+		st.bottom_radius = 0.0045
+		st.height = 0.028
+		_pm(_p_head, st, licorice, Vector3(gt * 0.065, -0.022 + gt * gt * 0.018, -0.164), Vector3(0, 0, 90.0 - gt * 18.0))
+	# Glowing eyes with specular catchlights
+	var glint_m := StandardMaterial3D.new()
+	glint_m.albedo_color = Color.WHITE
+	glint_m.emission_enabled = true
+	glint_m.emission = Color.WHITE
+	glint_m.emission_energy_multiplier = 1.6
 	for ex in [-0.065, 0.065]:
 		var es := SphereMesh.new()
 		es.radius = 0.032
 		es.height = 0.064
 		_pm(_p_head, es, eye_glow, Vector3(float(ex), 0.09, -0.155))
+		var gs := SphereMesh.new()
+		gs.radius = 0.009
+		gs.height = 0.018
+		_pm(_p_head, gs, glint_m, Vector3(float(ex) - 0.008, 0.102, -0.180))
 
 	# Hat: Spiked Candied-Crimson Marshal Shako vs Bell-Tipped Rose Munchkin Enforcer Hat
 	if is_marshal:
@@ -717,13 +736,15 @@ func _build_leg(side: float, licorice: Material, porcelain: Material) -> Node3D:
 	shin.bottom_radius = 0.046
 	shin.height = 0.36
 	_pm(leg, shin, licorice, Vector3(0, -0.18, 0))
-	var boot := BoxMesh.new()
-	boot.size = Vector3(0.11, 0.09, 0.18)
-	_pm(leg, boot, licorice, Vector3(0, -0.37, -0.03))
+	var boot := SphereMesh.new()
+	boot.radius = 0.062
+	boot.height = 0.095
+	var b_mi := _pm(leg, boot, licorice, Vector3(0, -0.37, -0.045))
+	b_mi.scale = Vector3(0.95, 0.72, 1.68)
 	var spat := CylinderMesh.new()
-	spat.top_radius = 0.055
-	spat.bottom_radius = 0.055
-	spat.height = 0.06
+	spat.top_radius = 0.056
+	spat.bottom_radius = 0.056
+	spat.height = 0.065
 	_pm(leg, spat, porcelain, Vector3(0, -0.31, 0))
 	return leg
 

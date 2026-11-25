@@ -12,14 +12,34 @@ var joined_basket: bool = false
 var following: bool = false
 var _hop_t: float = 0.0
 var _parts: Dictionary = {}
+var outfit_id: String = "toto_classic"
 
 @onready var visual: Node3D = $Visual
 
 func _ready() -> void:
 	add_to_group("toto")
 	floor_snap_length = 0.2
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and "equipped_outfits" in sm:
+		var eq: String = str(sm.equipped_outfits.get("toto", ""))
+		if eq != "":
+			outfit_id = eq
+		if sm.has_signal("state_changed") and not sm.state_changed.is_connected(_on_save_state_changed):
+			sm.state_changed.connect(_on_save_state_changed)
 	if visual:
-		_parts = TotoCompanionScript.build_dog_visual(visual, true)
+		_parts = TotoCompanionScript.build_dog_visual(visual, true, outfit_id)
+
+func set_outfit(new_id: String) -> void:
+	outfit_id = new_id if new_id != "" else "toto_classic"
+	if visual:
+		_parts = TotoCompanionScript.build_dog_visual(visual, true, outfit_id)
+
+func _on_save_state_changed() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and "equipped_outfits" in sm:
+		var eq: String = str(sm.equipped_outfits.get("toto", ""))
+		if eq != "" and eq != outfit_id:
+			set_outfit(eq)
 
 func _physics_process(delta: float) -> void:
 	if joined_basket:

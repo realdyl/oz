@@ -52,7 +52,16 @@ func _ready() -> void:
 		var eq: String = str(sm.equipped_outfits.get("lion", ""))
 		if eq != "":
 			outfit_id = eq
+		if sm.has_signal("state_changed") and not sm.state_changed.is_connected(_on_save_state_changed):
+			sm.state_changed.connect(_on_save_state_changed)
 	_rebuild_character()
+
+func _on_save_state_changed() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and "equipped_outfits" in sm:
+		var eq: String = str(sm.equipped_outfits.get("lion", ""))
+		if eq != "" and eq != outfit_id:
+			set_outfit(eq)
 
 func set_outfit(new_outfit_id: String) -> void:
 	var clean_id := new_outfit_id.strip_edges()

@@ -329,29 +329,37 @@ func buy_and_equip(char_id: String, item_id: String) -> bool:
 	return true
 
 func apply_outfit_to_world(char_id: String, tint: Color, item_id: String = "") -> void:
-	var target: Node = null
-	if char_id == "dorothy":
-		target = get_tree().get_first_node_in_group("player")
-	elif char_id == "toto":
-		target = get_tree().get_first_node_in_group("toto")
-	else:
-		for n in get_tree().get_nodes_in_group("companions"):
-			if char_id in n.name.to_lower():
-				target = n
-				break
-	if target == null:
-		return
 	var resolved_id := item_id if item_id != "" else str(equipped_outfits.get(char_id, ""))
-	var body_vis := target.get_node_or_null("Visual/Body")
-	if body_vis and body_vis.has_method("set_outfit"):
-		body_vis.call("set_outfit", resolved_id)
+	var targets: Array[Node] = []
+	if char_id == "dorothy":
+		for n in get_tree().get_nodes_in_group("player"):
+			if n and is_instance_valid(n):
+				targets.append(n)
+	elif char_id == "toto":
+		for n in get_tree().get_nodes_in_group("toto"):
+			if n and is_instance_valid(n):
+				targets.append(n)
+	else:
+		var needle := "tin" if char_id == "tinman" else char_id
+		for grp in ["companions", "party"]:
+			for n in get_tree().get_nodes_in_group(grp):
+				if n and is_instance_valid(n) and needle in n.name.to_lower() and n not in targets:
+					targets.append(n)
+	if targets.is_empty():
 		return
-	if target.has_method("set_outfit"):
-		target.call("set_outfit", resolved_id)
-		return
-	for mi in target.find_children("*", "MeshInstance3D", true, false):
-		var m := mi as MeshInstance3D
-		if m and m.material_override is StandardMaterial3D:
-			var dup := (m.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
-			dup.albedo_color = dup.albedo_color.lerp(tint, 0.58)
-			m.material_override = dup
+	for target in targets:
+		var body_vis := target.get_node_or_null("Visual/Body")
+		if body_vis == null:
+			body_vis = target.find_child("Body", true, false)
+		if body_vis and body_vis.has_method("set_outfit"):
+			body_vis.call("set_outfit", resolved_id)
+			continue
+		if target.has_method("set_outfit"):
+			target.call("set_outfit", resolved_id)
+			continue
+		for mi in target.find_children("*", "MeshInstance3D", true, false):
+			var m := mi as MeshInstance3D
+			if m and m.material_override is StandardMaterial3D:
+				var dup := (m.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+				dup.albedo_color = dup.albedo_color.lerp(tint, 0.58)
+				m.material_override = dup

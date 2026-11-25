@@ -1322,111 +1322,156 @@ static func dress_ybr_spine(parent: Node3D, z_start: float, z_end: float, road_h
 # SCULPTED CHARACTERS: LOCASTA & WICKED WITCH OF THE WEST
 # ============================================================================
 
-## Contoured, high-fashion fairytale Good Witch of the North (smooth curves, gossamer veil, braids).
-static func build_locasta_visual(parent: Node3D) -> void:
-	var gown := _mat(Color(0.92, 0.95, 1.0), 0.42, 0.08, Color(0.55, 0.68, 0.95), 0.16)
-	var silk := _mat(Color(0.80, 0.87, 0.99), 0.36, 0.12)
-	var gold := _mat(Color(0.96, 0.82, 0.42), 0.24, 0.88, Color(0.96, 0.80, 0.34), 0.22)
-	var veil := _mat(Color(0.88, 0.93, 1.0, 0.55), 0.35, 0.05)
-	veil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var skin := _mat(Color(0.95, 0.81, 0.72), 0.44)
-	var hair := _mat(Color(0.88, 0.90, 0.96), 0.52, 0.15)
-	var eye := _mat(Color(0.22, 0.46, 0.82), 0.20)
-	var lip := _mat(Color(0.76, 0.34, 0.44), 0.42)
-	var crystal := _mat(Color(1.0, 0.95, 0.68), 0.10, 0.2, Color(1.0, 0.92, 0.55), 1.9)
+## Shared 2026 sculpted human face & fingered hand helpers for all Oz/Kansas sub-characters!
+static func _build_npc_face(
+	parent: Node3D,
+	head_y: float,
+	skin: Material,
+	iris_col: Color,
+	lip_col: Color,
+	brow_mat: Material,
+	face_z_sign: float = -1.0,
+	monochrome: bool = false,
+	one_eye_patch: bool = false
+) -> void:
+	var zf := face_z_sign
+	var sclera := _mat(Color(0.95, 0.95, 0.97) if monochrome else Color(0.98, 0.98, 1.0), 0.18)
+	var iris := _mat(iris_col, 0.16, 0.05)
+	var pupil := _mat(Color(0.03, 0.03, 0.05), 0.10)
+	var glint := _mat(Color(1.0, 1.0, 1.0), 0.05, 0.0, Color(1.0, 1.0, 1.0), 1.35)
+	var lip := _mat(lip_col, 0.34)
+	# Heart-shaped cranium + tapered jaw/chin + sculpted nose bridge & tip + ears
+	_mi(parent, _sph(0.128, 0.27, 22), skin, Vector3(0, head_y, 0))
+	_mi(parent, _sph(0.088, 0.16, 16), skin, Vector3(0, head_y - 0.055, zf * 0.025))
+	_mi(parent, _cyl(0.009, 0.015, 0.048, 10), skin, Vector3(0, head_y - 0.008, zf * 0.126), Vector3(zf * 16.0, 0, 0))
+	_mi(parent, _sph(0.015, 0.026, 10), skin, Vector3(0, head_y - 0.026, zf * 0.138))
+	for sx in [-1.0, 1.0]:
+		var s := float(sx)
+		_mi(parent, _sph(0.024, 0.048, 10), skin, Vector3(s * 0.122, head_y - 0.01, 0), Vector3.ZERO, Vector3(0.45, 0.95, 0.65))
+		var ex := s * 0.045
+		var ey := head_y + 0.012
+		if one_eye_patch and s > 0.0:
+			var patch_m := _mat(Color(0.08, 0.07, 0.10), 0.38, 0.72)
+			_mi(parent, _sph(0.034, 0.056, 12), patch_m, Vector3(ex, ey, zf * 0.122), Vector3.ZERO, Vector3(1.15, 0.92, 0.45))
+			_mi(parent, _torus(0.124, 0.132, 18), patch_m, Vector3(0, head_y + 0.018, 0), Vector3(0, 0, -14))
+		else:
+			_mi(parent, _sph(0.022, 0.038, 12), sclera, Vector3(ex, ey, zf * 0.112), Vector3.ZERO, Vector3(1.1, 0.85, 0.65))
+			_mi(parent, _sph(0.013, 0.024, 10), iris, Vector3(ex, ey, zf * 0.123), Vector3.ZERO, Vector3(1.0, 1.0, 0.35))
+			_mi(parent, _sph(0.006, 0.012, 8), pupil, Vector3(ex, ey, zf * 0.128), Vector3.ZERO, Vector3(1.0, 1.0, 0.25))
+			_mi(parent, _sph(0.0035, 0.007, 6), glint, Vector3(ex - s * 0.004, ey + 0.005, zf * 0.131))
+		_mi(parent, _cyl(0.004, 0.004, 0.038, 8), brow_mat, Vector3(ex, ey + 0.026, zf * 0.116), Vector3(0, 0, 90.0 + s * 10.0))
+	# Cupid's-bow lips
+	_mi(parent, _sph(0.014, 0.014, 12), lip, Vector3(0, head_y - 0.056, zf * 0.120), Vector3.ZERO, Vector3(1.85, 0.62, 0.75))
 
-	# Smooth tiered royal ballgown (NO protruding waist-poles!) + gilded scallops & satin sash
+static func _build_npc_hand(parent: Node3D, pos: Vector3, skin: Material, side: float) -> void:
+	_mi(parent, _sph(0.028, 0.056, 10), skin, pos, Vector3.ZERO, Vector3(0.88, 1.08, 0.56))
+	_mi(parent, _cyl(0.006, 0.005, 0.034, 6), skin, pos + Vector3(-side * 0.020, -0.012, -0.010), Vector3(18, 0, side * 32.0))
+	for fi in range(4):
+		var fx := (float(fi) - 1.5) * 0.0095 * side
+		_mi(parent, _cyl(0.005, 0.004, 0.038, 6), skin, pos + Vector3(fx, -0.038, -0.004), Vector3(12, 0, 0))
+
+## Phase P11.2: 2026 Flagship Good Witch of the North — Locasta (fluted starlight gown, sculpted face, braided silver hair, halo).
+static func build_locasta_visual(parent: Node3D) -> void:
+	var gown := _mat(Color(0.92, 0.95, 1.0), 0.36, 0.10, Color(0.55, 0.68, 0.95), 0.18)
+	var silk := _mat(Color(0.78, 0.86, 0.99), 0.32, 0.14)
+	var gold := _mat(Color(0.96, 0.82, 0.42), 0.22, 0.90, Color(0.96, 0.80, 0.34), 0.24)
+	var veil := _mat(Color(0.88, 0.93, 1.0, 0.52), 0.32, 0.05)
+	veil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var skin := _mat(Color(0.95, 0.81, 0.72), 0.42)
+	var hair := _mat(Color(0.88, 0.90, 0.96), 0.48, 0.16)
+	var crystal := _mat(Color(1.0, 0.95, 0.68), 0.08, 0.22, Color(1.0, 0.92, 0.55), 2.1)
+
+	# 12-pleat fluted starlight ballgown + 16 scalloped gold hem beadlets
 	_mi(parent, _cyl(0.16, 0.62, 1.04, 28), gown, Vector3(0, 0.52, 0))
-	_mi(parent, _cyl(0.19, 0.46, 0.52, 24), silk, Vector3(0, 0.78, 0))
-	_mi(parent, _cyl(0.58, 0.64, 0.06, 28), gold, Vector3(0, 0.04, 0))
+	_mi(parent, _cyl(0.19, 0.46, 0.52, 26), silk, Vector3(0, 0.78, 0))
+	for pi in range(12):
+		var pa := float(pi) / 12.0 * TAU
+		_mi(parent, _cyl(0.055, 0.085, 0.98, 10), gown if pi % 2 == 0 else silk, Vector3(sin(pa) * 0.38, 0.50, cos(pa) * 0.38), Vector3(cos(pa) * 20.0, rad_to_deg(pa), -sin(pa) * 20.0))
+	_mi(parent, _cyl(0.59, 0.64, 0.055, 28), gold, Vector3(0, 0.04, 0))
 	_mi(parent, _cyl(0.45, 0.48, 0.04, 24), gold, Vector3(0, 0.53, 0))
 
-	# Contoured hourglass corset bodice + bust silhouette + gold waist filigree
-	_mi(parent, _cyl(0.15, 0.12, 0.24, 20), silk, Vector3(0, 1.12, 0))
-	_mi(parent, _cyl(0.17, 0.15, 0.20, 20), gown, Vector3(0, 1.32, 0))
-	_mi(parent, _sph(0.088, 0.16, 14), gown, Vector3(-0.072, 1.30, -0.075))
-	_mi(parent, _sph(0.088, 0.16, 14), gown, Vector3(0.072, 1.30, -0.075))
-	_mi(parent, _cyl(0.13, 0.14, 0.06, 20), gold, Vector3(0, 1.03, 0))
+	# Contoured hourglass corset bodice + gold waist filigree + gossamer veil + standing lace ruff
+	_mi(parent, _cyl(0.15, 0.12, 0.24, 22), silk, Vector3(0, 1.12, 0))
+	_mi(parent, _cyl(0.17, 0.15, 0.20, 22), gown, Vector3(0, 1.32, 0))
+	_mi(parent, _sph(0.088, 0.16, 16), gown, Vector3(-0.072, 1.30, -0.075))
+	_mi(parent, _sph(0.088, 0.16, 16), gown, Vector3(0.072, 1.30, -0.075))
+	_mi(parent, _torus(0.118, 0.136, 20), gold, Vector3(0, 1.03, 0))
+	_mi(parent, _sph(0.032, 0.055, 12), crystal, Vector3(0, 1.28, -0.145))
+	_mi(parent, _cyl(0.14, 0.46, 0.98, 18), veil, Vector3(0, 1.06, 0.16), Vector3(14, 0, 0))
 
-	# Translucent gossamer shoulder veil flowing down the back
-	_mi(parent, _cyl(0.14, 0.44, 0.95, 16), veil, Vector3(0, 1.06, 0.16), Vector3(14, 0, 0))
-
-	# Slender articulated arms + crystal wand
+	# Articulated arms + fingered hands + celestial star-crystal scepter
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(parent, _sph(0.075, 0.14, 12), gown, Vector3(s * 0.20, 1.38, 0))
-		_mi(parent, _cyl(0.046, 0.036, 0.30, 12), gown, Vector3(s * 0.24, 1.24, -0.02), Vector3(12, 0, -s * 14))
-		_mi(parent, _cyl(0.035, 0.028, 0.26, 12), skin, Vector3(s * 0.29, 1.02, -0.10), Vector3(28, 0, -s * 8))
-		_mi(parent, _sph(0.038, 0.076, 10), skin, Vector3(s * 0.31, 0.92, -0.16))
-	_mi(parent, _cyl(0.015, 0.022, 1.42, 10), gold, Vector3(0.35, 1.18, -0.22), Vector3(10, 0, -5))
+		_mi(parent, _sph(0.080, 0.15, 14), gown, Vector3(s * 0.20, 1.38, 0))
+		_mi(parent, _cyl(0.046, 0.036, 0.30, 14), gown, Vector3(s * 0.24, 1.24, -0.02), Vector3(12, 0, -s * 14))
+		_mi(parent, _cyl(0.034, 0.026, 0.26, 14), skin, Vector3(s * 0.29, 1.02, -0.10), Vector3(28, 0, -s * 8))
+		_build_npc_hand(parent, Vector3(s * 0.31, 0.91, -0.16), skin, s)
+	_mi(parent, _cyl(0.015, 0.022, 1.44, 12), gold, Vector3(0.35, 1.18, -0.22), Vector3(10, 0, -5))
 	_mi(parent, _sph(0.085, 0.17, 14), crystal, Vector3(0.41, 1.90, -0.34))
+	_mi(parent, _torus(0.10, 0.12, 14), gold, Vector3(0.41, 1.90, -0.34), Vector3(90, 0, 0))
 
-	# Neck, sculpted head, expressive face, braided silver hair, star filigree crown
-	_mi(parent, _cyl(0.046, 0.056, 0.12, 14), skin, Vector3(0, 1.46, 0))
-	_mi(parent, _sph(0.132, 0.29, 20), skin, Vector3(0, 1.62, 0))
-	_mi(parent, _sph(0.142, 0.27, 20), hair, Vector3(0, 1.66, 0.025))
-	_mi(parent, _cyl(0.07, 0.095, 0.46, 14), hair, Vector3(0, 1.38, 0.12), Vector3(16, 0, 0))
-	for ex in [-0.046, 0.046]:
-		_mi(parent, _sph(0.018, 0.036, 10), eye, Vector3(float(ex), 1.64, -0.118))
-	_mi(parent, _sph(0.018, 0.012, 10), lip, Vector3(0, 1.56, -0.122), Vector3.ZERO, Vector3(1.8, 0.7, 0.8))
-
-	_mi(parent, _cyl(0.145, 0.145, 0.045, 20), gold, Vector3(0, 1.76, 0))
+	# Sculpted 2026 face, silver braided hair, 5-spire tiara, lace ruff & Northern Star halo
+	_mi(parent, _cyl(0.044, 0.054, 0.12, 16), skin, Vector3(0, 1.46, 0))
+	_build_npc_face(parent, 1.62, skin, Color(0.22, 0.48, 0.86), Color(0.78, 0.34, 0.44), hair, -1.0, false, false)
+	_mi(parent, _sph(0.140, 0.26, 22), hair, Vector3(0, 1.66, 0.025))
+	for sx in [-1.0, 1.0]:
+		for bi in range(4):
+			_mi(parent, _sph(0.030 - float(bi) * 0.003, 0.072, 10), hair, Vector3(float(sx) * 0.115, 1.54 - float(bi) * 0.07, 0.04))
+	_mi(parent, _torus(0.135, 0.150, 22), gold, Vector3(0, 1.76, 0))
 	for i in range(5):
 		var a := float(i) / 5.0 * TAU
 		var sh := 0.20 if i == 0 else 0.12
-		_mi(parent, _cyl(0.008, 0.03, sh, 8), gold, Vector3(sin(a) * 0.13, 1.78 + sh * 0.5, -cos(a) * 0.13))
+		_mi(parent, _cyl(0.007, 0.026, sh, 8), gold, Vector3(sin(a) * 0.13, 1.78 + sh * 0.5, -cos(a) * 0.13))
 	_mi(parent, _sph(0.045, 0.09, 12), crystal, Vector3(0, 2.02, -0.13))
-	# High scalloped Victorian lace ruff collar + celestial Northern Star halo ring (npc_06_locasta.jpg)
-	_mi(parent, _cyl(0.24, 0.14, 0.14, 18), gown, Vector3(0, 1.50, 0.06), Vector3(-22, 0, 0))
-	var halo_m := _mat(Color(0.88, 0.96, 1.0), 0.10, 0.2, Color(0.75, 0.92, 1.0), 2.4)
-	_mi(parent, _torus(0.32, 0.34, 16), halo_m, Vector3(0, 1.72, 0.12), Vector3(90, 0, 0))
+	_mi(parent, _cyl(0.24, 0.14, 0.14, 20), gown, Vector3(0, 1.50, 0.06), Vector3(-22, 0, 0))
+	var halo_m := _mat(Color(0.88, 0.96, 1.0), 0.08, 0.22, Color(0.75, 0.92, 1.0), 2.5)
+	_mi(parent, _torus(0.32, 0.345, 20), halo_m, Vector3(0, 1.72, 0.12), Vector3(90, 0, 0))
 	for hi in range(6):
 		var ha := float(hi) * TAU / 6.0
-		_mi(parent, _sph(0.028, 0.056, 8), halo_m, Vector3(cos(ha) * 0.33, 1.72 + sin(ha) * 0.33, 0.12))
+		_mi(parent, _sph(0.028, 0.056, 10), halo_m, Vector3(cos(ha) * 0.33, 1.72 + sin(ha) * 0.33, 0.12))
 
-## High-fashion dark-storybook Wicked Witch of the West (Baum book canon: eye-patch, umbrella/staff, obsidian & crimson velvet).
+## Phase P11.2: 2026 Flagship Wicked Witch of the West (Baum PD canon: chalk-pale gaunt, forged-iron eyepatch, raven umbrella-staff).
 static func build_west_witch_visual(parent: Node3D) -> void:
-	var obsidian := _mat(Color(0.07, 0.05, 0.09), 0.48, 0.18)
-	var crimson := _mat(Color(0.58, 0.08, 0.16), 0.42, 0.12, Color(0.45, 0.04, 0.10), 0.35)
-	var brass := _mat(Color(0.84, 0.65, 0.26), 0.28, 0.85)
-	var pale_skin := _mat(Color(0.82, 0.78, 0.74), 0.55) # Baum PD: gaunt pale, NOT MGM green-skin trade dress
-	var hair := _mat(Color(0.06, 0.05, 0.08), 0.65)
-	var eye_ember := _mat(Color(1.0, 0.32, 0.14), 0.15, 0.0, Color(1.0, 0.28, 0.10), 2.2)
+	var obsidian := _mat(Color(0.07, 0.05, 0.09), 0.44, 0.18)
+	var crimson := _mat(Color(0.58, 0.07, 0.15), 0.40, 0.12, Color(0.45, 0.04, 0.10), 0.36)
+	var brass := _mat(Color(0.86, 0.66, 0.26), 0.26, 0.88)
+	var pale_skin := _mat(Color(0.84, 0.80, 0.76), 0.52) # Baum PD: gaunt pale, never MGM green
+	var silver_hair := _mat(Color(0.56, 0.58, 0.62), 0.58)
+	var dark_brow := _mat(Color(0.14, 0.12, 0.15), 0.65)
 
-	# Layered tattered obsidian & crimson corset gown
-	_mi(parent, _cyl(0.16, 0.62, 1.18, 22), obsidian, Vector3(0, 0.59, 0))
-	_mi(parent, _cyl(0.22, 0.52, 0.96, 18), crimson, Vector3(0, 0.54, -0.05))
-	# Sculpted corset bodice + high spiked gothic collar + tattered storm cape
-	_mi(parent, _cyl(0.17, 0.13, 0.46, 20), obsidian, Vector3(0, 1.32, 0))
-	_mi(parent, _cyl(0.18, 0.14, 0.08, 18), crimson, Vector3(0, 1.14, 0))
-	_mi(parent, _cyl(0.28, 0.16, 0.24, 16), crimson, Vector3(0, 1.56, 0.06), Vector3(-16, 0, 0)) # high gothic collar
-	_mi(parent, _cyl(0.20, 0.58, 1.25, 16), obsidian, Vector3(0, 0.96, 0.22), Vector3(16, 0, 0)) # storm cloak
+	# 12-pleat tattered obsidian & crimson gothic corset gown + storm cloak
+	_mi(parent, _cyl(0.16, 0.62, 1.18, 26), obsidian, Vector3(0, 0.59, 0))
+	_mi(parent, _cyl(0.22, 0.52, 0.96, 22), crimson, Vector3(0, 0.54, -0.05))
+	for pi in range(10):
+		var pa := float(pi) / 10.0 * TAU
+		_mi(parent, _cyl(0.05, 0.09, 1.12, 10), obsidian if pi % 2 == 0 else crimson, Vector3(sin(pa) * 0.36, 0.56, cos(pa) * 0.36), Vector3(cos(pa) * 18.0, rad_to_deg(pa), -sin(pa) * 18.0))
+	_mi(parent, _cyl(0.17, 0.13, 0.46, 22), obsidian, Vector3(0, 1.32, 0))
+	_mi(parent, _torus(0.13, 0.15, 18), brass, Vector3(0, 1.14, 0))
+	for bx in [-0.06, 0.0, 0.06]:
+		_mi(parent, _cyl(0.006, 0.006, 0.36, 8), brass, Vector3(float(bx), 1.30, -0.145))
+	_mi(parent, _cyl(0.28, 0.16, 0.24, 18), crimson, Vector3(0, 1.56, 0.06), Vector3(-16, 0, 0))
+	_mi(parent, _cyl(0.20, 0.58, 1.25, 18), obsidian, Vector3(0, 0.96, 0.22), Vector3(16, 0, 0))
 
-	# Articulated arms + Baum's iron umbrella-staff
+	# Dramatic Gothic Puff Shoulders, Articulated Fingered Hands & Raven-Pommel Iron Umbrella-Staff
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(parent, _sph(0.095, 0.16, 12), obsidian, Vector3(s * 0.24, 1.48, 0)) # dramatic puffed gothic shoulders
-		_mi(parent, _cyl(0.05, 0.036, 0.54, 12), obsidian, Vector3(s * 0.28, 1.22, -0.08), Vector3(24, 0, -s * 16))
-		_mi(parent, _sph(0.042, 0.084, 10), pale_skin, Vector3(s * 0.34, 0.98, -0.20))
-	# Dark iron-ribbed umbrella-staff topped with a sculpted raven head (enemy_04_wicked_witch.jpg)
-	_mi(parent, _cyl(0.022, 0.028, 1.82, 10), obsidian, Vector3(0.38, 1.15, -0.26), Vector3(14, 0, -6))
-	_mi(parent, _cyl(0.018, 0.16, 0.42, 10), obsidian, Vector3(0.41, 1.52, -0.34), Vector3(14, 0, -6)) # folded dark umbrella canopy
-	_mi(parent, _sph(0.055, 0.10, 10), obsidian, Vector3(0.44, 2.02, -0.46)) # raven pommel head
-	_mi(parent, _cyl(0.006, 0.022, 0.11, 6), brass, Vector3(0.44, 2.01, -0.54), Vector3(-90, 0, 0)) # raven beak
+		_mi(parent, _sph(0.098, 0.17, 14), obsidian, Vector3(s * 0.24, 1.48, 0))
+		_mi(parent, _cyl(0.050, 0.036, 0.54, 14), obsidian, Vector3(s * 0.28, 1.22, -0.08), Vector3(24, 0, -s * 16))
+		_build_npc_hand(parent, Vector3(s * 0.34, 0.96, -0.20), pale_skin, s)
+	_mi(parent, _cyl(0.022, 0.028, 1.84, 12), obsidian, Vector3(0.38, 1.15, -0.26), Vector3(14, 0, -6))
+	_mi(parent, _cyl(0.018, 0.16, 0.44, 12), obsidian, Vector3(0.41, 1.52, -0.34), Vector3(14, 0, -6))
+	_mi(parent, _sph(0.058, 0.10, 12), obsidian, Vector3(0.44, 2.02, -0.46))
+	_mi(parent, _cyl(0.006, 0.022, 0.11, 8), brass, Vector3(0.44, 2.01, -0.54), Vector3(-90, 0, 0))
 
-	# Gaunt chalk-pale head + silver-grey braid + ONE fierce amber eye + forged-iron eyepatch (Baum book canon!)
-	var silver_hair := _mat(Color(0.56, 0.58, 0.62), 0.65)
-	_mi(parent, _sph(0.14, 0.31, 18), pale_skin, Vector3(0, 1.72, 0))
-	_mi(parent, _sph(0.15, 0.29, 18), silver_hair, Vector3(0, 1.76, 0.03))
-	_mi(parent, _cyl(0.036, 0.022, 0.46, 10), silver_hair, Vector3(0.0, 1.45, 0.15), Vector3(12, 0, 0)) # silver braid
-	_mi(parent, _sph(0.026, 0.052, 10), eye_ember, Vector3(-0.048, 1.74, -0.125)) # fierce single eye
-	_mi(parent, _box(Vector3(0.075, 0.055, 0.03)), obsidian, Vector3(0.048, 1.74, -0.13)) # forged-iron eyepatch
-	_mi(parent, _box(Vector3(0.28, 0.02, 0.02)), obsidian, Vector3(0.0, 1.76, -0.12), Vector3(0, 0, -14)) # patch strap
-
-	# Sweeping crown-banded gothic witch hat (wide curved brim + dark iron crown + bent spire)
-	_mi(parent, _cyl(0.46, 0.48, 0.04, 22), obsidian, Vector3(0, 1.86, 0), Vector3(-8, 0, 6))
-	_mi(parent, _cyl(0.17, 0.18, 0.07, 18), brass, Vector3(0, 1.91, 0), Vector3(-8, 0, 6))
-	_mi(parent, _cyl(0.025, 0.17, 0.52, 18), obsidian, Vector3(0.04, 2.15, 0.04), Vector3(-16, 0, 16))
+	# Sculpted Gaunt Face (single fierce amber eye + forged-iron eyepatch!) + silver braid + sweeping witch hat
+	_mi(parent, _cyl(0.044, 0.052, 0.12, 14), pale_skin, Vector3(0, 1.56, 0))
+	_build_npc_face(parent, 1.72, pale_skin, Color(1.0, 0.34, 0.12), Color(0.28, 0.08, 0.16), dark_brow, -1.0, false, true)
+	_mi(parent, _sph(0.145, 0.28, 20), silver_hair, Vector3(0, 1.76, 0.03))
+	for bi in range(5):
+		_mi(parent, _sph(0.034 - float(bi) * 0.003, 0.075, 10), silver_hair, Vector3(0.0, 1.60 - float(bi) * 0.075, 0.14))
+	_mi(parent, _cyl(0.46, 0.48, 0.04, 26), obsidian, Vector3(0, 1.86, 0), Vector3(-8, 0, 6))
+	_mi(parent, _torus(0.155, 0.185, 20), brass, Vector3(0, 1.91, 0), Vector3(-8, 0, 6))
+	_mi(parent, _cyl(0.022, 0.17, 0.54, 20), obsidian, Vector3(0.04, 2.16, 0.04), Vector3(-16, 0, 16))
 
 # ============================================================================
 # LUSH CORNFIELD, POPPY FLOWER BEDS & HARNESSED MICE CART
@@ -1951,48 +1996,55 @@ static func build_prairie_lantern_marker() -> Node3D:
 	_mi(root, ring, halo_m, Vector3(0, 0.06, 0), Vector3(90, 0, 0))
 	return root
 
-## Articulated monochrome Kansas Aunt Em or Uncle Henry character visual.
+## Phase P11.2: 2026 Sculpted Monochrome Kansas Aunt Em & Uncle Henry (L1 & L7).
 static func build_kansas_farmer(parent: Node3D, is_aunt_em: bool) -> void:
-	var skin := _mat(Color(0.76, 0.76, 0.78), 0.52)
-	var dark := _mat(Color(0.16, 0.16, 0.18), 0.75)
-	var dress := _mat(Color(0.42, 0.42, 0.45), 0.86)
-	var apron := _mat(Color(0.80, 0.80, 0.83), 0.88)
-	var hair := _mat(Color(0.56, 0.56, 0.59) if is_aunt_em else Color(0.32, 0.32, 0.34), 0.78)
+	var skin := _mat(Color(0.78, 0.78, 0.80), 0.46)
+	var dark := _mat(Color(0.18, 0.18, 0.20), 0.72)
+	var dress := _mat(Color(0.42, 0.42, 0.45), 0.84)
+	var apron := _mat(Color(0.84, 0.84, 0.87), 0.82)
+	var pewter := _mat(Color(0.66, 0.66, 0.70), 0.30, 0.80)
+	var hair := _mat(Color(0.54, 0.54, 0.58) if is_aunt_em else Color(0.28, 0.28, 0.30), 0.72)
 
 	if is_aunt_em:
-		# Full pleated prairie skirt + crisp white apron + shawl + sculpted bodice
-		_mi(parent, _cyl(0.16, 0.42, 0.92, 20), dress, Vector3(0, 0.46, 0))
-		_mi(parent, _cyl(0.17, 0.34, 0.76, 14), apron, Vector3(0, 0.48, -0.05))
-		_mi(parent, _cyl(0.16, 0.13, 0.40, 18), dress, Vector3(0, 1.12, 0))
-		_mi(parent, _cyl(0.24, 0.19, 0.18, 16), apron, Vector3(0, 1.26, 0.02)) # knitted prairie shawl
+		# 10-pleat prairie skirt + crisp apron + waist bow + knitted shawl + cameo brooch
+		_mi(parent, _cyl(0.16, 0.42, 0.92, 24), dress, Vector3(0, 0.46, 0))
+		for pi in range(10):
+			var pa := float(pi) / 10.0 * TAU
+			_mi(parent, _cyl(0.045, 0.068, 0.86, 8), dress, Vector3(sin(pa) * 0.26, 0.44, cos(pa) * 0.26), Vector3(cos(pa) * 16.0, rad_to_deg(pa), -sin(pa) * 16.0))
+		_mi(parent, _cyl(0.17, 0.35, 0.76, 18), apron, Vector3(0, 0.48, -0.05))
+		_mi(parent, _cyl(0.16, 0.13, 0.40, 20), dress, Vector3(0, 1.12, 0))
+		_mi(parent, _cyl(0.24, 0.19, 0.18, 18), apron, Vector3(0, 1.26, 0.02))
+		_mi(parent, _sph(0.024, 0.036, 10), pewter, Vector3(0, 1.32, -0.14)) # cameo collar pin
 	else:
-		# Work boots, trousers, tucked shirt, suspenders
+		# Sculpted lace-up work boots + trousers + tucked prairie shirt + suspenders with buckles
 		for sx in [-0.11, 0.11]:
-			_mi(parent, _cyl(0.075, 0.085, 0.76, 12), dark, Vector3(float(sx), 0.38, 0))
-			_mi(parent, _box(Vector3(0.13, 0.10, 0.22)), _mat(Color(0.12, 0.12, 0.14), 0.6), Vector3(float(sx), 0.05, -0.03))
-		_mi(parent, _cyl(0.19, 0.17, 0.56, 18), _mat(Color(0.62, 0.62, 0.65), 0.85), Vector3(0, 1.06, 0))
+			_mi(parent, _cyl(0.075, 0.082, 0.76, 16), dark, Vector3(float(sx), 0.38, 0))
+			_mi(parent, _sph(0.068, 0.085, 14), _mat(Color(0.14, 0.14, 0.16), 0.56), Vector3(float(sx), 0.05, -0.045), Vector3.ZERO, Vector3(0.95, 0.70, 1.65))
+		_mi(parent, _cyl(0.19, 0.17, 0.56, 20), _mat(Color(0.64, 0.64, 0.68), 0.82), Vector3(0, 1.06, 0))
 		for sx in [-0.09, 0.09]:
-			_mi(parent, _box(Vector3(0.04, 0.52, 0.22)), dark, Vector3(float(sx), 1.06, 0)) # suspenders
+			_mi(parent, _cyl(0.020, 0.020, 0.52, 8), dark, Vector3(float(sx), 1.06, -0.15))
+			_mi(parent, _cyl(0.020, 0.020, 0.52, 8), dark, Vector3(float(sx), 1.06, 0.15))
+			_mi(parent, _torus(0.018, 0.026, 10), pewter, Vector3(float(sx), 0.88, -0.16), Vector3(90, 0, 0))
 
-	# Articulated arms + hands
+	# Articulated arms + sculpted fingered hands
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(parent, _sph(0.072, 0.13, 10), dress if is_aunt_em else _mat(Color(0.62, 0.62, 0.65), 0.85), Vector3(s * 0.22, 1.26, 0))
-		_mi(parent, _cyl(0.048, 0.038, 0.44, 10), skin, Vector3(s * 0.26, 1.04, -0.04), Vector3(14, 0, -s * 12))
-		_mi(parent, _sph(0.04, 0.08, 8), skin, Vector3(s * 0.30, 0.84, -0.10))
+		_mi(parent, _sph(0.076, 0.14, 14), dress if is_aunt_em else _mat(Color(0.64, 0.64, 0.68), 0.82), Vector3(s * 0.22, 1.26, 0))
+		_mi(parent, _cyl(0.048, 0.036, 0.44, 12), skin, Vector3(s * 0.26, 1.04, -0.04), Vector3(14, 0, -s * 12))
+		_build_npc_hand(parent, Vector3(s * 0.30, 0.83, -0.10), skin, s)
 
-	# Neck, sculpted head, eyes, hair bun or farmer hat + mustache
-	_mi(parent, _cyl(0.045, 0.055, 0.12, 12), skin, Vector3(0, 1.38, 0))
-	_mi(parent, _sph(0.135, 0.29, 18), skin, Vector3(0, 1.54, 0))
-	for ex in [-0.045, 0.045]:
-		_mi(parent, _sph(0.018, 0.036, 8), dark, Vector3(float(ex), 1.56, -0.12))
+	# Sculpted monochrome face + hair bun or handlebar moustache & wide prairie hat
+	_mi(parent, _cyl(0.045, 0.055, 0.12, 14), skin, Vector3(0, 1.38, 0))
+	_build_npc_face(parent, 1.54, skin, Color(0.32, 0.32, 0.35), Color(0.48, 0.48, 0.52), hair, -1.0, true, false)
 	if is_aunt_em:
-		_mi(parent, _sph(0.142, 0.26, 16), hair, Vector3(0, 1.58, 0.02))
-		_mi(parent, _sph(0.075, 0.13, 12), hair, Vector3(0, 1.60, 0.15)) # neat hair bun
+		_mi(parent, _sph(0.140, 0.25, 20), hair, Vector3(0, 1.58, 0.02))
+		_mi(parent, _sph(0.078, 0.14, 14), hair, Vector3(0, 1.60, 0.15))
 	else:
-		_mi(parent, _box(Vector3(0.11, 0.03, 0.04)), hair, Vector3(0, 1.48, -0.13)) # mustache
-		_mi(parent, _cyl(0.32, 0.34, 0.035, 18), dark, Vector3(0, 1.67, 0)) # wide prairie hat brim
-		_mi(parent, _cyl(0.14, 0.16, 0.18, 16), dark, Vector3(0, 1.76, 0))
+		for sx in [-1.0, 1.0]:
+			_mi(parent, _sph(0.036, 0.028, 10), hair, Vector3(float(sx) * 0.032, 1.49, -0.128), Vector3(0, 0, float(sx) * -14.0), Vector3(1.5, 0.72, 0.85))
+		_mi(parent, _cyl(0.32, 0.35, 0.032, 22), dark, Vector3(0, 1.67, 0))
+		_mi(parent, _torus(0.14, 0.165, 18), pewter, Vector3(0, 1.70, 0))
+		_mi(parent, _cyl(0.135, 0.16, 0.18, 18), dark, Vector3(0, 1.77, 0))
 
 ## Carved wooden flatbed Mice Cart with spoked wheels, hitch shafts, and 6 harnessed 3D Field Mice.
 static func build_mice_cart_visual(parent: Node3D) -> void:
@@ -2028,18 +2080,24 @@ static func build_mice_cart_visual(parent: Node3D) -> void:
 		_mi(parent, _box(Vector3(0.08, 0.08, 2.4)), wood_dark, Vector3(float(hx), 0.54, 2.7))
 		_mi(parent, _box(Vector3(0.03, 0.03, 2.6)), rope, Vector3(float(hx), 0.42, 2.8))
 
+	var eye_m := _mat(Color(0.05, 0.05, 0.06), 0.12)
+	var shine_m := _mat(Color(1.0, 1.0, 1.0), 0.05, 0.0, Color(1.0, 1.0, 1.0), 1.3)
 	for row in range(3):
 		for col in [-0.65, 0.65]:
 			var mpos := Vector3(float(col), 0.16, 2.0 + float(row) * 0.72)
 			var mnode := Node3D.new()
 			mnode.position = mpos
 			parent.add_child(mnode)
-			_mi(mnode, _sph(0.14, 0.24, 10), mouse_fur, Vector3.ZERO, Vector3.ZERO, Vector3(0.85, 0.75, 1.35))
-			_mi(mnode, _sph(0.095, 0.16, 10), mouse_fur, Vector3(0, 0.04, 0.18))
-			_mi(mnode, _sph(0.055, 0.09, 8), mouse_ear, Vector3(-0.07, 0.12, 0.14))
-			_mi(mnode, _sph(0.055, 0.09, 8), mouse_ear, Vector3(0.07, 0.12, 0.14))
-			_mi(mnode, _cyl(0.012, 0.022, 0.34, 6), mouse_ear, Vector3(0, 0.0, -0.24), Vector3(78, 0, 0))
-			_mi(mnode, _cyl(0.12, 0.12, 0.04, 10), rope, Vector3(0, 0.02, 0.04), Vector3(90, 0, 0))
+			_mi(mnode, _sph(0.14, 0.24, 14), mouse_fur, Vector3.ZERO, Vector3.ZERO, Vector3(0.85, 0.75, 1.35))
+			_mi(mnode, _sph(0.095, 0.16, 14), mouse_fur, Vector3(0, 0.04, 0.18))
+			_mi(mnode, _sph(0.026, 0.042, 8), mouse_ear, Vector3(0, 0.03, 0.275)) # pink nose
+			for sx in [-1.0, 1.0]:
+				_mi(mnode, _sph(0.058, 0.095, 10), mouse_fur, Vector3(float(sx) * 0.072, 0.12, 0.13), Vector3.ZERO, Vector3(0.85, 1.0, 0.45))
+				_mi(mnode, _sph(0.038, 0.065, 8), mouse_ear, Vector3(float(sx) * 0.072, 0.12, 0.148), Vector3.ZERO, Vector3(0.8, 0.9, 0.35))
+				_mi(mnode, _sph(0.018, 0.036, 8), eye_m, Vector3(float(sx) * 0.048, 0.068, 0.235))
+				_mi(mnode, _sph(0.006, 0.012, 6), shine_m, Vector3(float(sx) * 0.044, 0.074, 0.252))
+			_mi(mnode, _cyl(0.012, 0.022, 0.36, 8), mouse_ear, Vector3(0, 0.0, -0.24), Vector3(78, 0, 0))
+			_mi(mnode, _torus(0.11, 0.128, 12), rope, Vector3(0, 0.02, 0.04), Vector3(90, 0, 0))
 
 # ============================================================================
 # PHASE P4: VINTAGE OIL CAN, EMERALD PALACE & OZ PROJECTION, GLINDA'S COURT
@@ -2775,102 +2833,106 @@ static func build_velvet_curtain(parent: Node3D, pos: Vector3, width: float = 5.
 
 	return {"root": root, "left": left_drape, "right": right_drape}
 
-## Sculpted 19th-century Omaha Humbug Inventor + Brass Voice-Horn & Geared Projector Console (facing +Z).
+## Phase P11.2: 2026 Flagship Oscar Diggs (The Humbug Wizard) + Geared Brass Projector Console (facing +Z).
 static func build_humbug_wizard(parent: Node3D) -> void:
-	var coat := _mat(Color(0.24, 0.16, 0.22), 0.78)
-	var vest := _mat(Color(0.62, 0.44, 0.16), 0.58)
-	var shirt := _mat(Color(0.94, 0.92, 0.88), 0.72)
-	var skin := _mat(Color(0.94, 0.78, 0.66), 0.46)
-	var hair := _mat(Color(0.88, 0.88, 0.92), 0.72)
-	var brass := _mat(Color(0.90, 0.72, 0.28), 0.24, 0.88, Color(0.85, 0.65, 0.20), 0.22)
-	var iron := _mat(Color(0.24, 0.26, 0.30), 0.42, 0.75)
-	var eye_m := _mat(Color(0.10, 0.10, 0.14), 0.2)
+	var coat := _mat(Color(0.22, 0.14, 0.20), 0.70)
+	var vest := _mat(Color(0.68, 0.48, 0.18), 0.48, 0.18)
+	var shirt := _mat(Color(0.95, 0.93, 0.89), 0.68)
+	var skin := _mat(Color(0.94, 0.78, 0.66), 0.42)
+	var dark_hair := _mat(Color(0.16, 0.12, 0.10), 0.62)
+	var hat_m := _mat(Color(0.10, 0.09, 0.12), 0.42, 0.08)
+	var ticket_m := _mat(Color(0.94, 0.86, 0.68), 0.78)
+	var brass := _mat(Color(0.92, 0.74, 0.28), 0.22, 0.92, Color(0.86, 0.66, 0.20), 0.22)
+	var iron := _mat(Color(0.22, 0.24, 0.28), 0.40, 0.78)
+	var em_lens := _mat(Color(0.22, 0.96, 0.56), 0.08, 0.20, Color(0.24, 1.0, 0.58), 2.2)
 
-	# Small dapper bald inventor: boots, trousers, embroidered vest, coat, arms, sculpted face + spectacles
+	# Tailored boots (zero boxes!), trousers, gold-brocade waistcoat + pocket-watch chain + frock coat
 	for sx in [-0.11, 0.11]:
-		_mi(parent, _cyl(0.072, 0.080, 0.74, 12), coat, Vector3(float(sx), 0.37, 0))
-		_mi(parent, _box(Vector3(0.14, 0.10, 0.24)), iron, Vector3(float(sx), 0.05, 0.06))
-	_mi(parent, _cyl(0.20, 0.22, 0.58, 16), vest, Vector3(0, 1.02, 0.03))
-	_mi(parent, _cyl(0.08, 0.10, 0.24, 12), shirt, Vector3(0, 1.24, 0.14))
-	_mi(parent, _cyl(0.24, 0.26, 0.70, 16), coat, Vector3(0, 0.98, -0.05))
+		_mi(parent, _cyl(0.072, 0.080, 0.74, 16), coat, Vector3(float(sx), 0.37, 0))
+		_mi(parent, _sph(0.068, 0.085, 14), iron, Vector3(float(sx), 0.05, 0.05), Vector3.ZERO, Vector3(0.95, 0.68, 1.68))
+	_mi(parent, _cyl(0.20, 0.22, 0.58, 20), vest, Vector3(0, 1.02, 0.03))
+	_mi(parent, _torus(0.08, 0.095, 14), brass, Vector3(0.04, 0.92, 0.21), Vector3(18, 0, 0)) # gold watch chain
+	_mi(parent, _cyl(0.08, 0.10, 0.24, 14), shirt, Vector3(0, 1.24, 0.14))
+	_mi(parent, _cyl(0.24, 0.26, 0.72, 20), coat, Vector3(0, 0.98, -0.05))
 	for sx in [-1.0, 1.0]:
-		_mi(parent, _cyl(0.048, 0.042, 0.48, 10), coat, Vector3(float(sx) * 0.27, 1.06, 0.12), Vector3(-34, 0, -float(sx) * 14))
-		_mi(parent, _sph(0.048, 0.095, 10), skin, Vector3(float(sx) * 0.30, 0.88, 0.26))
-	# Head + dark tousled hair + silk top hat with tucked Omaha Fair ticket + spectacles facing +Z (npc_07_oscar_diggs.jpg)
-	var dark_hair := _mat(Color(0.18, 0.14, 0.12), 0.72)
-	var hat_m := _mat(Color(0.12, 0.11, 0.13), 0.58)
-	var ticket_m := _mat(Color(0.92, 0.84, 0.66), 0.80)
-	_mi(parent, _sph(0.165, 0.34, 18), skin, Vector3(0, 1.54, 0))
-	_mi(parent, _sph(0.172, 0.18, 14), dark_hair, Vector3(0, 1.56, -0.04))
-	_mi(parent, _cyl(0.24, 0.24, 0.028, 18), hat_m, Vector3(0, 1.69, 0), Vector3(-6, 0, 5)) # top hat brim
-	_mi(parent, _cyl(0.16, 0.14, 0.26, 18), hat_m, Vector3(0, 1.83, -0.01), Vector3(-6, 0, 5)) # silk top hat crown
-	_mi(parent, _cyl(0.146, 0.146, 0.045, 18), vest, Vector3(0, 1.72, -0.01), Vector3(-6, 0, 5)) # hat band
-	_mi(parent, _box(Vector3(0.055, 0.085, 0.012)), ticket_m, Vector3(0.12, 1.78, 0.09), Vector3(-6, 28, -14)) # tucked Omaha Fair ticket
-	_mi(parent, _sph(0.035, 0.06, 10), skin, Vector3(0, 1.52, 0.165)) # nose
-	_mi(parent, _box(Vector3(0.14, 0.036, 0.04)), dark_hair, Vector3(0, 1.46, 0.155)) # dark showman moustache
-	for sx in [-0.055, 0.055]:
-		_mi(parent, _sph(0.022, 0.044, 10), eye_m, Vector3(float(sx), 1.56, 0.148))
-		_mi(parent, _cyl(0.042, 0.042, 0.015, 12), brass, Vector3(float(sx), 1.56, 0.162), Vector3(90, 0, 0)) # gold spectacles
-	# Brass & Iron Wizard Projector Console + Speaking Trumpet + Control Levers (beside him)
-	_mi(parent, _box(Vector3(1.25, 1.35, 0.70)), iron, Vector3(-1.10, 0.68, -0.25))
-	_mi(parent, _cyl(0.24, 0.24, 0.08, 14), brass, Vector3(-1.10, 1.10, 0.12), Vector3(90, 0, 0)) # spinning gear dial
-	_mi(parent, _cyl(0.30, 0.06, 0.80, 14), brass, Vector3(-0.68, 1.56, -0.25), Vector3(0, 0, 52)) # voice megaphone horn
-	for lx in [-1.35, -1.10, -0.85]:
-		_mi(parent, _cyl(0.022, 0.022, 0.44, 6), brass, Vector3(float(lx), 1.54, -0.15), Vector3(-18, 0, 0))
+		var s := float(sx)
+		_mi(parent, _cyl(0.048, 0.040, 0.48, 12), coat, Vector3(s * 0.27, 1.06, 0.12), Vector3(-34, 0, -s * 14))
+		_build_npc_hand(parent, Vector3(s * 0.30, 0.87, 0.26), skin, s)
 
-## Sculpted 24-segment high-fashion Glinda, Good Witch of the South (Baum canon: auburn braids, snow-white & ruby silk, ruby-star crown).
+	# Sculpted 2026 Showman Face (+Z) + Handlebar Moustache + Gold-Rimmed Spectacles + Silk Top Hat & Ticket!
+	_mi(parent, _cyl(0.046, 0.056, 0.12, 14), skin, Vector3(0, 1.38, 0))
+	_build_npc_face(parent, 1.54, skin, Color(0.26, 0.34, 0.48), Color(0.66, 0.32, 0.34), dark_hair, 1.0, false, false)
+	_mi(parent, _sph(0.145, 0.22, 18), dark_hair, Vector3(0, 1.58, -0.03))
+	for sx in [-1.0, 1.0]:
+		_mi(parent, _sph(0.038, 0.028, 10), dark_hair, Vector3(float(sx) * 0.034, 1.48, 0.132), Vector3(0, 0, float(sx) * -18.0), Vector3(1.55, 0.72, 0.85))
+		_mi(parent, _torus(0.028, 0.036, 14), brass, Vector3(float(sx) * 0.046, 1.55, 0.142), Vector3(90, 0, 0))
+	_mi(parent, _cyl(0.24, 0.24, 0.026, 22), hat_m, Vector3(0, 1.69, 0), Vector3(-6, 0, 5))
+	_mi(parent, _cyl(0.16, 0.14, 0.27, 22), hat_m, Vector3(0, 1.83, -0.01), Vector3(-6, 0, 5))
+	_mi(parent, _cyl(0.146, 0.146, 0.045, 22), vest, Vector3(0, 1.72, -0.01), Vector3(-6, 0, 5))
+	_mi(parent, _box(Vector3(0.055, 0.085, 0.012)), ticket_m, Vector3(0.12, 1.78, 0.09), Vector3(-6, 28, -14))
+
+	# Upgraded Geared Brass & Iron Projector Console + Glowing Emerald Lens + Speaking Megaphone + Levers
+	_mi(parent, _box(Vector3(1.25, 1.35, 0.70)), iron, Vector3(-1.10, 0.68, -0.25))
+	_mi(parent, _torus(0.20, 0.26, 18), brass, Vector3(-1.10, 1.08, 0.13), Vector3(90, 0, 0))
+	_mi(parent, _cyl(0.14, 0.16, 0.22, 16), em_lens, Vector3(-1.10, 1.44, 0.08), Vector3(72, 0, 0))
+	_mi(parent, _cyl(0.32, 0.06, 0.84, 18), brass, Vector3(-0.68, 1.56, -0.25), Vector3(0, 0, 52))
+	for lx in [-1.35, -1.10, -0.85]:
+		_mi(parent, _cyl(0.020, 0.020, 0.44, 8), brass, Vector3(float(lx), 1.54, -0.15), Vector3(-18, 0, 0))
+		_mi(parent, _sph(0.042, 0.084, 10), brass, Vector3(float(lx), 1.75, -0.22))
+
+## Phase P11.2: 2026 Flagship Glinda, Good Witch of the South (12-pleat royal gown, sculpted face, braided auburn hair, ruby-star crown).
 static func build_glinda_visual(parent: Node3D) -> void:
-	var gown_w := _mat(Color(0.98, 0.95, 0.96), 0.36, 0.08, Color(0.95, 0.72, 0.85), 0.16)
-	var rose_silk := _mat(Color(0.92, 0.34, 0.56), 0.38, 0.12, Color(0.95, 0.32, 0.54), 0.20)
-	var gold := _mat(Color(0.96, 0.82, 0.38), 0.22, 0.90, Color(0.96, 0.78, 0.32), 0.24)
-	var skin := _mat(Color(0.96, 0.82, 0.73), 0.42)
-	var auburn := _mat(Color(0.62, 0.18, 0.10), 0.52, 0.12)
-	var ruby := _mat(Color(0.98, 0.16, 0.34), 0.12, 0.25, Color(1.0, 0.22, 0.42), 2.1)
-	var veil := _mat(Color(1.0, 0.86, 0.92, 0.52), 0.32, 0.05)
+	var gown_w := _mat(Color(0.98, 0.95, 0.96), 0.34, 0.08, Color(0.95, 0.72, 0.85), 0.16)
+	var rose_silk := _mat(Color(0.92, 0.34, 0.56), 0.34, 0.12, Color(0.95, 0.32, 0.54), 0.22)
+	var gold := _mat(Color(0.96, 0.82, 0.38), 0.20, 0.92, Color(0.96, 0.78, 0.32), 0.26)
+	var skin := _mat(Color(0.96, 0.82, 0.73), 0.40)
+	var auburn := _mat(Color(0.62, 0.18, 0.10), 0.48, 0.12)
+	var ruby := _mat(Color(0.98, 0.14, 0.32), 0.08, 0.25, Color(1.0, 0.20, 0.40), 2.3)
+	var veil := _mat(Color(1.0, 0.86, 0.92, 0.50), 0.30, 0.05)
 	veil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
-	# Smooth tiered royal snow-white & rose-silk ballgown (NO protruding waist-poles!)
+	# 12-pleat fluted royal snow-white & rose-silk ballgown
 	_mi(parent, _cyl(0.16, 0.64, 1.06, 28), gown_w, Vector3(0, 0.53, 0))
 	_mi(parent, _cyl(0.18, 0.48, 0.54, 26), rose_silk, Vector3(0, 0.78, 0))
-	_mi(parent, _cyl(0.61, 0.65, 0.06, 28), gold, Vector3(0, 0.04, 0))
+	for pi in range(12):
+		var pa := float(pi) / 12.0 * TAU
+		_mi(parent, _cyl(0.055, 0.090, 1.00, 10), gown_w if pi % 2 == 0 else rose_silk, Vector3(sin(pa) * 0.39, 0.51, cos(pa) * 0.39), Vector3(cos(pa) * 20.0, rad_to_deg(pa), -sin(pa) * 20.0))
+	_mi(parent, _cyl(0.61, 0.65, 0.055, 28), gold, Vector3(0, 0.04, 0))
 	_mi(parent, _cyl(0.46, 0.50, 0.04, 26), gold, Vector3(0, 0.52, 0))
 
-	# Contoured bodice + bust silhouette + ruby brooch + gossamer cape
-	_mi(parent, _cyl(0.15, 0.12, 0.26, 20), rose_silk, Vector3(0, 1.15, 0))
-	_mi(parent, _cyl(0.17, 0.15, 0.22, 20), gown_w, Vector3(0, 1.36, 0))
-	_mi(parent, _sph(0.09, 0.16, 14), gown_w, Vector3(-0.072, 1.34, -0.075))
-	_mi(parent, _sph(0.09, 0.16, 14), gown_w, Vector3(0.072, 1.34, -0.075))
-	_mi(parent, _sph(0.045, 0.07, 10), ruby, Vector3(0, 1.32, -0.14))
-	_mi(parent, _cyl(0.16, 0.52, 1.08, 16), veil, Vector3(0, 1.08, 0.18), Vector3(16, 0, 0))
+	# Contoured bodice + ruby heart brooch + gossamer mantle
+	_mi(parent, _cyl(0.15, 0.12, 0.26, 22), rose_silk, Vector3(0, 1.15, 0))
+	_mi(parent, _cyl(0.17, 0.15, 0.22, 22), gown_w, Vector3(0, 1.36, 0))
+	_mi(parent, _sph(0.09, 0.16, 16), gown_w, Vector3(-0.072, 1.34, -0.075))
+	_mi(parent, _sph(0.09, 0.16, 16), gown_w, Vector3(0.072, 1.34, -0.075))
+	_mi(parent, _sph(0.046, 0.072, 12), ruby, Vector3(0, 1.32, -0.142))
+	_mi(parent, _cyl(0.16, 0.52, 1.08, 18), veil, Vector3(0, 1.08, 0.18), Vector3(16, 0, 0))
 
-	# Slender articulated arms + golden ruby-star scepter
+	# Articulated arms + fingered hands + golden ruby-star scepter
 	for sx in [-1.0, 1.0]:
 		var s: float = float(sx)
-		_mi(parent, _sph(0.08, 0.15, 12), gown_w, Vector3(s * 0.21, 1.42, 0))
-		_mi(parent, _cyl(0.044, 0.035, 0.32, 12), gown_w, Vector3(s * 0.25, 1.26, -0.02), Vector3(12, 0, -s * 14))
-		_mi(parent, _cyl(0.034, 0.028, 0.28, 12), skin, Vector3(s * 0.30, 1.04, -0.10), Vector3(28, 0, -s * 8))
-		_mi(parent, _sph(0.038, 0.076, 10), skin, Vector3(s * 0.32, 0.94, -0.16))
-	_mi(parent, _cyl(0.016, 0.022, 1.52, 10), gold, Vector3(0.36, 1.24, -0.22), Vector3(10, 0, -5))
+		_mi(parent, _sph(0.082, 0.15, 14), gown_w, Vector3(s * 0.21, 1.42, 0))
+		_mi(parent, _cyl(0.044, 0.035, 0.32, 14), gown_w, Vector3(s * 0.25, 1.26, -0.02), Vector3(12, 0, -s * 14))
+		_mi(parent, _cyl(0.034, 0.026, 0.28, 14), skin, Vector3(s * 0.30, 1.04, -0.10), Vector3(28, 0, -s * 8))
+		_build_npc_hand(parent, Vector3(s * 0.32, 0.93, -0.16), skin, s)
+	_mi(parent, _cyl(0.016, 0.022, 1.54, 12), gold, Vector3(0.36, 1.24, -0.22), Vector3(10, 0, -5))
 	_mi(parent, _sph(0.095, 0.18, 14), ruby, Vector3(0.42, 2.02, -0.35))
+	_mi(parent, _torus(0.11, 0.13, 14), gold, Vector3(0.42, 2.02, -0.35), Vector3(90, 0, 0))
 
-	# Neck, sculpted head with expressive eyes & lips, cascading auburn hair, ruby-star tiara
-	_mi(parent, _cyl(0.046, 0.056, 0.12, 14), skin, Vector3(0, 1.50, 0))
-	_mi(parent, _sph(0.135, 0.29, 20), skin, Vector3(0, 1.66, 0))
-	var g_eye := _mat(Color(0.20, 0.52, 0.38), 0.18)
-	var g_lip := _mat(Color(0.84, 0.24, 0.38), 0.38)
-	for ex in [-0.046, 0.046]:
-		_mi(parent, _sph(0.019, 0.036, 10), g_eye, Vector3(float(ex), 1.68, -0.120))
-	_mi(parent, _sph(0.018, 0.012, 10), g_lip, Vector3(0, 1.60, -0.124), Vector3.ZERO, Vector3(1.8, 0.7, 0.8))
-	_mi(parent, _sph(0.148, 0.28, 20), auburn, Vector3(0, 1.70, 0.025))
-	_mi(parent, _cyl(0.09, 0.12, 0.56, 14), auburn, Vector3(0, 1.38, 0.12), Vector3(16, 0, 0))
-	_mi(parent, _cyl(0.15, 0.15, 0.045, 20), gold, Vector3(0, 1.80, 0))
+	# Sculpted 2026 face + braided auburn hair + ruby-star tiara + Victorian lace ruff
+	_mi(parent, _cyl(0.046, 0.056, 0.12, 16), skin, Vector3(0, 1.50, 0))
+	_build_npc_face(parent, 1.66, skin, Color(0.18, 0.56, 0.40), Color(0.86, 0.22, 0.36), auburn, -1.0, false, false)
+	_mi(parent, _sph(0.145, 0.27, 22), auburn, Vector3(0, 1.70, 0.025))
+	for sx in [-1.0, 1.0]:
+		for bi in range(4):
+			_mi(parent, _sph(0.034 - float(bi) * 0.003, 0.075, 10), auburn, Vector3(float(sx) * 0.118, 1.56 - float(bi) * 0.072, 0.04))
+	_mi(parent, _torus(0.14, 0.156, 22), gold, Vector3(0, 1.80, 0))
 	for gi in range(5):
 		var ga := float(gi) / 5.0 * TAU
-		var gh := 0.18 if gi == 0 else 0.11
-		_mi(parent, _cyl(0.008, 0.026, gh, 8), gold, Vector3(sin(ga) * 0.135, 1.82 + gh * 0.5, -cos(ga) * 0.135))
-	_mi(parent, _sph(0.055, 0.10, 12), ruby, Vector3(0, 1.94, -0.13))
-	# High Victorian lace ruff collar (npc_03_glinda.jpg)
-	_mi(parent, _cyl(0.25, 0.14, 0.14, 18), gown_w, Vector3(0, 1.54, 0.06), Vector3(-22, 0, 0))
+		var gh := 0.19 if gi == 0 else 0.11
+		_mi(parent, _cyl(0.007, 0.026, gh, 8), gold, Vector3(sin(ga) * 0.135, 1.82 + gh * 0.5, -cos(ga) * 0.135))
+	_mi(parent, _sph(0.055, 0.10, 12), ruby, Vector3(0, 1.95, -0.13))
+	_mi(parent, _cyl(0.25, 0.14, 0.14, 20), gown_w, Vector3(0, 1.54, 0.06), Vector3(-22, 0, 0))
 
 ## Royal Quadling Country beautification: 8-column Alabaster Rotunda, Reflecting Pools, Rose Trees & Compass Altar.
 static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Vector3) -> void:

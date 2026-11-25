@@ -42,6 +42,8 @@ func _ready() -> void:
 		var eq: String = str(sm.equipped_outfits.get("toto", ""))
 		if eq != "":
 			outfit_id = eq
+		if sm.has_signal("state_changed") and not sm.state_changed.is_connected(_on_save_state_changed):
+			sm.state_changed.connect(_on_save_state_changed)
 
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
@@ -70,6 +72,13 @@ func set_outfit(new_outfit_id: String) -> void:
 	var vis := get_node_or_null("Visual") as Node3D
 	if vis:
 		_parts = build_dog_visual(vis, greyscale, outfit_id)
+
+func _on_save_state_changed() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and "equipped_outfits" in sm:
+		var eq: String = str(sm.equipped_outfits.get("toto", ""))
+		if eq != "" and eq != outfit_id:
+			set_outfit(eq)
 
 func can_take_lead() -> bool:
 	return visible

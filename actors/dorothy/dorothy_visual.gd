@@ -64,13 +64,21 @@ const CAST_DUR := 0.42
 const HEEL_CLICK_DUR := 0.68
 
 func _ready() -> void:
-	if not greyscale:
-		var sm := get_node_or_null("/root/SaveManager")
-		if sm and "equipped_outfits" in sm:
-			var eq: String = str(sm.equipped_outfits.get("dorothy", ""))
-			if eq != "":
-				outfit_id = eq
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and "equipped_outfits" in sm:
+		var eq: String = str(sm.equipped_outfits.get("dorothy", ""))
+		if eq != "":
+			outfit_id = eq
+		if sm.has_signal("state_changed") and not sm.state_changed.is_connected(_on_save_state_changed):
+			sm.state_changed.connect(_on_save_state_changed)
 	_rebuild_character()
+
+func _on_save_state_changed() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and "equipped_outfits" in sm:
+		var eq: String = str(sm.equipped_outfits.get("dorothy", ""))
+		if eq != "" and eq != outfit_id:
+			set_outfit(eq)
 
 func set_outfit(new_outfit_id: String) -> void:
 	var clean_id := new_outfit_id.strip_edges()
@@ -488,7 +496,7 @@ func _torus(inner_r: float, outer_r: float, rings_n: int = 24) -> TorusMesh:
 # ============================================================================
 
 func _build() -> void:
-	var is_kansas_plain := greyscale and not show_silver_shoes
+	var is_kansas_plain := greyscale and not show_silver_shoes and (outfit_id == "dorothy_gingham" or outfit_id == "")
 	var active_outfit := "kansas_pinafore" if is_kansas_plain else outfit_id
 
 	# Shared anatomical materials
