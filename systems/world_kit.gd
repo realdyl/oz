@@ -315,6 +315,18 @@ static func make_wooden_signpost(at: Vector3, label_text: String, accent: Color,
 		if not is_front:
 			lab.rotation_degrees.y = 180.0
 		plank_holder.add_child(lab)
+	# Solid timber post collider so characters walk naturally around signposts!
+	var post_sb := StaticBody3D.new()
+	post_sb.collision_layer = 1
+	post_sb.collision_mask = 0
+	var post_cs := CollisionShape3D.new()
+	var post_sh := CylinderShape3D.new()
+	post_sh.radius = 0.28
+	post_sh.height = 2.6
+	post_cs.shape = post_sh
+	post_cs.position = Vector3(0, 1.3, 0)
+	post_sb.add_child(post_cs)
+	root.add_child(post_sb)
 	return root
 
 ## Tier 2: Ornate scrolled wrought-iron & walnut architectural crest plaque for buildings.
@@ -1292,6 +1304,18 @@ static func make_gnarled_tree(at: Vector3, rng: RandomNumberGenerator, scale_mul
 		var cr := rng.randf_range(0.85, 1.25)
 		_mi(root, _sph(cr, cr * 1.45, 12), lmat, tip)
 
+	# Solid timber post collider so characters walk naturally around signposts!
+	var post_sb := StaticBody3D.new()
+	post_sb.collision_layer = 1
+	post_sb.collision_mask = 0
+	var post_cs := CollisionShape3D.new()
+	var post_sh := CylinderShape3D.new()
+	post_sh.radius = 0.28
+	post_sh.height = 2.6
+	post_cs.shape = post_sh
+	post_cs.position = Vector3(0, 1.3, 0)
+	post_sb.add_child(post_cs)
+	root.add_child(post_sb)
 	return root
 
 static func make_street_lantern(at: Vector3, glow_col: Color = Color(1.0, 0.86, 0.45), with_light: bool = false) -> Node3D:
@@ -1326,6 +1350,18 @@ static func make_street_lantern(at: Vector3, glow_col: Color = Color(1.0, 0.86, 
 		light.position = lpos
 		root.add_child(light)
 
+	# Solid timber post collider so characters walk naturally around signposts!
+	var post_sb := StaticBody3D.new()
+	post_sb.collision_layer = 1
+	post_sb.collision_mask = 0
+	var post_cs := CollisionShape3D.new()
+	var post_sh := CylinderShape3D.new()
+	post_sh.radius = 0.28
+	post_sh.height = 2.6
+	post_cs.shape = post_sh
+	post_cs.position = Vector3(0, 1.3, 0)
+	post_sb.add_child(post_cs)
+	root.add_child(post_sb)
 	return root
 
 static func dress_ybr_spine(parent: Node3D, z_start: float, z_end: float, road_half_w: float = 2.75) -> void:
@@ -2455,7 +2491,7 @@ static func dress_emerald_city_wall(parent: Node3D, z_pos: float = -8.0) -> void
 		# Glowing turret balcony window
 		_mi(root, _box(Vector3(1.3, 3.2, 0.45)), glass_glow, Vector3(tx, th * 0.65, z_pos + 0.8 + tr))
 
-	# 4) Flanking Emerald Crystal Fountains with animated flowing water right outside the Grand Gate Arch!
+	# 4) Flanking Emerald Crystal Fountains with solid basin colliders & animated flowing water!
 	for sx in [-1.0, 1.0]:
 		var fx := float(sx) * 10.6
 		var fz := z_pos + 7.2
@@ -2464,6 +2500,19 @@ static func dress_emerald_city_wall(parent: Node3D, z_pos: float = -8.0) -> void
 		_mi(root, _cyl(1.95, 1.95, 0.08, 16), water, Vector3(fx, 0.66, fz))
 		_mi(root, _cyl(0.32, 0.55, 2.2, 12), crystal, Vector3(fx, 1.45, fz))
 		_mi(root, _sph(0.45, 0.75, 12), glass_glow, Vector3(fx, 2.85, fz))
+		var f_sb := StaticBody3D.new()
+		f_sb.name = "EmeraldFountainCollider"
+		f_sb.collision_layer = 1
+		f_sb.collision_mask = 0
+		f_sb.position = Vector3(fx, 0.0, fz)
+		var f_cs := CollisionShape3D.new()
+		var f_sh := CylinderShape3D.new()
+		f_sh.radius = 2.45
+		f_sh.height = 2.8
+		f_cs.shape = f_sh
+		f_cs.position = Vector3(0, 1.4, 0)
+		f_sb.add_child(f_cs)
+		root.add_child(f_sb)
 
 ## Grandiose Ornate Level-Exit Portal Archway (replaces mundane flat exit pads across Oz!).
 static func build_grand_portal_arch(parent: Node3D, at: Vector3, accent_col: Color, title: String) -> Node3D:
@@ -2477,12 +2526,23 @@ static func build_grand_portal_arch(parent: Node3D, at: Vector3, accent_col: Col
 	# Glowing circular rune medallion on floor
 	_mi(root, _cyl(3.1, 3.3, 0.06, 24), gold, Vector3(0, 0.04, 0))
 	_mi(root, _cyl(2.7, 2.7, 0.07, 24), glow, Vector3(0, 0.05, 0))
-	# Flanking fluted gilded columns + curved portal arch + 4 glowing Oz Realm Gemstones (quad_01_portal_arch.jpg)
+	# Flanking fluted gilded columns (with solid pillar colliders leaving center arch 100% open!)
 	for sx in [-1.0, 1.0]:
 		_mi(root, _cyl(0.42, 0.52, 0.45, 14), gold, Vector3(float(sx) * 3.1, 0.22, 0))
 		_mi(root, _cyl(0.28, 0.34, 5.2, 14), stone, Vector3(float(sx) * 3.1, 2.85, 0))
 		_mi(root, _cyl(0.48, 0.34, 0.42, 14), gold, Vector3(float(sx) * 3.1, 5.55, 0))
 		_mi(root, _sph(0.32, 0.52, 12), glow, Vector3(float(sx) * 3.1, 6.15, 0))
+		var p_sb := StaticBody3D.new()
+		p_sb.collision_layer = 1
+		p_sb.collision_mask = 0
+		var p_cs := CollisionShape3D.new()
+		var p_sh := CylinderShape3D.new()
+		p_sh.radius = 0.48
+		p_sh.height = 5.6
+		p_cs.shape = p_sh
+		p_cs.position = Vector3(float(sx) * 3.1, 2.8, 0)
+		p_sb.add_child(p_cs)
+		root.add_child(p_sb)
 	var realm_gems := [
 		[-1.65, Color(0.22, 0.52, 1.0)],  # North/Blue
 		[-0.55, Color(0.16, 0.92, 0.44)], # Emerald

@@ -73,7 +73,7 @@ func _initialize() -> void:
 			await process_frame
 			var cam_y := cam.global_position.y
 			var floor_y := player.global_position.y
-			if cam_y < floor_y + 0.30 or arm.rotation_degrees.x > 0.0:
+			if cam_y < floor_y + 0.12 or arm.rotation_degrees.x > 20.0:
 				_fail("camera dipped below safe floor! cam_y=%.3f pitch=%.2f" % [cam_y, arm.rotation_degrees.x])
 			else:
 				print("CAMERA_FLOOR_CLAMP_OK cam_y=%.3f pitch=%.2f" % [cam_y, arm.rotation_degrees.x])

@@ -15,6 +15,19 @@ var _pod_cd: float = 2.6
 func _physics_process(delta: float) -> void:
 	if not alive:
 		return
+	# Anti-embed guard: gently push out any party member who blinks/steps into the trunk roots so nobody EVER gets stuck!
+	var party_n := get_node_or_null("/root/Party")
+	if party_n and party_n.has_method("each_member"):
+		for m in party_n.call("each_member"):
+			if m is CharacterBody3D and is_instance_valid(m):
+				var mb := m as CharacterBody3D
+				var diff := mb.global_position - global_position
+				diff.y = 0.0
+				var d := diff.length()
+				if d < 1.38:
+					var push_dir := (diff / d) if d > 0.01 else Vector3(0.0, 0.0, -1.0)
+					mb.global_position.x = global_position.x + push_dir.x * 1.44
+					mb.global_position.z = global_position.z + push_dir.z * 1.44
 	# Baum-canon Fighting Tree (Ch. 19): periodically whips branches & hurls thorny seed-pods at nearby travelers!
 	_pod_cd -= delta
 	if _pod_cd <= 0.0:
@@ -162,10 +175,10 @@ func _build() -> void:
 			_throw_arm = arm_piv
 	var col := CollisionShape3D.new()
 	var shape := CylinderShape3D.new()
-	shape.radius = 0.85
-	shape.height = 3.5
+	shape.radius = 1.08
+	shape.height = 4.6
 	col.shape = shape
-	col.position = Vector3(0, 1.75, 0)
+	col.position = Vector3(0, 2.3, 0)
 	add_child(col)
 
 func take_damage(amount: int, _source_position: Vector3, tags: Dictionary = {}) -> void:
@@ -196,6 +209,15 @@ func _die() -> void:
 			var cs := c as CollisionShape3D
 			cs.rotation_degrees = Vector3(0, 0, 86.0)
 			cs.position = Vector3(-1.45, 0.52, 0.0)
+	# Push nearby party members clear of the falling log so nobody gets trapped when the tree topples!
+	var party_d := get_node_or_null("/root/Party")
+	if party_d and party_d.has_method("each_member"):
+		for m in party_d.call("each_member"):
+			if m is CharacterBody3D and is_instance_valid(m):
+				var mb := m as CharacterBody3D
+				var rel := mb.global_position - global_position
+				if absf(rel.z) < 1.35 and rel.x < 0.8 and rel.x > -3.4:
+					mb.global_position.z = global_position.z + (-1.65 if rel.z <= 0.0 else 1.65)
 	var tw := create_tween()
 	tw.tween_property(visual, "rotation:z", deg_to_rad(86.0), 0.65).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(visual, "position:y", 0.48, 0.65)

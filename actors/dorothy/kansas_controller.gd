@@ -24,8 +24,8 @@ var _prev_vis_yaw: float = 0.0
 @onready var body: Node3D = $Visual/Body
 
 const CAM_PITCH_MIN_DEG := -62.0
-const CAM_PITCH_MAX_DEG := -3.5
-const CAM_FLOOR_CLEARANCE := 0.42
+const CAM_PITCH_MAX_DEG := 17.5
+const CAM_FLOOR_CLEARANCE := 0.18
 
 func _ready() -> void:
 	add_to_group("player")

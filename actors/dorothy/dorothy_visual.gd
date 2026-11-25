@@ -970,6 +970,31 @@ func _make_arm(
 		var fx := (float(fi) - 1.5) * 0.0095 * sign_f
 		var fl: float = finger_lens[fi]
 		_mi(hand, _capsule(0.0052, fl, 8), skin, Vector3(fx, -0.034 - fl * 0.32, -0.003), Vector3.ONE, Vector3(10, 0, 0))
+
+	# Held Signature Lace Whip in Dorothy's right hand (whenever in Oz / couture mode!)
+	if not left and not is_kansas_plain and not greyscale:
+		var whip := Node3D.new()
+		whip.name = "WhipInHand"
+		whip.position = Vector3(0.0, -0.030, -0.015)
+		whip.rotation_degrees = Vector3(72.0, 0.0, -8.0)
+		hand.add_child(whip)
+		var hilt_m := _mat(Color(0.24, 0.05, 0.10), 0.38, 0.15)
+		var lash_m := _mat(Color(0.76, 0.08, 0.24), 0.28, 0.18, Color(0.55, 0.05, 0.16), 0.55)
+		var ruby_m := _mat(Color(1.0, 0.18, 0.38), 0.12, 0.30, Color(1.0, 0.22, 0.42), 1.8)
+		# Engraved brass & velvet grip + rose pommel + knuckle collar
+		_mi(whip, _cyl(0.014, 0.011, 0.17, 12), hilt_m, Vector3(0, 0.04, 0))
+		_mi(whip, _sphere(0.018, 10, 8), trim_metal, Vector3(0, -0.045, 0))
+		_mi(whip, _torus(0.014, 0.022, 12), trim_metal, Vector3(0, 0.125, 0))
+		# Sculpted curving crimson-silk braided whip lash trailing down from the hilt
+		for si in range(7):
+			var t := float(si) / 6.0
+			var rad := lerpf(0.011, 0.0035, t)
+			var wy := 0.15 + t * 0.46
+			var wz := -sin(t * PI * 1.15) * 0.14
+			var wx := cos(t * PI * 0.9) * 0.045
+			_mi(whip, _capsule(rad, 0.095, 8), lash_m, Vector3(wx, wy, wz), Vector3.ONE, Vector3(-22.0 * (1.0 - t * 0.6), 0, 12.0 * sin(t * PI)))
+		# Glowing ruby crystal tip
+		_mi(whip, _sphere(0.014, 10, 8), ruby_m, Vector3(-0.04, 0.62, 0.02))
 	return root
 
 func _make_leg(

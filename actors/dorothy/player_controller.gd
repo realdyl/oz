@@ -472,15 +472,23 @@ func _use_armament() -> void:
 	var whip_plus: bool = sm != null and sm.has_method("has_whip_mastery") and bool(sm.call("has_whip_mastery"))
 	var enemies := _find_live_enemies(13.5 if (_armament_idx == 0 and whip_plus) else 11.0)
 	match _armament_idx:
-		0: # The Lace Whip — bind & pull target straight into Kick range!
-			if enemies.is_empty():
-				CombatFx.label(self, global_position, "LACE WHIP", Color(1.0, 0.25, 0.52))
-				return
-			var foe: Node3D = enemies[0]
-			CombatFx.whip_lash(self, global_position, foe.global_position)
+		0: # The Lace Whip — ALWAYS cracks visibly forward; binds & yanks target if in range!
+			var fwd_w := -visual.global_transform.basis.z
+			fwd_w.y = 0.0
+			fwd_w = fwd_w.normalized() if fwd_w.length() > 0.01 else Vector3.FORWARD
+			var hand_origin := global_position + Vector3(0, 1.05, 0) + visual.global_transform.basis.x * 0.24
 			var afx_w := get_node_or_null("/root/AudioFx")
 			if afx_w and afx_w.has_method("play"):
-				afx_w.play("whip", -5.0)
+				afx_w.play("whip", -4.0)
+			if enemies.is_empty():
+				var tip_pos := hand_origin + fwd_w * (9.5 if whip_plus else 7.5)
+				CombatFx.whip_lash(self, hand_origin, tip_pos)
+				CombatFx.flash_sphere(self, tip_pos, Color(1.0, 0.28, 0.56), 0.52, 0.18)
+				CombatFx.label(self, tip_pos + Vector3(0, 0.4, 0), "✦ CRACK!", Color(1.0, 0.35, 0.62))
+				return
+			var foe: Node3D = enemies[0]
+			CombatFx.whip_lash(self, hand_origin, foe.global_position + Vector3(0, 0.85, 0))
+			CombatFx.flash_sphere(self, foe.global_position + Vector3(0, 0.9, 0), Color(1.0, 0.26, 0.54), 0.55, 0.18)
 			var pull_pos := global_position + (foe.global_position - global_position).normalized() * 1.65
 			pull_pos.y = foe.global_position.y
 			var tw := create_tween()

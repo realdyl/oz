@@ -74,6 +74,9 @@ var _dorothy_sleepy_said: bool = false
 var _lion_yawn_said: bool = false
 var _zzz_timer: float = 0.0
 var _loading_lion: bool = false
+var _waking_dorothy: bool = false
+var _waking_lion: bool = false
+var _clear_air_ring: Node3D = null
 
 func _enter_tree() -> void:
 	var p := get_node_or_null("/root/Party")
@@ -148,6 +151,16 @@ func _process(delta: float) -> void:
 	_tick_flesh_sleep(delta)
 	_tick_haul(delta)
 	_pin_parked_bodies()
+	if _clear_air_ring and is_instance_valid(_clear_air_ring):
+		_clear_air_ring.rotate_y(delta * 1.8)
+	if _waking_dorothy and player:
+		var pb := player.get_node_or_null("Visual/Body")
+		if pb and pb.has_method("set_locomotion"):
+			pb.call("set_locomotion", 4.2, delta)
+	if _waking_lion and lion:
+		var lb := lion.get_node_or_null("Visual/Body")
+		if lb and lb.has_method("set_locomotion"):
+			lb.call("set_locomotion", 4.0, delta)
 	var actor := _lead()
 	if actor == null:
 		return
@@ -327,21 +340,25 @@ func _collect_clear_air() -> void:
 			else:
 				player.global_position = safe_pos
 		else:
-			# Smooth cooperative carry out of the scarlet poppies instead of snapping!
+			# Natural stand-up and walk out of the poppies instead of jerking/snapping!
+			_waking_dorothy = true
+			if player.has_method("set_sleeping"):
+				player.call("set_sleeping", false)
+			var vis_d := player.get_node_or_null("Visual") as Node3D
 			var start_p := player.global_position
-			var lift_p := start_p + Vector3(0, 0.65, 0)
-			var carry_dest := safe_pos + Vector3(0, 0.65, 0)
-			if player.has_method("set_parked"):
-				player.call("set_parked", true, safe_pos)
-			player.global_position = start_p
+			var walk_dir := safe_pos - start_p
+			walk_dir.y = 0.0
+			if vis_d and walk_dir.length() > 0.1:
+				vis_d.rotation.y = atan2(-walk_dir.x, -walk_dir.z)
+			var walk_dur := clampf(walk_dir.length() / 4.2, 0.9, 3.2)
 			var tw := create_tween()
-			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			tw.tween_property(player, "global_position", lift_p, 0.35)
-			tw.tween_property(player, "global_position", carry_dest, 1.35)
-			tw.tween_property(player, "global_position", safe_pos, 0.30)
+			if vis_d:
+				tw.tween_property(vis_d, "rotation_degrees:x", 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tw.tween_property(player, "global_position", safe_pos, walk_dur).set_trans(Tween.TRANS_LINEAR)
 			tw.tween_callback(func():
-				if player and player.has_method("set_sleeping"):
-					player.call("set_sleeping", false)
+				_waking_dorothy = false
+				if player and player.has_method("set_parked"):
+					player.call("set_parked", true, safe_pos)
 			)
 	_ensure_asleep_marker("SafeDorothyLab", safe_pos, "✦ Dorothy — Safe in Clear Air", Color(0.75, 0.95, 1.0))
 	if not lion_safe:
@@ -404,11 +421,26 @@ func _tick_haul(delta: float) -> void:
 	if actor == null:
 		return
 	if cart_owned and cart and not lion_safe:
-		# Trail cleanly behind the Lead on the road so the cart & Lion never overlap Scarecrow or Tin Man
-		var offset := Vector3(0.0, 0.0, -3.2) if hauling else Vector3(2.2, 0.0, -1.6)
-		cart.global_position = cart.global_position.lerp(
-			actor.global_position + offset, 1.0 - exp(-4.2 * delta)
-		)
+		# Trail cleanly behind the Lead on the road — and steer AROUND the sleeping Lion so the cart NEVER rolls over him!
+		var offset := Vector3(0.0, 0.0, -3.2) if hauling else Vector3(2.4, 0.0, -1.8)
+		var want_cart := actor.global_position + offset
+		if not hauling and lion_asleep and lion and is_instance_valid(lion):
+			var to_cart := want_cart - lion.global_position
+			to_cart.y = 0.0
+			var dist_l := to_cart.length()
+			if dist_l < 2.85:
+				var push_dir := (to_cart / dist_l) if dist_l > 0.05 else Vector3(1.0, 0.0, 0.0)
+				want_cart = lion.global_position + push_dir * 2.95
+				want_cart.y = 0.08
+		var next_p := cart.global_position.lerp(want_cart, 1.0 - exp(-4.2 * delta))
+		if not hauling and lion_asleep and lion and is_instance_valid(lion):
+			var d_now := next_p - lion.global_position
+			d_now.y = 0.0
+			if d_now.length() < 2.65:
+				var pd := (d_now.normalized()) if d_now.length() > 0.05 else Vector3(1.0, 0.0, 0.0)
+				next_p = lion.global_position + pd * 2.68
+				next_p.y = 0.08
+		cart.global_position = next_p
 		cart.visible = true
 	if not hauling or lion == null:
 		return
@@ -442,20 +474,27 @@ func _finish_haul() -> void:
 			if cart:
 				cart.global_position = cart_park_pos
 		else:
-			# Smooth Lion wake-up & step down off the cart + smooth cart roll to park (zero popping!)
+			# Natural Lion stand-up, gentle step down beside the cart, and walk to clear air!
+			_waking_lion = true
+			var step_off := cart.global_position + Vector3(1.8, 0.08, 0.6) if cart else lion.global_position
+			var vis_l := lion.get_node_or_null("Visual") as Node3D
+			var walk_d := lion_safe_pos - step_off
+			walk_d.y = 0.0
+			if vis_l and walk_d.length() > 0.1:
+				vis_l.rotation.y = atan2(-walk_d.x, -walk_d.z)
 			var ltw := create_tween()
-			ltw.tween_property(lion, "global_position", lion.global_position + Vector3(0.6, 0.85, 0.6), 0.35).set_ease(Tween.EASE_OUT)
-			ltw.tween_property(lion, "global_position", lion_safe_pos, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			ltw.tween_property(lion, "global_position", step_off, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			ltw.tween_property(lion, "global_position", lion_safe_pos, clampf(walk_d.length() / 3.8, 0.6, 1.8)).set_trans(Tween.TRANS_LINEAR)
 			ltw.tween_callback(func():
+				_waking_lion = false
 				if lion and lion.has_method("set_parked"):
 					lion.call("set_parked", false)
 			)
 			if cart:
 				var ctw := create_tween()
-				ctw.tween_property(cart, "global_position", cart_park_pos, 0.75).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	if player and player.has_method("set_parked"):
+				ctw.tween_property(cart, "global_position", cart_park_pos, 0.95).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if player and player.has_method("set_parked") and not _waking_dorothy:
 		player.call("set_parked", false)
-		player.global_position = SAFE_SOUTH + Vector3(-2.0, 0, 0)
 	for n in ["SafeDorothyLab", "LionAsleepLab", "DorothyAsleepLab"]:
 		if has_node(n):
 			get_node(n).queue_free()
@@ -465,7 +504,7 @@ func _finish_haul() -> void:
 	_set_beat(Beat.ROAD_OPEN)
 
 func _pin_parked_bodies() -> void:
-	if dorothy_safe and not lion_safe and player and player.has_method("set_parked"):
+	if dorothy_safe and not lion_safe and not _waking_dorothy and player and player.has_method("set_parked"):
 		var sp := SAFE_SOUTH + Vector3(-2.0, 0, 0)
 		var p_on = player.get("parked")
 		if p_on != true:
@@ -474,7 +513,7 @@ func _pin_parked_bodies() -> void:
 			player.set("park_pos", sp)
 			if player.global_position.distance_to(sp) > 0.4:
 				player.global_position = sp
-	if lion_asleep and not hauling and not lion_safe and lion and lion.has_method("set_parked"):
+	if lion_asleep and not hauling and not lion_safe and not _waking_lion and lion and lion.has_method("set_parked"):
 		var l_on = lion.get("parked")
 		if l_on != true:
 			lion.call("set_parked", true, LION_FALL)
@@ -496,10 +535,13 @@ func _set_beat(next: Beat) -> void:
 			hud.set_objective("Dorothy and Lion sleep in the poppies. Lead Scarecrow or Tin Man (2 / 3).")
 			hud.set_prompt("Tab 2 or 3 · compass → CLEAR AIR south")
 		Beat.GET_CLEAR_AIR:
-			hud.set_objective("1/3  Walk SOUTH out of the red field. Collect CLEAR AIR (glowing blue orb) with Scarecrow or Tin Man — E.")
+			hud.set_objective("1/3  Walk SOUTH out of the red field. Collect CLEAR AIR (crystal wind fountain) with Scarecrow or Tin Man — E.")
 			hud.set_prompt("Compass → CLEAR AIR · E")
 			if clear_air:
 				clear_air.visible = true
+				for c in clear_air.get_children():
+					if c is CollisionShape3D:
+						(c as CollisionShape3D).disabled = false
 		Beat.GET_CART:
 			hud.set_objective("2/3  Collect the MICE CART east of the Yellow Brick Road — E. Dorothy waits safely south.")
 			hud.set_prompt("Compass → MICE CART · E")
@@ -564,6 +606,9 @@ func _ensure_cart_label() -> void:
 func _hide_node(n: Node3D) -> void:
 	if n and is_instance_valid(n):
 		n.visible = false
+		for c in n.get_children():
+			if c is CollisionShape3D:
+				(c as CollisionShape3D).disabled = true
 
 func _go_west(msg: String) -> void:
 	if _going:
@@ -667,31 +712,75 @@ func _spawn_party() -> void:
 		tinman.oil_and_free()
 
 func _spawn_set_pieces() -> void:
-	clear_air = Node3D.new()
+	clear_air = StaticBody3D.new()
 	clear_air.name = "ClearAir"
+	clear_air.collision_layer = 1
+	clear_air.collision_mask = 0
 	add_child(clear_air)
 	clear_air.global_position = CLEAR_AIR_POS
+	# Solid carved alabaster & gold pedestal + floating crystal prism + orbiting cyan wind-rings!
+	var c_cs := CollisionShape3D.new()
+	var c_sh := CylinderShape3D.new()
+	c_sh.radius = 0.88
+	c_sh.height = 2.6
+	c_cs.shape = c_sh
+	c_cs.position = Vector3(0, 1.3, 0)
+	clear_air.add_child(c_cs)
+
+	var ped_m := StandardMaterial3D.new()
+	ped_m.albedo_color = Color(0.88, 0.92, 0.96)
+	ped_m.roughness = 0.30
+	var gold_m := StandardMaterial3D.new()
+	gold_m.albedo_color = Color(0.92, 0.78, 0.36)
+	gold_m.metallic = 0.88
+	gold_m.roughness = 0.22
+	var ped := MeshInstance3D.new()
+	var pc := CylinderMesh.new()
+	pc.top_radius = 0.62
+	pc.bottom_radius = 0.82
+	pc.height = 0.85
+	ped.mesh = pc
+	ped.material_override = ped_m
+	ped.position = Vector3(0, 0.42, 0)
+	clear_air.add_child(ped)
+
 	var orb := MeshInstance3D.new()
 	var sph := SphereMesh.new()
-	sph.radius = 0.85
-	sph.height = 1.7
+	sph.radius = 0.48
+	sph.height = 0.96
 	orb.mesh = sph
 	var om := StandardMaterial3D.new()
-	om.albedo_color = Color(0.45, 0.85, 1.0)
+	om.albedo_color = Color(0.55, 0.92, 1.0, 0.82)
+	om.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	om.emission_enabled = true
-	om.emission = Color(0.4, 0.9, 1.0)
-	om.emission_energy_multiplier = 2.4
+	om.emission = Color(0.45, 0.92, 1.0)
+	om.emission_energy_multiplier = 2.0
 	orb.material_override = om
-	orb.position = Vector3(0, 1.2, 0)
+	orb.position = Vector3(0, 1.55, 0)
 	clear_air.add_child(orb)
-	WorldKit.make_world_badge(clear_air, Vector3(0, 2.8, 0), "✦  Clear Air — Wakes Dorothy (E)", Color(0.65, 0.95, 1.0), 14.0)
+
+	_clear_air_ring = Node3D.new()
+	_clear_air_ring.position = Vector3(0, 1.55, 0)
+	clear_air.add_child(_clear_air_ring)
+	for ri in range(2):
+		var rm := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.62 + float(ri) * 0.16
+		tm.outer_radius = 0.68 + float(ri) * 0.16
+		rm.mesh = tm
+		rm.material_override = gold_m if ri == 0 else om
+		rm.rotation_degrees = Vector3(32.0 if ri == 0 else -40.0, 0.0, 24.0 * float(ri))
+		_clear_air_ring.add_child(rm)
+
+	WorldKit.make_world_badge(clear_air, Vector3(0, 2.8, 0), "✦  Clear Air Shrine — Wakes Dorothy (E)", Color(0.65, 0.95, 1.0), 14.0)
 	var olight := OmniLight3D.new()
 	olight.light_color = Color(0.5, 0.85, 1.0)
-	olight.light_energy = 4.0
+	olight.light_energy = 3.4
 	olight.omni_range = 12.0
 	clear_air.add_child(olight)
-	olight.position = Vector3(0, 1.5, 0)
+	olight.position = Vector3(0, 1.65, 0)
 	clear_air.visible = false
+	c_cs.disabled = true
 	cart = Node3D.new()
 	cart.name = "MiceCart"
 	add_child(cart)

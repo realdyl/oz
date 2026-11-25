@@ -37,10 +37,10 @@ func reset_party() -> void:
 	last_fail = ""
 
 const CAM_PITCH_MIN_DEG := -64.0
-const CAM_PITCH_MAX_DEG := -3.5
-const CAM_MIN_LEN := 2.5
+const CAM_PITCH_MAX_DEG := 17.5
+const CAM_MIN_LEN := 2.3
 const CAM_MAX_LEN := 6.2
-const CAM_FLOOR_CLEARANCE := 0.42
+const CAM_FLOOR_CLEARANCE := 0.18
 const STICK_DEADZONE := 0.16
 
 func _clamp_camera_above_ground(rig: Node3D, arm: SpringArm3D) -> void:

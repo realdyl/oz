@@ -402,10 +402,21 @@ static func make_button_theme(kansas: bool) -> Theme:
 	t.set_stylebox("grabber_area", "HSlider", slider_fill)
 	t.set_stylebox("grabber_area_highlight", "HSlider", slider_fill)
 
-	# CheckButton
+	# CheckButton (dedicated dark velvet pressed stylebox so toggled-ON options stay crisp & readable!)
+	var chk_on := _make_box(
+		Color(0.18, 0.19, 0.22, 0.96) if kansas else Color(0.20, 0.13, 0.25, 0.96),
+		accent,
+		2, 8, 18, 10, 8, Color(0, 0, 0, 0.35), Vector2(0, 2)
+	)
+	t.set_stylebox("normal", "CheckButton", btn_normal)
+	t.set_stylebox("hover", "CheckButton", btn_hover)
+	t.set_stylebox("focus", "CheckButton", btn_focus)
+	t.set_stylebox("pressed", "CheckButton", chk_on)
+	t.set_stylebox("hover_pressed", "CheckButton", btn_hover)
 	t.set_color("font_color", "CheckButton", text_col)
 	t.set_color("font_hover_color", "CheckButton", accent)
-	t.set_color("font_pressed_color", "CheckButton", accent)
+	t.set_color("font_pressed_color", "CheckButton", Color(0.99, 0.95, 0.84) if not kansas else Color(0.98, 0.99, 1.0))
+	t.set_color("font_hover_pressed_color", "CheckButton", Color(1.0, 0.96, 0.86))
 	t.set_font_size("font_size", "CheckButton", 16)
 
 	# HSeparator
