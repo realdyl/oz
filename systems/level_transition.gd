@@ -99,6 +99,7 @@ class HourglassCanvas extends Control:
 		draw_line(Vector2(cx - 14, cy), Vector2(cx + 14, cy), brass_hi, 2.0, true)
 
 var _root: Control
+var _backdrop: TextureRect
 var _veil: ColorRect
 var _glass: HourglassCanvas
 var _card: PanelContainer
@@ -136,6 +137,16 @@ func _build_ui() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_root)
+
+	# Phase P1.2: Full-bleed 16:9 painted Act Backdrop behind the translucent veil
+	_backdrop = TextureRect.new()
+	_backdrop.name = "SceneBackdrop"
+	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_backdrop.modulate = Color(1, 1, 1, 0)
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_backdrop)
 
 	_veil = ColorRect.new()
 	_veil.name = "Veil"
@@ -206,6 +217,8 @@ func _hide_now() -> void:
 	if _root:
 		_root.visible = false
 		_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _backdrop:
+		_backdrop.modulate.a = 0.0
 	if _veil:
 		_veil.color.a = 0.0
 	if _glass:
@@ -257,6 +270,32 @@ func go_to(scene_path: String, exit_title: String = "The hourglass turns…", en
 	get_tree().change_scene_to_file(scene_path)
 	_busy = false
 
+func _pick_backdrop_for(title: String) -> Texture2D:
+	var lt := title.to_lower()
+	var res_path := "res://assets/art/scenes/munchkinland.jpg"
+	if "homecoming" in lt or "home" in lt or "porch" in lt:
+		res_path = "res://assets/art/scenes/kansas_homecoming.jpg"
+	elif "kansas" in lt or "farm" in lt or "cyclone" in lt or "prairie" in lt:
+		res_path = "res://assets/art/scenes/kansas_calm.jpg"
+	elif "poppy" in lt or "meadow" in lt:
+		res_path = "res://assets/art/scenes/poppy_field.jpg"
+	elif "winkie" in lt or "west" in lt or "castle" in lt or "witch" in lt:
+		res_path = "res://assets/art/scenes/winkie_castle.jpg"
+	elif "emerald" in lt or "wizard" in lt or "palace" in lt:
+		res_path = "res://assets/art/scenes/emerald_city.jpg"
+	elif "glinda" in lt or "quadling" in lt or "south" in lt or "court" in lt:
+		res_path = "res://assets/art/scenes/glinda_court.jpg"
+	if ResourceLoader.exists(res_path):
+		var tex := ResourceLoader.load(res_path) as Texture2D
+		if tex != null:
+			return tex
+	var abs_path := ProjectSettings.globalize_path(res_path)
+	if FileAccess.file_exists(abs_path):
+		var img := Image.load_from_file(abs_path)
+		if img != null and not img.is_empty():
+			return ImageTexture.create_from_image(img)
+	return null
+
 func _run(title: String, hold: float) -> void:
 	if _is_headless():
 		return
@@ -268,19 +307,27 @@ func _run(title: String, hold: float) -> void:
 	_title.text = title
 	_glass.rotation_degrees = 0.0
 	_spin_deg = 0.0
+	if _backdrop:
+		_backdrop.texture = _pick_backdrop_for(title)
+		_backdrop.modulate.a = 0.0
 	_veil.color = Color(0.05, 0.03, 0.07, 0.0)
 	_glass.modulate.a = 0.0
 	_card.modulate.a = 0.0
 
+	var has_art := _backdrop != null and _backdrop.texture != null
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_veil, "color:a", 0.90, 0.35)
+	if has_art:
+		tw.tween_property(_backdrop, "modulate:a", 1.0, 0.35)
+	tw.tween_property(_veil, "color:a", 0.56 if has_art else 0.90, 0.35)
 	tw.tween_property(_glass, "modulate:a", 1.0, 0.4)
 	tw.tween_property(_card, "modulate:a", 1.0, 0.45)
 	await tw.finished
 	await get_tree().create_timer(hold).timeout
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
+	if has_art:
+		tw2.tween_property(_backdrop, "modulate:a", 0.0, 0.4)
 	tw2.tween_property(_veil, "color:a", 0.0, 0.4)
 	tw2.tween_property(_glass, "modulate:a", 0.0, 0.35)
 	tw2.tween_property(_card, "modulate:a", 0.0, 0.3)
