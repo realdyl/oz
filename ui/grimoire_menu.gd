@@ -313,11 +313,18 @@ func _refresh_tab() -> void:
 					})
 		4: # Shattered Memories
 			if sm:
+				var mem_ports := {
+					"kansas_locket": "res://assets/art/icons/mem_aunt_em_locket.png",
+					"kansas_barn_diary": "res://assets/art/icons/mem_cyclone_ledger.png",
+					"munchkin_porcelain_mask": "res://assets/art/icons/mem_porcelain_mask.png",
+					"munchkin_silver_ledger": "res://assets/art/icons/mem_guild_ledger.png",
+					"emerald_spectacles": "res://assets/art/icons/mem_emerald_spectacles.png",
+				}
 				for mem_id in sm.MEMORY_CATALOG.keys():
 					var entry: Dictionary = sm.MEMORY_CATALOG[mem_id]
 					var unlocked: bool = mem_id in sm.unlocked_memories
 					if unlocked:
-						_entries.append({"icon": "dorothy_sovereign", "name": "✦ " + str(entry["title"]), "sub": str(entry["region"]), "body": str(entry["text"])})
+						_entries.append({"icon": "dorothy_sovereign", "portrait": mem_ports.get(mem_id, ""), "name": "✦ " + str(entry["title"]), "sub": str(entry["region"]), "body": str(entry["text"])})
 					else:
 						_entries.append({"icon": "scarecrow_classic", "name": "✧ [Locked Memory]", "sub": str(entry["region"]), "body": "Explore cottage and farm interiors to recover this shattered memory fragment."})
 
