@@ -1,17 +1,53 @@
 extends Control
 
-## Custom-drawn 2D vector illustration badge for "The Tailor of Vices" shop items.
-## Replaces flat color swatches with recognizable storybook couture & weapon graphics.
+## Phase P3.2: Displays real painted "Tailor of Vices" couture product icons framed in antique brass,
+## with procedural vector fallback if a texture is unavailable.
+
+const ICON_MAP := {
+	"dorothy_gingham": "res://assets/art/icons/shop/dorothy_gingham.png",
+	"dorothy_velvet": "res://assets/art/icons/shop/dorothy_velvet.png",
+	"dorothy_sovereign": "res://assets/art/icons/shop/dorothy_sovereign.png",
+	"dorothy_whip_plus": "res://assets/art/icons/shop/dorothy_whip_plus.png",
+	"scarecrow_classic": "res://assets/art/icons/shop/scarecrow_classic.png",
+	"scarecrow_leather": "res://assets/art/icons/shop/scarecrow_classic.png",
+	"scarecrow_obsidian": "res://assets/art/icons/shop/scarecrow_obsidian.png",
+	"tinman_classic": "res://assets/art/portraits/tinman.png",
+	"tinman_velvet": "res://assets/art/icons/shop/tinman_royal.png",
+	"lion_classic": "res://assets/art/portraits/lion.png",
+	"lion_primal": "res://assets/art/icons/shop/lion_primal.png",
+	"toto_classic": "res://assets/art/portraits/toto.png",
+	"toto_silver_collar": "res://assets/art/icons/shop/toto_spiked.png",
+}
+
+static var _tex_cache: Dictionary = {}
 
 var item_id: String = ""
 var primary_tint: Color = Color(0.7, 0.5, 0.8)
 var is_equipped: bool = false
+var _art_tex: Texture2D = null
+
+static func _load_icon_tex(res_path: String) -> Texture2D:
+	if _tex_cache.has(res_path):
+		return _tex_cache[res_path]
+	var tex: Texture2D = null
+	if ResourceLoader.exists(res_path):
+		tex = ResourceLoader.load(res_path) as Texture2D
+	if tex == null:
+		var abs_path := ProjectSettings.globalize_path(res_path)
+		if FileAccess.file_exists(abs_path):
+			var img := Image.load_from_file(abs_path)
+			if img != null and not img.is_empty():
+				tex = ImageTexture.create_from_image(img)
+	_tex_cache[res_path] = tex
+	return tex
 
 func setup(id: String, tint: Color, equipped: bool = false) -> void:
 	item_id = id
 	primary_tint = tint
 	is_equipped = equipped
-	custom_minimum_size = Vector2(64, 64)
+	custom_minimum_size = Vector2(74, 74)
+	var path: String = str(ICON_MAP.get(id, ""))
+	_art_tex = _load_icon_tex(path) if path != "" else null
 	queue_redraw()
 
 func _draw() -> void:
@@ -19,10 +55,16 @@ func _draw() -> void:
 	var cx := r.size.x * 0.5
 	var cy := r.size.y * 0.5
 
-	# Dark velvet medallion frame with subtle radial sheen
+	# Dark velvet medallion frame with painted couture artwork (Phase P3.2)
 	draw_rect(r, Color(0.08, 0.04, 0.12, 1.0), true)
-	draw_circle(Vector2(cx, cy), r.size.x * 0.44, Color(primary_tint.r * 0.25, primary_tint.g * 0.20, primary_tint.b * 0.30, 0.85))
 	var border_col := Color(0.98, 0.82, 0.40, 1.0) if is_equipped else Color(0.68, 0.52, 0.36, 0.85)
+	if _art_tex != null:
+		draw_texture_rect(_art_tex, r.grow(-2.0), false)
+		draw_rect(r.grow(-1.0), border_col, false, 2.0)
+		for p in [Vector2(5, 5), Vector2(r.size.x - 5, 5), Vector2(5, r.size.y - 5), Vector2(r.size.x - 5, r.size.y - 5)]:
+			draw_circle(p, 2.0, border_col)
+		return
+	draw_circle(Vector2(cx, cy), r.size.x * 0.44, Color(primary_tint.r * 0.25, primary_tint.g * 0.20, primary_tint.b * 0.30, 0.85))
 	draw_rect(r.grow(-1.0), border_col, false, 2.0)
 	# Corner filigree dots
 	for p in [Vector2(5, 5), Vector2(r.size.x - 5, 5), Vector2(5, r.size.y - 5), Vector2(r.size.x - 5, r.size.y - 5)]:
