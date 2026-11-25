@@ -265,8 +265,8 @@ func _refresh_tab() -> void:
 	match _active_tab:
 		0: # Quests & Controls
 			var chap := str(sm.current_chapter) if sm else "Oz: The Road Home"
-			_entries.append({"icon": "dorothy_gingham", "name": "Current Chapter", "sub": chap, "body": "Follow the Yellow Brick Road, gather your circle, and confront the gilded illusions of Oz."})
-			_entries.append({"icon": "dorothy_sovereign", "name": "Controls & Keybindings", "sub": "Keyboard & Mouse", "body": "WASD / Arrows: Move   ·   Space: Jump / Heel-Blink\nF: Companion Power   ·   C / Z-X: Armaments\nE: Interact / Interiors   ·   B: Tailor of Vices Boutique\n1–5 / Tab: Switch Lead   ·   Q: Party Wheel\nJ: Oz Grimoire   ·   Esc: Pause & Save Slots"})
+			_entries.append({"icon": "dorothy_gingham", "portrait": "res://assets/art/icons/silver_shoes.png", "name": "Current Chapter", "sub": chap, "body": "Follow the Yellow Brick Road, gather your circle, and confront the gilded illusions of Oz."})
+			_entries.append({"icon": "dorothy_sovereign", "portrait": "res://assets/art/icons/wicker_basket.png", "name": "Controls & Keybindings", "sub": "Keyboard & Mouse", "body": "WASD / Arrows: Move   ·   Space: Jump / Heel-Blink\nF: Companion Power   ·   C / Z-X: Armaments\nE: Interact / Interiors   ·   B: Tailor of Vices Boutique\n1–5 / Tab: Switch Lead   ·   Q: Party Wheel\nJ: Oz Grimoire   ·   Esc: Pause & Save Slots"})
 		1: # Companions
 			if sm:
 				var icon_map := {"dorothy": "dorothy_gingham", "scarecrow": "scarecrow_classic", "tinman": "tinman_classic", "lion": "lion_classic", "toto": "toto_classic"}

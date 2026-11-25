@@ -1427,6 +1427,12 @@ static func build_water_cistern(parent: Node3D) -> void:
 	_mi(parent, _cyl(1.52, 1.52, 0.08, 16), water, Vector3(0, 0.98, 0))
 	_mi(parent, _cyl(0.65, 0.65, 0.02, 12), water, Vector3(1.85, 0.03, 0.95))
 	_mi(parent, _cyl(0.42, 0.42, 0.02, 10), water, Vector3(-1.45, 0.03, 1.55))
+	# Heavy iron-banded oak water bucket catching cistern overflow (obj_01_water_cistern_bucket.jpg)
+	_mi(parent, _cyl(0.36, 0.28, 0.54, 14), wood, Vector3(1.95, 0.28, 0.95))
+	for bhy in [0.16, 0.42]:
+		_mi(parent, _cyl(0.37, 0.37, 0.045, 14), iron, Vector3(1.95, float(bhy), 0.95))
+	_mi(parent, _cyl(0.32, 0.32, 0.04, 14), water, Vector3(1.95, 0.51, 0.95))
+	_mi(parent, _torus(0.30, 0.33, 12), iron, Vector3(1.95, 0.54, 0.95), Vector3(58, 0, 0))
 	# Arched forged-iron dome canopy, spoked winch wheel & twin hanging water buckets (we_04_winkie_courtyard.jpg)
 	for ai in range(4):
 		var aa := float(ai) * PI * 0.5
@@ -1591,6 +1597,9 @@ static func build_wicker_basket(parent: Node3D) -> void:
 	for ry in [0.09, 0.19, 0.29, 0.36]:
 		_mi(b, _cyl(0.355, 0.355, 0.025, 20), wicker_dark, Vector3(0, float(ry), 0), Vector3.ZERO, Vector3(1.24, 1.0, 0.90))
 	_mi(b, _cyl(0.33, 0.31, 0.06, 20), cloth, Vector3(0, 0.38, 0), Vector3.ZERO, Vector3(1.16, 1.0, 0.82))
+	# Twin slightly-ajar hinged wicker picnic lids (obj_04_wicker_basket.jpg)
+	_mi(b, _box(Vector3(0.34, 0.03, 0.54)), wicker, Vector3(-0.20, 0.43, 0), Vector3(0, 0, 14))
+	_mi(b, _box(Vector3(0.34, 0.03, 0.54)), wicker, Vector3(0.20, 0.43, 0), Vector3(0, 0, -14))
 	# Vertical arched carry handle (rotated 90 deg on X so it arches UP over the basket!)
 	var handle := TorusMesh.new()
 	handle.inner_radius = 0.26
@@ -1712,24 +1721,29 @@ static func build_mice_cart_visual(parent: Node3D) -> void:
 # PHASE P4: VINTAGE OIL CAN, EMERALD PALACE & OZ PROJECTION, GLINDA'S COURT
 # ============================================================================
 
-## Sculpted vintage polished-brass & copper oiler can on a carved stone plinth.
+## Sculpted vintage polished-brass & copper oiler can on a mossy forest tree stump (obj_02_oil_can.jpg).
 static func build_oil_can_visual(parent: Node3D) -> void:
-	var stone := _mat(Color(0.42, 0.40, 0.44), 0.90)
+	var bark := _mat(Color(0.28, 0.20, 0.13), 0.94)
+	var wood_cut := _mat(Color(0.48, 0.36, 0.24), 0.86)
+	var moss := _mat(Color(0.24, 0.42, 0.16), 0.92)
 	var brass := _mat(Color(0.88, 0.70, 0.28), 0.24, 0.88)
 	var copper := _mat(Color(0.76, 0.42, 0.22), 0.30, 0.82)
 	var oil_drop := _mat(Color(1.0, 0.82, 0.24), 0.12, 0.1, Color(1.0, 0.78, 0.18), 1.8)
 
-	# Carved stone garden plinth
-	_mi(parent, _cyl(0.32, 0.38, 0.14, 12), stone, Vector3(0, 0.07, 0))
-	_mi(parent, _cyl(0.24, 0.28, 0.24, 12), stone, Vector3(0, 0.26, 0))
+	# Mossy forest tree stump with flared roots & cut top rings
+	_mi(parent, _cyl(0.36, 0.46, 0.18, 12), bark, Vector3(0, 0.09, 0))
+	_mi(parent, _cyl(0.31, 0.36, 0.22, 12), bark, Vector3(0, 0.27, 0))
+	_mi(parent, _cyl(0.29, 0.29, 0.03, 14), wood_cut, Vector3(0, 0.38, 0))
+	_mi(parent, _torus(0.27, 0.33, 12), moss, Vector3(0, 0.37, 0))
 	# Domed brass oil reservoir + knurled copper collar + flared base rim
 	var can := Node3D.new()
-	can.position = Vector3(0, 0.38, 0)
+	can.position = Vector3(0, 0.39, 0)
 	parent.add_child(can)
 	_mi(can, _cyl(0.20, 0.23, 0.06, 18), copper, Vector3(0, 0.03, 0))
 	_mi(can, _cyl(0.16, 0.21, 0.24, 18), brass, Vector3(0, 0.16, 0))
 	_mi(can, _sph(0.165, 0.20, 18), brass, Vector3(0, 0.28, 0))
 	_mi(can, _cyl(0.065, 0.075, 0.07, 14), copper, Vector3(0, 0.39, 0)) # knurled cap collar
+	_mi(can, _cyl(0.038, 0.042, 0.055, 10), brass, Vector3(-0.11, 0.34, 0), Vector3(0, 0, 28)) # angled brass filler cap
 	# Long graceful tapered swan-neck oiler spout + glowing golden oil droplet at tip
 	_mi(can, _cyl(0.014, 0.048, 0.46, 12), brass, Vector3(0.12, 0.56, 0), Vector3(0, 0, -28))
 	_mi(can, _sph(0.034, 0.062, 10), oil_drop, Vector3(0.24, 0.78, 0))
