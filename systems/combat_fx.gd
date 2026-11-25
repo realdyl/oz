@@ -542,12 +542,12 @@ func whip_lash(host: Node3D, from: Vector3, to: Vector3) -> void:
 	cyl.height = dist
 	beam.mesh = cyl
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.95, 0.14, 0.36, 0.92)
+	mat.albedo_color = Color(0.74, 0.10, 0.24, 0.94) # braided burgundy-crimson silk (arm_01_crimson_whip.jpg)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.18, 0.46)
-	mat.emission_energy_multiplier = 2.8
+	mat.emission = Color(0.96, 0.16, 0.34)
+	mat.emission_energy_multiplier = 2.6
 	beam.material_override = mat
 	root.add_child(beam)
 	var mid := (from + to) * 0.5 + Vector3(0, 0.85, 0)
@@ -558,29 +558,33 @@ func whip_lash(host: Node3D, from: Vector3, to: Vector3) -> void:
 	var tw := host.get_tree().create_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.28)
 	tw.tween_callback(beam.queue_free)
-	flash_sphere(host, to + Vector3(0, 0.85, 0), Color(1.0, 0.22, 0.52), 0.55, 0.22)
+	# Faceted ruby-crystal tip impact burst + golden filigree spark
+	flash_sphere(host, to + Vector3(0, 0.85, 0), Color(1.0, 0.12, 0.26), 0.58, 0.24)
+	flash_sphere(host, to + Vector3(0, 0.85, 0), Color(0.98, 0.78, 0.34), 0.32, 0.16)
 
 func silk_cocoon(host: Node3D, target_pos: Vector3) -> void:
 	var root := _host_root(host)
 	if root == null:
 		return
-	for i in range(3):
+	for i in range(4):
 		var ring := MeshInstance3D.new()
 		var t := TorusMesh.new()
-		t.inner_radius = 0.36
-		t.outer_radius = 0.44
+		var is_gold_knot := (i == 3)
+		t.inner_radius = 0.40 if is_gold_knot else 0.36
+		t.outer_radius = 0.45 if is_gold_knot else 0.44
 		ring.mesh = t
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.96, 0.32, 0.78, 0.88)
+		# Iridescent dusty-rose/lavender silk + glowing golden knotwork cord (arm_04_silk_ribbon.jpg)
+		mat.albedo_color = Color(0.98, 0.84, 0.38, 0.90) if is_gold_knot else Color(0.84, 0.46, 0.68, 0.88)
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.emission_enabled = true
-		mat.emission = Color(1.0, 0.42, 0.86)
-		mat.emission_energy_multiplier = 2.0
+		mat.emission = Color(1.0, 0.86, 0.40) if is_gold_knot else Color(0.92, 0.50, 0.76)
+		mat.emission_energy_multiplier = 2.4 if is_gold_knot else 1.8
 		ring.material_override = mat
 		root.add_child(ring)
-		ring.global_position = target_pos + Vector3(0, 0.35 + float(i) * 0.35, 0)
-		ring.rotation_degrees = Vector3(float(i) * 18.0, float(i) * 45.0, float(i) * -15.0)
+		ring.global_position = target_pos + Vector3(0, 0.35 + float(i % 3) * 0.35, 0)
+		ring.rotation_degrees = Vector3(float(i) * 22.0, float(i) * 45.0, float(i) * -18.0)
 		var tw := host.get_tree().create_tween()
 		tw.tween_property(ring, "rotation:y", ring.rotation.y + TAU, 1.4)
 		tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 1.4)
@@ -590,26 +594,28 @@ func perfume_cloud(host: Node3D, center: Vector3, radius: float = 6.0) -> void:
 	var root := _host_root(host)
 	if root == null:
 		return
-	var cloud := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	sph.radius = 0.8
-	sph.height = 1.6
-	cloud.mesh = sph
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.95, 0.36, 0.72, 0.42)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.emission_enabled = true
-	mat.emission = Color(0.98, 0.32, 0.74)
-	mat.emission_energy_multiplier = 1.6
-	cloud.material_override = mat
-	root.add_child(cloud)
-	cloud.global_position = center + Vector3(0, 0.8, 0)
-	var tw := host.get_tree().create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(cloud, "scale", Vector3.ONE * (radius * 1.1), 0.55).set_ease(Tween.EASE_OUT)
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.65)
-	tw.chain().tween_callback(cloud.queue_free)
+	# Dual-shell amethyst-violet & rose-pink narcotic mist (arm_02_poppy_atomizer.jpg)
+	for layer_i in range(2):
+		var cloud := MeshInstance3D.new()
+		var sph := SphereMesh.new()
+		sph.radius = 0.82 if layer_i == 0 else 0.56
+		sph.height = sph.radius * 2.0
+		cloud.mesh = sph
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.68, 0.28, 0.86, 0.38) if layer_i == 0 else Color(0.96, 0.56, 0.82, 0.44)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.emission = Color(0.76, 0.32, 0.94) if layer_i == 0 else Color(1.0, 0.60, 0.86)
+		mat.emission_energy_multiplier = 1.65
+		cloud.material_override = mat
+		root.add_child(cloud)
+		cloud.global_position = center + Vector3(0, 0.8, 0)
+		var tw := host.get_tree().create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(cloud, "scale", Vector3.ONE * (radius * (1.12 if layer_i == 0 else 0.78)), 0.55).set_ease(Tween.EASE_OUT)
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.65)
+		tw.chain().tween_callback(cloud.queue_free)
 
 func gilded_chain(host: Node3D, pos_a: Vector3, pos_b: Vector3) -> void:
 	var root := _host_root(host)
@@ -624,12 +630,12 @@ func gilded_chain(host: Node3D, pos_a: Vector3, pos_b: Vector3) -> void:
 	cyl.height = dist
 	beam.mesh = cyl
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.98, 0.82, 0.28, 0.92)
+	mat.albedo_color = Color(0.94, 0.76, 0.28, 0.94) # hammered antique gold links (arm_03_gilded_chain.jpg)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.84, 0.32)
-	mat.emission_energy_multiplier = 2.6
+	mat.emission = Color(1.0, 0.82, 0.34)
+	mat.emission_energy_multiplier = 2.4
 	beam.material_override = mat
 	root.add_child(beam)
 	beam.global_position = (pos_a + pos_b) * 0.5 + Vector3(0, 0.85, 0)
@@ -639,6 +645,9 @@ func gilded_chain(host: Node3D, pos_a: Vector3, pos_b: Vector3) -> void:
 	var tw := host.get_tree().create_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, 1.2)
 	tw.tween_callback(beam.queue_free)
+	# Twin engraved rose-copper shackle anchor flashes at both tethered foes
+	flash_sphere(host, pos_a + Vector3(0, 0.85, 0), Color(0.88, 0.52, 0.38), 0.42, 0.35)
+	flash_sphere(host, pos_b + Vector3(0, 0.85, 0), Color(0.88, 0.52, 0.38), 0.42, 0.35)
 
 func rapture_burst(host: Node3D, pos: Vector3) -> void:
 	flash_sphere(host, pos + Vector3(0, 1.0, 0), Color(0.98, 0.10, 0.34), 2.8, 0.45)

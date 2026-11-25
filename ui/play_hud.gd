@@ -44,6 +44,7 @@ var _rose_bar: Control
 var _petal_labels: Array[Label] = []
 var _allure_bar: ProgressBar
 var _desire_lbl: Label
+var _armament_icon: TextureRect
 var _armament_lbl: Label
 var _rapture_overlay: ColorRect
 var _boss_panel: PanelContainer
@@ -773,12 +774,30 @@ func _build_vitality_ribbon() -> void:
 	_desire_lbl.add_theme_color_override("font_color", Color(0.94, 0.84, 0.56))
 	vb.add_child(_desire_lbl)
 
-	# Row 4: Phase P7 Active Rated-M Armament + Rapture Mode Prompt
+	# Row 4: Phase P7/P10.1 Active Rated-M Armament Icon + Rapture Mode Prompt
+	var arm_row := HBoxContainer.new()
+	arm_row.add_theme_constant_override("separation", 6)
+	vb.add_child(arm_row)
+	var arm_frame := PanelContainer.new()
+	var af_st := StyleBoxFlat.new()
+	af_st.bg_color = Color(0.10, 0.05, 0.12, 0.92)
+	af_st.border_color = Color(0.82, 0.66, 0.36, 0.90)
+	af_st.set_border_width_all(1)
+	af_st.set_corner_radius_all(3)
+	af_st.set_content_margin_all(1)
+	arm_frame.add_theme_stylebox_override("panel", af_st)
+	arm_row.add_child(arm_frame)
+	_armament_icon = TextureRect.new()
+	_armament_icon.custom_minimum_size = Vector2(24, 24)
+	_armament_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_armament_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_armament_icon.texture = _load_hud_portrait("res://assets/art/icons/arm_whip.png")
+	arm_frame.add_child(_armament_icon)
 	_armament_lbl = Label.new()
 	_armament_lbl.text = "[C] Lace Whip  ·  [Z/X] Swap  ·  [H] Rapture"
 	_armament_lbl.add_theme_font_size_override("font_size", 11)
 	_armament_lbl.add_theme_color_override("font_color", Color(0.98, 0.48, 0.72))
-	vb.add_child(_armament_lbl)
+	arm_row.add_child(_armament_lbl)
 
 	# Full-screen Rapture / Hysteria crimson edge overlay (hidden until H triggers!)
 	_rapture_overlay = ColorRect.new()
@@ -793,6 +812,16 @@ func _build_vitality_ribbon() -> void:
 func set_active_armament(arm_name: String) -> void:
 	if _armament_lbl:
 		_armament_lbl.text = "[C] %s  ·  [Z/X] Swap  ·  [H] Rapture" % arm_name
+	if _armament_icon:
+		var ln := arm_name.to_lower()
+		var icon_path := "res://assets/art/icons/arm_whip.png"
+		if "silk" in ln or "ribbon" in ln or "bind" in ln:
+			icon_path = "res://assets/art/icons/arm_ribbon.png"
+		elif "perfume" in ln or "atomizer" in ln or "mist" in ln:
+			icon_path = "res://assets/art/icons/arm_atomizer.png"
+		elif "chain" in ln or "tether" in ln:
+			icon_path = "res://assets/art/icons/arm_chain.png"
+		_armament_icon.texture = _load_hud_portrait(icon_path)
 	if has_method("show_toast"):
 		call("show_toast", "✦ Armament Equipped: %s (Press C)" % arm_name)
 

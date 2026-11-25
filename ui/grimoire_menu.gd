@@ -17,10 +17,10 @@ const TABS := [
 ]
 
 const ARMAMENT_LORE := [
-	{"id": "dorothy_whip_plus", "name": "The Lace Whip", "sub": "Slot 1 · Bind & Yank [C]", "body": "A braided crimson-silk lash that snares distant foes and drags them straight into Silver-Shoe Kick range, briefly immobilizing them in gilded lace."},
-	{"id": "dorothy_velvet", "name": "Silk Bindings", "sub": "Slot 2 · Multi-Cocoon [C]", "body": "Weaves enchanted rose-violet ribbons around up to three nearby foes, halting their advance and multiplying Allure generation."},
-	{"id": "dorothy_sovereign", "name": "Hypnotic Perfume", "sub": "Slot 3 · Enamored Mist [C]", "body": "Releases a shimmering pheromone cloud within 7 meters. Caught enemies become ♥ ENAMORED, pausing their assault in dazed devotion."},
-	{"id": "lion_primal", "name": "The Gilded Chain", "sub": "Slot 4 · Damage Tether [C]", "body": "Links the two nearest adversaries in hammered gold so 75% of all damage dealt to one mirrors directly onto the other."},
+	{"id": "dorothy_whip_plus", "portrait": "res://assets/art/icons/arm_whip.png", "name": "The Lace Whip", "sub": "Slot 1 · Bind & Yank [C]", "body": "A braided crimson-silk lash with an engraved brass rose hilt and faceted ruby tip that snares distant foes and drags them straight into Silver-Shoe Kick range."},
+	{"id": "dorothy_velvet", "portrait": "res://assets/art/icons/arm_ribbon.png", "name": "Silk Bindings", "sub": "Slot 2 · Multi-Cocoon [C]", "body": "Unspools iridescent dusty-rose and lavender silk ribbon embroidered with glowing golden knotwork around up to three nearby foes, multiplying Allure generation."},
+	{"id": "dorothy_sovereign", "portrait": "res://assets/art/icons/arm_atomizer.png", "name": "Hypnotic Perfume", "sub": "Slot 3 · Enamored Mist [C]", "body": "Sprays a shimmering amethyst-violet and rose narcotic mist from a filigree crystal atomizer. Caught enemies become ♥ ENAMORED, pausing their assault in dazed devotion."},
+	{"id": "lion_primal", "portrait": "res://assets/art/icons/arm_chain.png", "name": "The Gilded Chain", "sub": "Slot 4 · Damage Tether [C]", "body": "Links the two nearest adversaries in hammered antique-gold links and engraved rose-copper shackle clasps so 75% of all damage dealt to one mirrors onto the other."},
 ]
 
 var _backdrop: ColorRect
@@ -288,7 +288,7 @@ func _refresh_tab() -> void:
 					})
 		2: # Armaments
 			for arm in ARMAMENT_LORE:
-				_entries.append({"icon": arm["id"], "name": arm["name"], "sub": arm["sub"], "body": arm["body"]})
+				_entries.append({"icon": arm["id"], "portrait": arm.get("portrait", ""), "name": arm["name"], "sub": arm["sub"], "body": arm["body"]})
 		3: # Bestiary
 			if sm:
 				for foe in sm.BESTIARY_CATALOG:
