@@ -28,6 +28,10 @@ var _kansas_cached: bool = false
 
 const TYPE_CPS := 75.0
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
+const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
+const CircleShader := preload("res://ui/shaders/circle_medallion.gdshader")
+var _ornate_frame: Control = null
+var _portrait_mat: ShaderMaterial = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -64,32 +68,38 @@ func _build() -> void:
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	anchor.add_child(_panel)
 
+	_ornate_frame = OrnateFrame.new()
+	_ornate_frame.inset = 5.0
+	_ornate_frame.corner_size = 13.0
+	_ornate_frame.animated_sheen = true
+	_panel.add_child(_ornate_frame)
+
 	var card_hbox := HBoxContainer.new()
 	card_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card_hbox.add_theme_constant_override("separation", 16)
 	_panel.add_child(card_hbox)
 
-	# Gilded Speaker Portrait Medallion (auto-shown for Dorothy, Scarecrow, Tin Man, Lion, Toto!)
+	# Gilded Circular Speaker Portrait Medallion
 	_portrait_frame = PanelContainer.new()
 	_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait_frame.visible = false
 	var pf_st := StyleBoxFlat.new()
-	pf_st.bg_color = Color(0.08, 0.04, 0.10, 1.0)
-	pf_st.border_color = Color(0.769, 0.620, 0.353, 0.96)
-	pf_st.set_border_width_all(2)
-	pf_st.set_corner_radius_all(6)
-	pf_st.content_margin_left = 3
-	pf_st.content_margin_right = 3
-	pf_st.content_margin_top = 3
-	pf_st.content_margin_bottom = 3
+	pf_st.bg_color = Color(0.06, 0.03, 0.08, 0.0)
+	pf_st.set_border_width_all(0)
+	pf_st.set_content_margin_all(2)
 	_portrait_frame.add_theme_stylebox_override("panel", pf_st)
 	card_hbox.add_child(_portrait_frame)
 
 	_portrait_tex = TextureRect.new()
-	_portrait_tex.custom_minimum_size = Vector2(92, 92)
+	_portrait_tex.custom_minimum_size = Vector2(96, 96)
 	_portrait_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_portrait_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not _is_headless():
+		_portrait_mat = ShaderMaterial.new()
+		_portrait_mat.shader = CircleShader
+		_portrait_mat.set_shader_parameter("is_active", 1.0)
+		_portrait_tex.material = _portrait_mat
 	_portrait_frame.add_child(_portrait_tex)
 
 	var vbox := VBoxContainer.new()
@@ -175,6 +185,11 @@ func _apply_palette(kansas: bool) -> void:
 		_hint_key.add_theme_color_override("font_color", OzThemeFactory.ink_color(kansas))
 	if _hint_lbl:
 		_hint_lbl.add_theme_color_override("font_color", OzThemeFactory.muted_text_color(kansas))
+	if _ornate_frame:
+		_ornate_frame.set("kansas_mode", kansas)
+		_ornate_frame.queue_redraw()
+	if _portrait_mat:
+		_portrait_mat.set_shader_parameter("greyscale", 1.0 if kansas else 0.0)
 
 func _detect_kansas_mode() -> bool:
 	var tree := get_tree()

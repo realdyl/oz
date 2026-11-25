@@ -3,6 +3,7 @@ extends CanvasLayer
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const SettingsMenuScript := preload("res://ui/shell/settings_menu.gd")
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
+const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
 
 ## Full in-game Pause Shell for Oz: The Road Home.
 ## Handles Esc toggle, tree pause, mouse capture release/restore,
@@ -89,6 +90,8 @@ func apply_theme_mode(p_kansas: bool) -> void:
 	_subtitle.add_theme_color_override("font_color", OzThemeFactory.muted_text_color(p_kansas))
 	if _settings_view:
 		_settings_view.call("apply_theme_mode", p_kansas)
+	if _backdrop and _backdrop.material is ShaderMaterial:
+		(_backdrop.material as ShaderMaterial).set_shader_parameter("kansas_mix", 1.0 if p_kansas else 0.0)
 
 func _build_ui() -> void:
 	_root = Control.new()
@@ -96,15 +99,20 @@ func _build_ui() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 
-	# Full-screen dark obsidian-plum backdrop + ornate filigree frame (ref_02_main_menu_ui.jpg)
+	# Full-screen dark obsidian-plum damask backdrop + ornate filigree frame (ref_02_main_menu_ui.jpg)
 	_backdrop = ColorRect.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.071, 0.035, 0.078, 0.84)
+	_backdrop.color = Color(0.071, 0.035, 0.078, 0.86)
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		var bmat := ShaderMaterial.new()
+		bmat.shader = FrostedShader
+		_backdrop.material = bmat
 	_root.add_child(_backdrop)
 
 	var screen_frame := OrnateFrame.new()
 	screen_frame.inset = 14.0
 	screen_frame.corner_size = 24.0
+	screen_frame.animated_sheen = true
 	_root.add_child(screen_frame)
 
 	# Full-screen CenterContainer guarantees dead-center modals at any resolution / UI scale

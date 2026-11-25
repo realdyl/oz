@@ -162,9 +162,20 @@ func _ready() -> void:
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		DirAccess.make_dir_recursive_absolute(SAVE_DIR)
 
+func get_allure_multiplier() -> float:
+	var eq_d := str(equipped_outfits.get("dorothy", "dorothy_gingham"))
+	if eq_d == "dorothy_sovereign":
+		return 1.40
+	if eq_d == "dorothy_velvet":
+		return 1.25
+	return 1.0
+
+func has_whip_mastery() -> bool:
+	return ("dorothy_whip_plus" in owned_items) or (str(equipped_outfits.get("dorothy", "")) == "dorothy_whip_plus")
+
 func add_desire(amount: int, reason: String = "") -> void:
 	desire_fragments += amount
-	allure = clampf(allure + float(amount) * 0.65, 0.0, 100.0)
+	allure = clampf(allure + float(amount) * 0.65 * get_allure_multiplier(), 0.0, 100.0)
 	desire_gained.emit(amount, reason)
 	state_changed.emit()
 
@@ -199,7 +210,18 @@ func set_current_location(scene_path: String, chapter_label: String) -> void:
 		current_scene_path = scene_path
 	if chapter_label != "":
 		current_chapter = chapter_label
+	call_deferred("reapply_all_outfits")
 	state_changed.emit()
+
+func reapply_all_outfits() -> void:
+	for char_id in equipped_outfits.keys():
+		var iid := str(equipped_outfits[char_id])
+		var catalog: Array = SHOP_CATALOG.get(char_id, [])
+		for it in catalog:
+			if str(it.get("id", "")) == iid:
+				if not iid.ends_with("_classic") and iid != "dorothy_gingham":
+					apply_outfit_to_world(char_id, it.get("tint", Color.WHITE))
+				break
 
 func _slot_path(slot: int) -> String:
 	return "%s/slot_%d.json" % [SAVE_DIR, clampi(slot, 1, MAX_SLOTS)]
@@ -218,6 +240,9 @@ func save_slot(slot: int) -> bool:
 		"allure": allure,
 		"unlocked_memories": unlocked_memories,
 		"opened_chests": opened_chests,
+		"owned_items": owned_items,
+		"equipped_outfits": equipped_outfits,
+		"difficulty": difficulty,
 		"saved_at": Time.get_datetime_string_from_system(false, true),
 	}
 	var f := FileAccess.open(_slot_path(slot), FileAccess.WRITE)
@@ -251,6 +276,15 @@ func load_slot(slot: int) -> bool:
 	opened_chests.clear()
 	for c in info.get("opened_chests", []):
 		opened_chests.append(str(c))
+	if info.has("owned_items") and info["owned_items"] is Array:
+		owned_items.clear()
+		for oi in info["owned_items"]:
+			owned_items.append(str(oi))
+	if info.has("equipped_outfits") and info["equipped_outfits"] is Dictionary:
+		for k in info["equipped_outfits"].keys():
+			equipped_outfits[str(k)] = str(info["equipped_outfits"][k])
+	if info.has("difficulty"):
+		difficulty = str(info.get("difficulty", "standard"))
 	current_scene_path = str(info.get("scene_path", "res://regions/kansas/farmyard.tscn"))
 	current_chapter = str(info.get("chapter", "Act 0 · Kansas"))
 	state_changed.emit()

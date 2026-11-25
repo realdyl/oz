@@ -7,6 +7,7 @@ extends CanvasLayer
 
 const ShopItemIcon := preload("res://ui/widgets/shop_item_icon.gd")
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
+const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
 const TotoCompanion := preload("res://actors/companions/toto_companion.gd")
 
 const VISUAL_SCRIPTS := {
@@ -36,6 +37,8 @@ var _selected_item_id: String = ""
 var _vp_container: SubViewportContainer
 var _vp: SubViewport
 var _turntable: Node3D
+var _stage_cam: Camera3D
+var _cam_dist: float = 3.25
 var _preview_actor: Node3D
 var _char_plaque_lbl: Label
 var _dragging_stage: bool = false
@@ -50,6 +53,9 @@ var _buy_btn: Button
 var _pip_vitality: Array[ColorRect] = []
 var _pip_allure: Array[ColorRect] = []
 var _pip_power: Array[ColorRect] = []
+var _pip_vitality_lbl: Label
+var _pip_allure_lbl: Label
+var _pip_power_lbl: Label
 
 const CHAR_TABS := [
 	{"id": "dorothy", "label": "Dorothy"},
@@ -106,7 +112,11 @@ func close() -> void:
 func _build_ui() -> void:
 	_backdrop = ColorRect.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.04, 0.015, 0.05, 0.86)
+	_backdrop.color = Color(0.04, 0.015, 0.05, 0.88)
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		var bmat := ShaderMaterial.new()
+		bmat.shader = FrostedShader
+		_backdrop.material = bmat
 	add_child(_backdrop)
 
 	var center := CenterContainer.new()
@@ -169,7 +179,7 @@ func _build_ui() -> void:
 		_build_turntable_world()
 
 	var rot_hint := Label.new()
-	rot_hint.text = "◄  DRAG TO ROTATE  ►"
+	rot_hint.text = "◄  DRAG TO ROTATE  ·  SCROLL TO ZOOM  ►"
 	rot_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rot_hint.add_theme_font_size_override("font_size", 11)
 	rot_hint.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
@@ -268,6 +278,11 @@ func _build_ui() -> void:
 	dp_st.content_margin_top = 10
 	dp_st.content_margin_bottom = 10
 	detail_panel.add_theme_stylebox_override("panel", dp_st)
+	var dp_frame := OrnateFrame.new()
+	dp_frame.inset = 4.0
+	dp_frame.corner_size = 10.0
+	dp_frame.show_diamonds = false
+	detail_panel.add_child(dp_frame)
 	right_col.add_child(detail_panel)
 
 	var detail_hb := HBoxContainer.new()
@@ -289,9 +304,9 @@ func _build_ui() -> void:
 	_detail_perk.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
 	stats_col.add_child(_detail_perk)
 
-	_pip_vitality = _make_pip_row(stats_col, "VITALITY")
-	_pip_allure = _make_pip_row(stats_col, "ALLURE")
-	_pip_power = _make_pip_row(stats_col, "COMBAT EDGE")
+	_pip_vitality = _make_pip_row(stats_col, "VITALITY", 0)
+	_pip_allure = _make_pip_row(stats_col, "ALLURE", 1)
+	_pip_power = _make_pip_row(stats_col, "RESISTANCE", 2)
 
 	var cta_col := VBoxContainer.new()
 	cta_col.custom_minimum_size = Vector2(185, 0)
@@ -331,7 +346,7 @@ func _build_ui() -> void:
 	foot_hint.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
 	footer.add_child(foot_hint)
 
-func _make_pip_row(parent: VBoxContainer, label_txt: String) -> Array[ColorRect]:
+func _make_pip_row(parent: VBoxContainer, label_txt: String, slot_kind: int = 0) -> Array[ColorRect]:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 3)
 	parent.add_child(hb)
@@ -348,6 +363,17 @@ func _make_pip_row(parent: VBoxContainer, label_txt: String) -> Array[ColorRect]
 		cr.color = Color(0.22, 0.16, 0.26, 0.85)
 		hb.add_child(cr)
 		pips.append(cr)
+	var pct := Label.new()
+	pct.custom_minimum_size = Vector2(44, 0)
+	pct.add_theme_font_size_override("font_size", 11)
+	pct.add_theme_color_override("font_color", Color(0.95, 0.84, 0.52))
+	hb.add_child(pct)
+	if slot_kind == 0:
+		_pip_vitality_lbl = pct
+	elif slot_kind == 1:
+		_pip_allure_lbl = pct
+	else:
+		_pip_power_lbl = pct
 	return pips
 
 func _set_pips(pips: Array[ColorRect], count: int, lit_col: Color) -> void:
@@ -384,12 +410,12 @@ func _build_turntable_world() -> void:
 	rim.position = Vector3(-1.8, 1.9, -1.6)
 	stage.add_child(rim)
 
-	var cam := Camera3D.new()
-	cam.fov = 36.0
-	cam.position = Vector3(0.0, 1.08, 3.25)
-	cam.look_at(Vector3(0.0, 0.80, 0.0), Vector3.UP)
-	cam.current = true
-	stage.add_child(cam)
+	_stage_cam = Camera3D.new()
+	_stage_cam.fov = 36.0
+	_stage_cam.position = Vector3(0.0, 1.08, _cam_dist)
+	_stage_cam.look_at(Vector3(0.0, 0.80, 0.0), Vector3.UP)
+	_stage_cam.current = true
+	stage.add_child(_stage_cam)
 
 	_turntable = Node3D.new()
 	_turntable.name = "Turntable"
@@ -426,9 +452,16 @@ func _build_turntable_world() -> void:
 		_turntable.add_child(ring)
 
 func _on_stage_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_dragging_stage = event.pressed
-		_last_drag_x = event.position.x
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_dragging_stage = event.pressed
+			_last_drag_x = event.position.x
+		elif event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			var step := -0.22 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.22
+			_cam_dist = clampf(_cam_dist + step, 2.25, 4.15)
+			if _stage_cam:
+				_stage_cam.position = Vector3(0.0, 1.08, _cam_dist)
+				_stage_cam.look_at(Vector3(0.0, 0.80, 0.0), Vector3.UP)
 	elif event is InputEventMouseMotion and _dragging_stage:
 		var dx: float = event.position.x - _last_drag_x
 		_last_drag_x = event.position.x
@@ -476,6 +509,13 @@ func _update_detail_panel(it: Dictionary) -> void:
 	_set_pips(_pip_vitality, vit_pips, Color(0.910, 0.776, 0.478))
 	_set_pips(_pip_allure, all_pips, Color(0.92, 0.34, 0.58))
 	_set_pips(_pip_power, pow_pips, Color(0.86, 0.68, 0.34))
+	if _pip_vitality_lbl:
+		_pip_vitality_lbl.text = " +%d%%" % ((vit_pips - 4) * 5) if vit_pips > 4 else " BASE"
+	if _pip_allure_lbl:
+		var all_pct := 40 if "sovereign" in iid else (25 if "velvet" in iid else maxi(0, (all_pips - 5) * 6))
+		_pip_allure_lbl.text = " +%d%%" % all_pct if all_pct > 0 else " BASE"
+	if _pip_power_lbl:
+		_pip_power_lbl.text = " +%d%%" % ((pow_pips - 4) * 5) if pow_pips > 4 else " BASE"
 
 	if iid == equipped_id:
 		_detail_cost.text = "✦ CURRENTLY EQUIPPED"
@@ -547,6 +587,9 @@ func _refresh() -> void:
 			_refresh()
 		)
 		card.mouse_entered.connect(func():
+			var afx := get_node_or_null("/root/AudioFx")
+			if afx and afx.has_method("play"):
+				afx.play("ui_hover", -12.0)
 			_rebuild_preview_actor(item_ref.get("tint", Color.WHITE))
 			_update_detail_panel(item_ref)
 		)

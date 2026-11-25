@@ -7,6 +7,11 @@ const GrimoireMenuScript := preload("res://ui/grimoire_menu.gd")
 const ShopMenuScript := preload("res://ui/shop_menu.gd")
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 const RoseVitalityBar := preload("res://ui/widgets/rose_vitality_bar.gd")
+const PartyMedallionWheel := preload("res://ui/widgets/party_medallion_wheel.gd")
+const ArmamentDock := preload("res://ui/widgets/armament_dock.gd")
+const AllureGauge := preload("res://ui/widgets/allure_gauge.gd")
+const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
+const RaptureShader := preload("res://ui/shaders/rapture_vignette.gdshader")
 const WorldKit := preload("res://systems/world_kit.gd")
 const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
@@ -39,10 +44,13 @@ var threat_compass: Label
 var pause_menu: CanvasLayer
 var grimoire_menu: CanvasLayer
 var shop_menu: CanvasLayer
-var _vitality_panel: PanelContainer
+var _vitality_panel: Control
 var _rose_bar: Control
 var _petal_labels: Array[Label] = []
 var _allure_bar: ProgressBar
+var _allure_gauge: Control
+var _party_wheel: Control
+var _armament_dock: Control
 var _desire_lbl: Label
 var _armament_icon: TextureRect
 var _armament_lbl: Label
@@ -289,6 +297,8 @@ func _refresh_lead_bar() -> void:
 		_kit_panel.add_theme_stylebox_override("panel", OzThemeFactory.make_pill_style(kansas_mode, 10, 5))
 		_kit_verb_lbl.text = active_verb
 		_kit_verb_lbl.add_theme_color_override("font_color", OzThemeFactory.accent_color(kansas_mode))
+	if _party_wheel and _party_wheel.has_method("refresh_from_party"):
+		_party_wheel.call("refresh_from_party")
 
 func _apply_theme() -> void:
 	var text_col := OzThemeFactory.text_color(kansas_mode)
@@ -332,6 +342,14 @@ func _apply_theme() -> void:
 
 	if pause_menu:
 		pause_menu.call("apply_theme_mode", kansas_mode)
+	if objective_panel:
+		var ofr := objective_panel.get_node_or_null("OrnateObjFrame")
+		if ofr:
+			ofr.set("kansas_mode", kansas_mode)
+			ofr.queue_redraw()
+	if _party_wheel and _party_wheel.has_method("set_kansas"):
+		_party_wheel.call("set_kansas", kansas_mode)
+	_refresh_vitality_ribbon()
 
 	_refresh_lead_bar()
 	_style_all_external_children()
@@ -375,7 +393,11 @@ func _relayout_left_external_labels() -> void:
 func set_kansas_mode(on: bool) -> void:
 	kansas_mode = on
 	if lead_bar:
-		lead_bar.visible = not on and _roster_text != ""
+		lead_bar.visible = false
+	if _party_wheel:
+		_party_wheel.visible = not on and _roster_text != ""
+	if _armament_dock:
+		_armament_dock.visible = not on and _roster_text != ""
 	if threat_radar:
 		threat_radar.visible = not on
 		if on and threat_radar.has_method("update_threat"):
@@ -387,7 +409,11 @@ func set_kansas_mode(on: bool) -> void:
 func set_party_roster(text: String) -> void:
 	_roster_text = text
 	if lead_bar:
-		lead_bar.visible = not kansas_mode and text != ""
+		lead_bar.visible = false
+	if _party_wheel:
+		_party_wheel.visible = not kansas_mode and text != ""
+	if _armament_dock:
+		_armament_dock.visible = not kansas_mode and text != ""
 	_refresh_lead_bar()
 
 func set_objective(text: String) -> void:
@@ -494,9 +520,34 @@ func _process(delta: float) -> void:
 			toast_panel.visible = false
 
 	_sync_dialogue_quiet_hours()
+	_sync_live_combat_chrome(delta)
 	_update_grass_rustle()
 	_update_threat_compass()
 	_update_controls_strip()
+
+func _sync_live_combat_chrome(delta: float) -> void:
+	if _is_headless():
+		return
+	var sm := get_node_or_null("/root/SaveManager")
+	var player := get_tree().get_first_node_in_group("player")
+	if _armament_dock and _armament_dock.visible:
+		var cd_ratio := 0.0
+		var rap_on := false
+		if player:
+			var cd_val := float(player.get("_armament_cd")) if "_armament_cd" in player else 0.0
+			cd_ratio = clampf(cd_val / 0.85, 0.0, 1.0)
+			rap_on = (float(player.get("_rapture_t")) if "_rapture_t" in player else 0.0) > 0.0
+		var can_rap := sm != null and (float(sm.allure) >= 35.0 or int(sm.hp) <= 2)
+		_armament_dock.call("update_live_state", cd_ratio, can_rap, rap_on)
+
+	# Adaptive Exploration Restraint + High-Contrast A11y hook
+	var hi_con: bool = sm != null and bool(sm.high_contrast_hud)
+	var in_threat: bool = threat_radar != null and bool(threat_radar.get("has_threat"))
+	var target_a := 1.0 if (hi_con or in_threat or kansas_mode) else 0.88
+	if _vitality_panel:
+		_vitality_panel.modulate.a = move_toward(_vitality_panel.modulate.a, target_a, delta * 3.0)
+	if _party_wheel and _party_wheel.visible:
+		_party_wheel.modulate.a = move_toward(_party_wheel.modulate.a, target_a, delta * 3.0)
 
 func _update_grass_rustle() -> void:
 	var party := get_node_or_null("/root/Party")
@@ -516,9 +567,14 @@ func _sync_dialogue_quiet_hours() -> void:
 		if box is Control and (box as Control).visible:
 			dia_open = true
 	if lead_bar:
-		var want_lead := (not kansas_mode) and (_roster_text != "") and (not dia_open)
-		if lead_bar.visible != want_lead:
-			lead_bar.visible = want_lead
+		lead_bar.visible = false
+	var want_combat_hud := (not kansas_mode) and (_roster_text != "") and (not dia_open)
+	if _party_wheel and _party_wheel.visible != want_combat_hud:
+		_party_wheel.visible = want_combat_hud
+	if _armament_dock and _armament_dock.visible != want_combat_hud:
+		_armament_dock.visible = want_combat_hud
+	if _vitality_panel:
+		_vitality_panel.visible = not dia_open
 	if prompt_center and dia_open:
 		prompt_center.visible = false
 	if controls_panel:
@@ -700,128 +756,91 @@ func _build_vitality_ribbon() -> void:
 	var safe := get_node_or_null("SafeRoot") as Control
 	if safe == null:
 		return
-	_vitality_panel = PanelContainer.new()
-	_vitality_panel.name = "VitalityRibbon"
-	_vitality_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_vitality_panel.offset_left = -326.0
-	_vitality_panel.offset_right = -16.0
-	_vitality_panel.offset_top = 14.0
-	_vitality_panel.offset_bottom = 132.0
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.086, 0.051, 0.102, 0.90) # #160D1A Smoked Glass
-	st.border_color = Color(0.769, 0.620, 0.353, 0.92) # #C49E5A Antique Brass
-	st.set_border_width_all(2)
-	st.set_corner_radius_all(6)
-	st.content_margin_left = 14
-	st.content_margin_right = 14
-	st.content_margin_top = 8
-	st.content_margin_bottom = 8
-	_vitality_panel.add_theme_stylebox_override("panel", st)
-	safe.add_child(_vitality_panel)
-
-	var v_frame := OrnateFrame.new()
-	v_frame.inset = 4.0
-	v_frame.corner_size = 10.0
-	v_frame.show_diamonds = false
-	_vitality_panel.add_child(v_frame)
 
 	if objective_panel and objective_panel.get_node_or_null("OrnateObjFrame") == null:
 		var o_frame := OrnateFrame.new()
 		o_frame.name = "OrnateObjFrame"
 		o_frame.inset = 4.0
-		o_frame.corner_size = 10.0
+		o_frame.corner_size = 11.0
 		o_frame.show_diamonds = false
+		o_frame.animated_sheen = true
 		objective_panel.add_child(o_frame)
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
-	_vitality_panel.add_child(vb)
+	# ========================================================================
+	# TOP-RIGHT: Frameless Floating Alice-Class Rose Vine + Allure Gauge + Desire Crystal
+	# Matches ref_03_gameplay_hud.jpg pixel-for-pixel!
+	# ========================================================================
+	var cluster := VBoxContainer.new()
+	cluster.name = "VitalityRibbon"
+	cluster.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	cluster.offset_left = -284.0
+	cluster.offset_right = -16.0
+	cluster.offset_top = 10.0
+	cluster.offset_bottom = 148.0
+	cluster.add_theme_constant_override("separation", 2)
+	cluster.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	safe.add_child(cluster)
+	_vitality_panel = cluster
 
-	# Row 1: 5 Crimson-Silver Rose Buds on a thorny silver vine (ref_03_gameplay_hud.jpg)
-	var petal_row := HBoxContainer.new()
-	petal_row.add_theme_constant_override("separation", 6)
-	vb.add_child(petal_row)
-	var vit_tag := Label.new()
-	vit_tag.text = "VITALITY"
-	vit_tag.add_theme_font_size_override("font_size", 11)
-	vit_tag.add_theme_color_override("font_color", Color(0.910, 0.776, 0.478))
-	vit_tag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	petal_row.add_child(vit_tag)
 	_rose_bar = RoseVitalityBar.new()
-	petal_row.add_child(_rose_bar)
+	cluster.add_child(_rose_bar)
 
-	# Row 2: Allure / Desire Filigree Progress Bar
-	_allure_bar = ProgressBar.new()
-	_allure_bar.min_value = 0.0
-	_allure_bar.max_value = 100.0
-	_allure_bar.value = 35.0
-	_allure_bar.show_percentage = false
-	_allure_bar.custom_minimum_size = Vector2(220, 8)
-	var bg_sb := StyleBoxFlat.new()
-	bg_sb.bg_color = Color(0.14, 0.10, 0.18, 0.9)
-	bg_sb.set_corner_radius_all(4)
-	var fg_sb := StyleBoxFlat.new()
-	fg_sb.bg_color = Color(0.92, 0.30, 0.56, 0.95)
-	fg_sb.set_corner_radius_all(4)
-	_allure_bar.add_theme_stylebox_override("background", bg_sb)
-	_allure_bar.add_theme_stylebox_override("fill", fg_sb)
-	vb.add_child(_allure_bar)
+	_allure_gauge = AllureGauge.new()
+	cluster.add_child(_allure_gauge)
 
-	# Row 3: Desire Fragments + Grimoire/Wheel Shortcuts
 	_desire_lbl = Label.new()
-	_desire_lbl.text = "♦ 0 Desire  ·  [J] Grimoire  ·  [Q] Wheel"
-	_desire_lbl.add_theme_font_size_override("font_size", 11)
-	_desire_lbl.add_theme_color_override("font_color", Color(0.94, 0.84, 0.56))
-	vb.add_child(_desire_lbl)
+	_desire_lbl.text = "[B] Boutique  ·  [J] Grimoire  ·  [Q] Wheel"
+	_desire_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_desire_lbl.add_theme_font_size_override("font_size", 10)
+	_desire_lbl.add_theme_color_override("font_color", Color(0.84, 0.76, 0.68, 0.88))
+	_desire_lbl.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.05, 0.90))
+	_desire_lbl.add_theme_constant_override("outline_size", 3)
+	_desire_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cluster.add_child(_desire_lbl)
 
-	# Row 4: Phase P7/P10.1 Active Rated-M Armament Icon + Rapture Mode Prompt
-	var arm_row := HBoxContainer.new()
-	arm_row.add_theme_constant_override("separation", 6)
-	vb.add_child(arm_row)
-	var arm_frame := PanelContainer.new()
-	var af_st := StyleBoxFlat.new()
-	af_st.bg_color = Color(0.10, 0.05, 0.12, 0.92)
-	af_st.border_color = Color(0.82, 0.66, 0.36, 0.90)
-	af_st.set_border_width_all(1)
-	af_st.set_corner_radius_all(3)
-	af_st.set_content_margin_all(1)
-	arm_frame.add_theme_stylebox_override("panel", af_st)
-	arm_row.add_child(arm_frame)
-	_armament_icon = TextureRect.new()
-	_armament_icon.custom_minimum_size = Vector2(24, 24)
-	_armament_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_armament_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_armament_icon.texture = _load_hud_portrait("res://assets/art/icons/arm_whip.png")
-	arm_frame.add_child(_armament_icon)
-	_armament_lbl = Label.new()
-	_armament_lbl.text = "[C] Lace Whip  ·  [Z/X] Swap  ·  [H] Rapture"
-	_armament_lbl.add_theme_font_size_override("font_size", 11)
-	_armament_lbl.add_theme_color_override("font_color", Color(0.98, 0.48, 0.72))
-	arm_row.add_child(_armament_lbl)
+	# ========================================================================
+	# BOTTOM-LEFT: Circular 5-Portrait Party Medallion Wheel (ref_03_gameplay_hud.jpg)
+	# ========================================================================
+	_party_wheel = PartyMedallionWheel.new()
+	_party_wheel.name = "PartyMedallionWheel"
+	_party_wheel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_party_wheel.offset_left = 10.0
+	_party_wheel.offset_right = 258.0
+	_party_wheel.offset_top = -188.0
+	_party_wheel.offset_bottom = -10.0
+	_party_wheel.visible = false
+	safe.add_child(_party_wheel)
 
-	# Full-screen Rapture / Hysteria crimson edge overlay (hidden until H triggers!)
+	# ========================================================================
+	# BOTTOM-RIGHT: 4 Circular Brass Armament Medallion Slots (ref_03_gameplay_hud.jpg)
+	# ========================================================================
+	_armament_dock = ArmamentDock.new()
+	_armament_dock.name = "ArmamentDock"
+	_armament_dock.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_armament_dock.offset_left = -264.0
+	_armament_dock.offset_right = -18.0
+	_armament_dock.offset_top = -112.0
+	_armament_dock.offset_bottom = -14.0
+	_armament_dock.visible = false
+	safe.add_child(_armament_dock)
+
+	# Full-screen Alice-Class Rapture / Hysteria Vignette Shader Overlay (hidden until H triggers!)
 	_rapture_overlay = ColorRect.new()
 	_rapture_overlay.name = "RaptureOverlay"
 	_rapture_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_rapture_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_rapture_overlay.color = Color(0.75, 0.04, 0.22, 0.16)
+	_rapture_overlay.color = Color(0.75, 0.04, 0.22, 0.18)
+	if not _is_headless():
+		var rmat := ShaderMaterial.new()
+		rmat.shader = RaptureShader
+		_rapture_overlay.material = rmat
 	_rapture_overlay.visible = false
 	safe.add_child(_rapture_overlay)
 	safe.move_child(_rapture_overlay, 0)
 
 func set_active_armament(arm_name: String) -> void:
-	if _armament_lbl:
-		_armament_lbl.text = "[C] %s  ·  [Z/X] Swap  ·  [H] Rapture" % arm_name
-	if _armament_icon:
-		var ln := arm_name.to_lower()
-		var icon_path := "res://assets/art/icons/arm_whip.png"
-		if "silk" in ln or "ribbon" in ln or "bind" in ln:
-			icon_path = "res://assets/art/icons/arm_ribbon.png"
-		elif "perfume" in ln or "atomizer" in ln or "mist" in ln:
-			icon_path = "res://assets/art/icons/arm_atomizer.png"
-		elif "chain" in ln or "tether" in ln:
-			icon_path = "res://assets/art/icons/arm_chain.png"
-		_armament_icon.texture = _load_hud_portrait(icon_path)
+	if _armament_dock and _armament_dock.has_method("set_active_by_name"):
+		_armament_dock.call("set_active_by_name", arm_name)
 	if has_method("show_toast"):
 		call("show_toast", "✦ Armament Equipped: %s (Press C)" % arm_name)
 
@@ -912,10 +931,12 @@ func _refresh_vitality_ribbon() -> void:
 	var cur_hp: int = int(sm.hp)
 	if _rose_bar and _rose_bar.has_method("set_vitality"):
 		_rose_bar.call("set_vitality", cur_hp, int(sm.max_hp), kansas_mode)
-	if _allure_bar:
-		_allure_bar.value = float(sm.allure)
+	if _allure_gauge and _allure_gauge.has_method("set_values"):
+		_allure_gauge.call("set_values", float(sm.allure), int(sm.desire_fragments), kansas_mode)
+		_allure_gauge.visible = not kansas_mode
 	if _desire_lbl:
-		_desire_lbl.text = "♦ %d Desire · [B] Shop · [J] Codex · [Q] Wheel" % int(sm.desire_fragments)
+		_desire_lbl.visible = not kansas_mode
+		_desire_lbl.text = "[B] Boutique  ·  [J] Grimoire  ·  [Q] Wheel"
 
 func _build_quick_wheel() -> void:
 	_wheel_root = CenterContainer.new()
@@ -936,6 +957,11 @@ func _build_quick_wheel() -> void:
 	st.content_margin_top = 16
 	st.content_margin_bottom = 16
 	pc.add_theme_stylebox_override("panel", st)
+	var q_frame := OrnateFrame.new()
+	q_frame.inset = 5.0
+	q_frame.corner_size = 13.0
+	q_frame.animated_sheen = true
+	pc.add_child(q_frame)
 	_wheel_root.add_child(pc)
 
 	var vb := VBoxContainer.new()
@@ -943,7 +969,7 @@ func _build_quick_wheel() -> void:
 	pc.add_child(vb)
 
 	var hdr := Label.new()
-	hdr.text = "✦  CIRCLE QUICK-WHEEL  (Click or 1–5 · Q to Close)"
+	hdr.text = "✦  THE CIRCLE OF THE ROAD  (Click or 1–5 · Q to Close)"
 	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hdr.add_theme_font_size_override("font_size", 14)
 	hdr.add_theme_color_override("font_color", Color(0.96, 0.84, 0.50))
@@ -956,7 +982,11 @@ func _build_quick_wheel() -> void:
 	vb.add_child(grid)
 	for def in LEAD_DEFS:
 		var btn := Button.new()
-		btn.text = "[%s] %s  —  %s" % [def["key"], def["name"], def["verb"]]
+		btn.text = "  [%s] %s  —  %s" % [def["key"], def["name"], def["verb"]]
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.custom_minimum_size = Vector2(210, 46)
+		btn.icon = _load_hud_portrait("res://assets/art/portraits/%s.png" % str(def["id"]))
+		btn.expand_icon = true
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var cid: StringName = def["id"]
 		btn.pressed.connect(func():
@@ -973,6 +1003,10 @@ func _toggle_quick_wheel(force_state = null) -> void:
 		return
 	_wheel_open = not _wheel_open if force_state == null else bool(force_state)
 	_wheel_root.visible = _wheel_open
+	if _wheel_open and not _is_headless():
+		_wheel_root.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(_wheel_root, "modulate:a", 1.0, 0.16)
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if _wheel_open else Input.MOUSE_MODE_CAPTURED
 

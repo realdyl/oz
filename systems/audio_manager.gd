@@ -95,6 +95,8 @@ func _build_all_clips() -> void:
 		"chest": _make_chord([392.0, 493.88, 587.33, 783.99], 0.48, 0.06),
 		"buy": _make_chord([659.25, 987.77], 0.22, 0.04),
 		"ui_click": _make_sweep(0.05, 680.0, 420.0, 0.08, false),
+		"ui_hover": _make_sweep(0.032, 920.0, 1120.0, 0.03, false),
+		"page_turn": _make_sweep(0.11, 340.0, 620.0, 0.42, false),
 		"rapture": _make_chord([293.66, 440.0, 587.33, 880.0], 0.65, 0.05),
 	}
 	for k in defaults.keys():

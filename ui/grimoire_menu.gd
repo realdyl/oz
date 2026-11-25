@@ -7,6 +7,23 @@ extends CanvasLayer
 
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 const ShopItemIcon := preload("res://ui/widgets/shop_item_icon.gd")
+const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
+
+class BookmarkRibbon extends Control:
+	func _draw() -> void:
+		var pts := PackedVector2Array([
+			Vector2(8, 0),
+			Vector2(28, 0),
+			Vector2(22, size.y - 4),
+			Vector2(12, size.y - 18),
+			Vector2(2, size.y),
+		])
+		var sh := PackedVector2Array()
+		for p in pts:
+			sh.append(p + Vector2(3, 4))
+		draw_colored_polygon(sh, Color(0, 0, 0, 0.45))
+		draw_colored_polygon(pts, Color(0.84, 0.68, 0.32, 0.96))
+		draw_line(Vector2(14, 0), Vector2(9, size.y - 16), Color(0.98, 0.88, 0.56, 0.72), 1.5, true)
 
 const TABS := [
 	{"id": "quests", "label": "QUESTS", "page_title": "THE ROAD & OBJECTIVES"},
@@ -65,7 +82,7 @@ func _switch_tab(idx: int) -> void:
 	_selected_idx = 0
 	var afx := get_node_or_null("/root/AudioFx")
 	if afx and afx.has_method("play"):
-		afx.play("ui_click", -8.0)
+		afx.play("page_turn", -7.0)
 	_refresh_tab()
 
 func toggle() -> void:
@@ -92,7 +109,11 @@ func close() -> void:
 func _build_ui() -> void:
 	_backdrop = ColorRect.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.035, 0.015, 0.045, 0.86)
+	_backdrop.color = Color(0.035, 0.015, 0.045, 0.88)
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		var bmat := ShaderMaterial.new()
+		bmat.shader = FrostedShader
+		_backdrop.material = bmat
 	add_child(_backdrop)
 
 	var center := CenterContainer.new()
@@ -174,9 +195,17 @@ func _build_ui() -> void:
 	spine.color = Color(0.05, 0.025, 0.055, 0.98)
 	spread.add_child(spine)
 
-	# RIGHT VELVET PARCHMENT PAGE
+	# RIGHT VELVET PARCHMENT PAGE + Draping Golden Silk Bookmark Ribbon (ref_01_grimoire_ui.jpg)
 	var right_page := _make_page_panel()
 	spread.add_child(right_page)
+	var ribbon := BookmarkRibbon.new()
+	ribbon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ribbon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	ribbon.offset_left = -38.0
+	ribbon.offset_right = -6.0
+	ribbon.offset_top = -10.0
+	ribbon.offset_bottom = 112.0
+	right_page.add_child(ribbon)
 	var right_vb := VBoxContainer.new()
 	right_vb.add_theme_constant_override("separation", 12)
 	right_page.add_child(right_vb)
@@ -333,26 +362,46 @@ func _refresh_tab() -> void:
 		var ent := _entries[i]
 		var is_sel := (i == _selected_idx)
 		var row_btn := Button.new()
-		row_btn.custom_minimum_size = Vector2(0, 52)
+		row_btn.custom_minimum_size = Vector2(0, 56)
 		row_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row_btn.text = ("✦  " if is_sel else "   ") + str(ent["name"]).to_upper()
+		var r_tex := _load_portrait_texture(str(ent.get("portrait", "")))
+		if r_tex != null:
+			row_btn.icon = r_tex
+			row_btn.expand_icon = true
 		var rst := StyleBoxFlat.new()
 		rst.bg_color = Color(0.24, 0.14, 0.28, 0.96) if is_sel else Color(0.12, 0.07, 0.16, 0.84)
 		rst.border_color = Color(0.910, 0.776, 0.478, 1.0) if is_sel else Color(0.58, 0.46, 0.28, 0.55)
 		rst.set_border_width_all(2 if is_sel else 1)
 		rst.set_corner_radius_all(4)
-		rst.content_margin_left = 14
+		rst.content_margin_left = 10
+		rst.content_margin_top = 6
+		rst.content_margin_bottom = 6
 		row_btn.add_theme_stylebox_override("normal", rst)
 		row_btn.add_theme_stylebox_override("hover", rst)
 		row_btn.add_theme_color_override("font_color", Color(0.98, 0.88, 0.58) if is_sel else Color(0.88, 0.82, 0.72))
 		var ei := i
+		row_btn.mouse_entered.connect(func():
+			var afx := get_node_or_null("/root/AudioFx")
+			if afx and afx.has_method("play"):
+				afx.play("ui_hover", -12.0)
+		)
 		row_btn.pressed.connect(func():
 			_selected_idx = ei
+			var afx := get_node_or_null("/root/AudioFx")
+			if afx and afx.has_method("play"):
+				afx.play("page_turn", -9.0)
 			_refresh_tab()
 		)
 		_left_list.add_child(row_btn)
 
 	_show_right_entry()
+	if DisplayServer.get_name() not in ["headless", "Dummy"] and _right_title:
+		var r_parent := _right_title.get_parent() as CanvasItem
+		if r_parent:
+			r_parent.modulate.a = 0.35
+			var tw := create_tween()
+			tw.tween_property(r_parent, "modulate:a", 1.0, 0.18).set_ease(Tween.EASE_OUT)
 
 func _show_right_entry() -> void:
 	for c in _right_icon_holder.get_children():

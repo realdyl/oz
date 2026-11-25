@@ -277,7 +277,9 @@ func _try_step(dir: Vector3) -> void:
 	Locomotion.try_step(self, dir, step_height)
 
 func _blink() -> void:
-	blink_timer = blink_cooldown
+	var sm_b := get_node_or_null("/root/SaveManager")
+	var sov_fast := 0.85 if (sm_b and str(sm_b.equipped_outfits.get("dorothy", "")) == "dorothy_sovereign") else 1.0
+	blink_timer = blink_cooldown * sov_fast
 	iframe_timer = iframe_time
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var dir := Vector3.ZERO
@@ -400,8 +402,9 @@ func _use_armament() -> void:
 	if _armament_cd > 0.0:
 		return
 	_armament_cd = 0.85
-	var enemies := _find_live_enemies(11.0)
 	var sm := get_node_or_null("/root/SaveManager")
+	var whip_plus: bool = sm != null and sm.has_method("has_whip_mastery") and bool(sm.call("has_whip_mastery"))
+	var enemies := _find_live_enemies(13.5 if (_armament_idx == 0 and whip_plus) else 11.0)
 	match _armament_idx:
 		0: # The Lace Whip — bind & pull target straight into Kick range!
 			if enemies.is_empty():
@@ -417,9 +420,10 @@ func _use_armament() -> void:
 			var tw := create_tween()
 			tw.tween_property(foe, "global_position", pull_pos, 0.22).set_ease(Tween.EASE_OUT)
 			if foe.has_method("apply_bind"):
-				foe.call("apply_bind", 2.2)
+				foe.call("apply_bind", 2.6 if whip_plus else 2.2)
 			if foe.has_method("take_damage"):
-				foe.take_damage(12 if _rapture_t <= 0.0 else 28, global_position, {"knockback": 0.5})
+				var w_dmg := (20 if whip_plus else 12) if _rapture_t <= 0.0 else (44 if whip_plus else 28)
+				foe.take_damage(w_dmg, global_position, {"knockback": 0.5})
 			if sm and sm.has_method("add_desire"):
 				sm.add_desire(5, "Lace Whip Bind")
 		1: # Silk Bindings — cocoon up to 3 nearby enemies!
