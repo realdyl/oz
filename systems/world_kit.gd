@@ -9,6 +9,39 @@ static var _leaf_shader: Shader = null
 static var _fishnet_shader: Shader = null
 static var _holo_shader: Shader = null
 static var _grass_mats: Array[ShaderMaterial] = []
+static var _pbr_tex_cache: Dictionary = {}
+
+static func load_pbr_tex(tex_name: String) -> Texture2D:
+	if _pbr_tex_cache.has(tex_name):
+		return _pbr_tex_cache[tex_name]
+	var res_path := "res://assets/textures/" + tex_name
+	var tex: Texture2D = null
+	if ResourceLoader.exists(res_path):
+		tex = ResourceLoader.load(res_path) as Texture2D
+	if tex == null:
+		var abs_path := ProjectSettings.globalize_path(res_path)
+		if FileAccess.file_exists(abs_path):
+			var img := Image.load_from_file(abs_path)
+			if img != null and not img.is_empty():
+				tex = ImageTexture.create_from_image(img)
+	_pbr_tex_cache[tex_name] = tex
+	return tex
+
+static func make_pbr_mat(
+	tex_name: String,
+	tint: Color = Color.WHITE,
+	rough: float = 0.72,
+	metal: float = 0.0,
+	tile_scale: float = 0.35
+) -> StandardMaterial3D:
+	var m := _mat(tint, rough, metal)
+	var tex := load_pbr_tex(tex_name)
+	if tex != null:
+		m.albedo_texture = tex
+		m.uv1_triplanar = true
+		m.uv1_scale = Vector3(tile_scale, tile_scale, tile_scale)
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	return m
 
 static func _mat(
 	col: Color,
@@ -565,8 +598,14 @@ static func dress_cottage_exterior(
 	trim_root.name = "StorybookArchitecture"
 	exterior.add_child(trim_root)
 
+	var is_monochrome := absf(wall_col.r - wall_col.b) < 0.06 and wall_col.r < 0.65
 	var stone_mat := _mat(Color(0.38, 0.36, 0.40), 0.92)
-	var timber_mat := _mat(Color(0.24, 0.14, 0.10), 0.85)
+	var timber_mat := make_pbr_mat("kansas_wood.jpg", Color(0.86, 0.84, 0.82), 0.88, 0.0, 0.45) if is_monochrome else _mat(Color(0.24, 0.14, 0.10), 0.85)
+	if is_monochrome:
+		var wood_wall := make_pbr_mat("kansas_wood.jpg", Color(0.92, 0.90, 0.88), 0.88, 0.0, 0.42)
+		for child in exterior.get_children():
+			if child is MeshInstance3D and ("Body" in child.name or "Wall" in child.name):
+				(child as MeshInstance3D).material_override = wood_wall
 	var roof_mat := _mat(roof_col, 0.72)
 	var ridge_mat := _mat(roof_col.darkened(0.32), 0.65, 0.15)
 	var window_glow := _mat(Color(1.0, 0.90, 0.62), 0.25, 0.0, Color(1.0, 0.85, 0.48), 1.35)
@@ -980,8 +1019,12 @@ static func dress_ybr_spine(parent: Node3D, z_start: float, z_end: float, road_h
 	yroot.name = "YBRAdornments"
 	parent.add_child(yroot)
 
-	# Continuous flush golden-stone YBR curb rails (NO random gaps/pegs!) + street lanterns
-	var curb_mat := _mat(Color(0.86, 0.68, 0.22), 0.52, 0.22)
+	# Continuous flush golden-stone YBR mosaic paving + curb rails (tex_04_yellow_brick.jpg) + street lanterns
+	var ybr_mosaic := make_pbr_mat("yellow_brick.jpg", Color(1.0, 0.95, 0.82), 0.56, 0.12, 0.36)
+	var curb_mat := make_pbr_mat("yellow_brick.jpg", Color(0.92, 0.78, 0.38), 0.52, 0.22, 0.55)
+	var road_len := maxf(1.0, z_end - z_start + 4.2)
+	var road_mid := (z_start + z_end) * 0.5
+	_mi(yroot, _box(Vector3(road_half_w * 2.0, 0.02, road_len)), ybr_mosaic, Vector3(0, 0.015, road_mid))
 	var z := z_start
 	var idx := 0
 	while z <= z_end:
@@ -1403,8 +1446,8 @@ static func _torus(inner_r: float, outer_r: float, rings: int = 10) -> TorusMesh
 
 ## Pristine octagonal carved stone & copper courtyard Water Cistern for L4 Winkie Castle.
 static func build_water_cistern(parent: Node3D) -> void:
-	var stone := _mat(Color(0.32, 0.34, 0.38), 0.86)
-	var stone_hi := _mat(Color(0.46, 0.48, 0.54), 0.78)
+	var stone := make_pbr_mat("winkie_basalt.jpg", Color(0.82, 0.84, 0.88), 0.84, 0.12, 0.45)
+	var stone_hi := make_pbr_mat("winkie_basalt.jpg", Color(0.96, 0.96, 1.0), 0.78, 0.10, 0.52)
 	var copper := _mat(Color(0.42, 0.62, 0.56), 0.36, 0.72)
 	var iron := _mat(Color(0.14, 0.14, 0.18), 0.44, 0.82)
 	var wood := _mat(Color(0.38, 0.24, 0.14), 0.85)
@@ -1795,6 +1838,9 @@ static func build_emerald_palace_facade(parent: Node3D, at: Vector3) -> void:
 	arch_ring.inner_radius = 3.8
 	arch_ring.outer_radius = 4.5
 	_mi(root, arch_ring, gold, Vector3(0, 7.2, 15.8))
+	# Art-Deco Emerald Marble inlaid forecourt plaza (tex_06_emerald_marble.jpg)
+	var em_marble := make_pbr_mat("emerald_marble.jpg", Color(0.96, 1.0, 0.96), 0.28, 0.22, 0.28)
+	_mi(root, _box(Vector3(24.0, 0.04, 18.0)), em_marble, Vector3(0, 0.02, 22.0))
 
 ## Holographic Fresnel rim-glow + horizontal arcane scanlines spatial shader for Oz Projection.
 static func make_hologram_material(base_col: Color, rim_col: Color, alpha: float = 0.84) -> ShaderMaterial:
@@ -2274,10 +2320,13 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 	root.name = "GlindaCourtDecor"
 	parent.add_child(root)
 
-	var marble := _mat(Color(0.96, 0.92, 0.94), 0.32, 0.06)
-	var rose_marble := _mat(Color(0.86, 0.44, 0.62), 0.36, 0.10)
+	var marble := make_pbr_mat("quadling_marble.jpg", Color(1.0, 0.96, 0.97), 0.30, 0.08, 0.32)
+	var rose_marble := make_pbr_mat("quadling_marble.jpg", Color(0.96, 0.72, 0.82), 0.34, 0.10, 0.38)
 	var gold := _mat(Color(0.94, 0.78, 0.34), 0.24, 0.88, Color(0.90, 0.72, 0.24), 0.22)
-	var water := make_flowing_water_material(Color(0.32, 0.70, 0.96), Color(0.88, 0.96, 1.0), 0.95)
+	var water := make_pbr_mat("caustic_water.jpg", Color(0.92, 0.98, 1.0), 0.14, 0.08, 0.26)
+	water.emission_enabled = true
+	water.emission = Color(0.18, 0.56, 0.68)
+	water.emission_energy_multiplier = 0.28
 	var lotus := _mat(Color(1.0, 0.58, 0.78), 0.45, 0.0, Color(1.0, 0.55, 0.76), 0.55)
 	var star_glow := _mat(Color(1.0, 0.92, 0.72), 0.15, 0.0, Color(1.0, 0.88, 0.62), 2.2)
 
