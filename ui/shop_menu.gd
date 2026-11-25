@@ -44,6 +44,8 @@ var _char_plaque_lbl: Label
 var _dragging_stage: bool = false
 var _last_drag_x: float = 0.0
 var _spin_yaw: float = 0.35
+var _toto_preview_parts: Dictionary = {}
+var _toto_preview_t: float = 0.0
 
 # Bottom Selected Item Detail Panel (ref_05_boutique_ui.jpg)
 var _detail_title: Label
@@ -77,8 +79,12 @@ func _process(delta: float) -> void:
 	if not _dragging_stage:
 		_spin_yaw += delta * 0.50
 	_turntable.rotation.y = _spin_yaw
-	if _preview_actor and is_instance_valid(_preview_actor) and _preview_actor.has_method("set_locomotion"):
-		_preview_actor.call("set_locomotion", 0.0, delta)
+	if _preview_actor and is_instance_valid(_preview_actor):
+		if _preview_actor.has_method("set_locomotion"):
+			_preview_actor.call("set_locomotion", 0.0, delta)
+		elif _active_char == "toto" and not _toto_preview_parts.is_empty():
+			_toto_preview_t += delta
+			TotoCompanion.animate_parts(_toto_preview_parts, 0.0, _toto_preview_t, 0.0, 0.0, 0.0, 0.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -477,18 +483,25 @@ func _rebuild_preview_actor(tint: Color, item_id: String = "") -> void:
 		_preview_actor = null
 	var actor := Node3D.new()
 	actor.name = "PreviewActor"
+	_toto_preview_parts.clear()
+	var resolved_id := item_id if item_id != "" else _selected_item_id
 	if _active_char == "toto":
-		TotoCompanion.build_dog_visual(actor, false)
+		_toto_preview_parts = TotoCompanion.build_dog_visual(actor, false, resolved_id)
 		actor.scale = Vector3(1.55, 1.55, 1.55)
+		_turntable.add_child(actor)
+		_preview_actor = actor
+		return
 	elif VISUAL_SCRIPTS.has(_active_char):
 		actor.set_script(VISUAL_SCRIPTS[_active_char])
 		if _active_char == "dorothy":
 			actor.set("show_silver_shoes", true)
-			actor.set("outfit_id", item_id if item_id != "" else _selected_item_id)
+		elif _active_char == "lion":
+			actor.set("cowering", false)
+		actor.set("outfit_id", resolved_id)
 	_turntable.add_child(actor)
 	_preview_actor = actor
 	if _preview_actor.has_method("set_outfit"):
-		_preview_actor.call("set_outfit", item_id if item_id != "" else _selected_item_id)
+		_preview_actor.call("set_outfit", resolved_id)
 		return
 	for mi in _preview_actor.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D

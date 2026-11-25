@@ -18,6 +18,7 @@ var follow_target: Node3D = null
 var hiding: bool = true
 var calmed: bool = false
 var kit_lock: float = 0.0
+var _prev_vis_yaw: float = 0.0
 ## Asleep in poppies / safe park — do not trail Lead.
 var parked: bool = false
 var park_pos: Vector3 = Vector3.ZERO
@@ -218,14 +219,18 @@ func _try_step(dir: Vector3) -> void:
 func _roar() -> void:
 	roar_timer = roar_cooldown
 	kit_lock = 0.4
+	var sm := get_node_or_null("/root/SaveManager")
+	var eq: String = str(sm.equipped_outfits.get("lion", "")) if (sm and "equipped_outfits" in sm) else ""
+	var eff_rad := roar_radius + (1.2 if eq == "lion_primal" else 0.0)
+	var eff_fear := 2.8 if eq == "lion_primal" else 2.0
 	if body and body.has_method("play_roar"):
 		body.call("play_roar")
 	var fwd := -visual.global_transform.basis.z if visual else Vector3(0, 0, -1)
 	if CombatFx.has_method("roar_shockwave"):
-		CombatFx.roar_shockwave(self, global_position, fwd, roar_radius)
+		CombatFx.roar_shockwave(self, global_position, fwd, eff_rad)
 	else:
-		CombatFx.ring(self, global_position, Color(1.0, 0.55, 0.15), roar_radius * 0.55, 0.25)
-		CombatFx.ring(self, global_position, Color(1.0, 0.4, 0.1), roar_radius, 0.45)
+		CombatFx.ring(self, global_position, Color(1.0, 0.55, 0.15), eff_rad * 0.55, 0.25)
+		CombatFx.ring(self, global_position, Color(1.0, 0.4, 0.1), eff_rad, 0.45)
 	CombatFx.label(self, global_position, "ROAR", Color(1.0, 0.65, 0.2))
 	# Camera shake via pivot if available
 	var pivot := Party.camera_basis_node() if Party else null
@@ -237,7 +242,7 @@ func _roar() -> void:
 
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
-	shape.radius = roar_radius
+	shape.radius = eff_rad
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = shape
 	params.collision_mask = 4
@@ -248,11 +253,24 @@ func _roar() -> void:
 		if collider == null:
 			continue
 		if collider.has_method("apply_fear"):
-			collider.apply_fear(2.0, global_position)
+			collider.apply_fear(eff_fear, global_position)
 		if collider.has_method("take_damage"):
 			collider.take_damage(roar_damage, global_position, {"knockback": 11.0})
 
+func _unhandled_key_input(event: InputEvent) -> void:
+	if leading and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_V:
+		if body and body.has_method("play_flourish"):
+			body.call("play_flourish")
+
 func _anim(delta: float) -> void:
+	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)
+	_prev_vis_yaw = visual.rotation.y
+	var turn_vel := yaw_diff / maxf(delta, 0.001)
 	var hs := Vector2(velocity.x, velocity.z).length()
-	if body and body.has_method("set_locomotion"):
-		body.set_locomotion(hs, delta)
+	var bank := clampf(-turn_vel * 0.018 * clampf(hs / 5.0, 0.0, 1.2), -0.15, 0.15)
+	visual.rotation.z = lerp_angle(visual.rotation.z, bank, 10.0 * delta)
+	if body:
+		if body.has_method("set_airborne"):
+			body.call("set_airborne", velocity.y, is_on_floor(), turn_vel)
+		if body.has_method("set_locomotion"):
+			body.set_locomotion(hs, delta)

@@ -18,6 +18,7 @@ var follow_target: Node3D = null
 var bound_on_pole: bool = true
 var freed: bool = false
 var kit_lock: float = 0.0
+var _prev_vis_yaw: float = 0.0
 
 @onready var visual: Node3D = $Visual
 @onready var body: Node3D = $Visual/Body
@@ -190,18 +191,23 @@ func _try_step(dir: Vector3) -> void:
 func _caw() -> void:
 	caw_timer = caw_cooldown
 	kit_lock = 0.28
+	var sm := get_node_or_null("/root/SaveManager")
+	var eq: String = str(sm.equipped_outfits.get("scarecrow", "")) if (sm and "equipped_outfits" in sm) else ""
+	var eff_rad := caw_radius + (0.9 if eq == "scarecrow_leather" else (0.5 if eq == "scarecrow_obsidian" else 0.0))
+	var eff_confuse := 3.8 if eq == "scarecrow_obsidian" else 2.6
+	var eff_dmg := caw_damage + (3 if eq == "scarecrow_obsidian" else 0)
 	if body and body.has_method("play_caw"):
 		body.call("play_caw")
 	# Murder of 3D flapping black crows spiraling outward + straw burst
 	if CombatFx.has_method("crow_storm"):
-		CombatFx.crow_storm(self, global_position, caw_radius)
+		CombatFx.crow_storm(self, global_position, eff_rad)
 	else:
-		CombatFx.ring(self, global_position, Color(0.95, 0.82, 0.25), caw_radius * 0.9, 0.4)
+		CombatFx.ring(self, global_position, Color(0.95, 0.82, 0.25), eff_rad * 0.9, 0.4)
 	CombatFx.label(self, global_position, "CAW!", Color(1.0, 0.9, 0.35))
 
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
-	shape.radius = caw_radius
+	shape.radius = eff_rad
 	var params := PhysicsShapeQueryParameters3D.new()
 	params.shape = shape
 	params.collision_mask = 4
@@ -213,11 +219,24 @@ func _caw() -> void:
 		if collider == null:
 			continue
 		if collider.has_method("apply_confuse"):
-			collider.apply_confuse(2.6)
+			collider.apply_confuse(eff_confuse)
 		if collider.has_method("take_damage"):
-			collider.take_damage(caw_damage, global_position, {"knockback": 3.5})
+			collider.take_damage(eff_dmg, global_position, {"knockback": 3.5})
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if leading and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_V:
+		if body and body.has_method("play_flourish"):
+			body.call("play_flourish")
 
 func _anim(delta: float) -> void:
+	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)
+	_prev_vis_yaw = visual.rotation.y
+	var turn_vel := yaw_diff / maxf(delta, 0.001)
 	var hs := Vector2(velocity.x, velocity.z).length()
-	if body and body.has_method("set_locomotion"):
-		body.set_locomotion(hs, delta)
+	var bank := clampf(-turn_vel * 0.020 * clampf(hs / 4.2, 0.0, 1.2), -0.16, 0.16)
+	visual.rotation.z = lerp_angle(visual.rotation.z, bank, 10.0 * delta)
+	if body:
+		if body.has_method("set_airborne"):
+			body.call("set_airborne", velocity.y, is_on_floor(), turn_vel)
+		if body.has_method("set_locomotion"):
+			body.set_locomotion(hs, delta)

@@ -219,7 +219,7 @@ func reapply_all_outfits() -> void:
 		var catalog: Array = SHOP_CATALOG.get(char_id, [])
 		for it in catalog:
 			if str(it.get("id", "")) == iid:
-				if char_id == "dorothy" or (not iid.ends_with("_classic") and iid != "dorothy_gingham"):
+				if char_id in ["dorothy", "scarecrow", "tinman", "lion", "toto"] or not iid.ends_with("_classic"):
 					apply_outfit_to_world(char_id, it.get("tint", Color.WHITE), iid)
 				break
 

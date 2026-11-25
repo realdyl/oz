@@ -17,6 +17,8 @@ var follow_target: Node3D = null
 var rusted: bool = true
 var freed: bool = false
 var kit_lock: float = 0.0
+var _axe_step: int = 0
+var _prev_vis_yaw: float = 0.0
 
 @onready var visual: Node3D = $Visual
 @onready var body: Node3D = $Visual/Body
@@ -181,18 +183,21 @@ func _try_step(dir: Vector3) -> void:
 func _axe() -> void:
 	axe_timer = axe_cooldown
 	kit_lock = 0.42
+	_axe_step = (_axe_step % 2) + 1
+	var sm := get_node_or_null("/root/SaveManager")
+	var eq: String = str(sm.equipped_outfits.get("tinman", "")) if (sm and "equipped_outfits" in sm) else ""
+	var eff_dmg := axe_damage + (10 if eq == "tinman_velvet" else 0)
 	var forward := -visual.global_transform.basis.z
 	forward.y = 0.0
 	if forward.length() < 0.01:
 		forward = -global_transform.basis.z
 	forward = forward.normalized()
-	# Arm/axe chop on the body mesh — primary read.
+	# 2-stage alternating Overhead Chop / Horizontal Sweeping Cleave!
 	if body and body.has_method("play_axe_swing"):
-		body.play_axe_swing()
-	# Arc slash trail that sweeps with the arm (not a body-centered white pop).
+		body.call("play_axe_swing", _axe_step)
 	var swing_origin := global_position + Vector3(0, 1.05, 0) + forward * 0.35
-	CombatFx.axe_arc(self, swing_origin, forward, Color(0.7, 0.82, 0.95), 0.38)
-	CombatFx.label(self, global_position + Vector3(0, 0.2, 0), "AXE", Color(0.8, 0.9, 1.0))
+	CombatFx.axe_arc(self, swing_origin, forward, Color(0.92, 0.34, 0.44) if eq == "tinman_velvet" else Color(0.7, 0.82, 0.95), 0.38)
+	CombatFx.label(self, global_position + Vector3(0, 0.2, 0), "AXE" if _axe_step == 1 else "CLEAVE ×2", Color(0.8, 0.9, 1.0))
 
 	var space := get_world_3d().direct_space_state
 	var shape := SphereShape3D.new()
@@ -206,7 +211,7 @@ func _axe() -> void:
 	for hit in space.intersect_shape(params, 6):
 		var collider: Object = hit.collider
 		if collider and collider.has_method("take_damage"):
-			collider.take_damage(axe_damage, global_position, {"armor_break": true, "knockback": 9.0})
+			collider.take_damage(eff_dmg, global_position, {"armor_break": true, "knockback": 9.0})
 			connected = true
 	if connected:
 		Engine.time_scale = 0.12
@@ -214,7 +219,20 @@ func _axe() -> void:
 		Engine.time_scale = 1.0
 		velocity += forward * 2.0
 
+func _unhandled_key_input(event: InputEvent) -> void:
+	if leading and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_V:
+		if body and body.has_method("play_flourish"):
+			body.call("play_flourish")
+
 func _anim(delta: float) -> void:
+	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)
+	_prev_vis_yaw = visual.rotation.y
+	var turn_vel := yaw_diff / maxf(delta, 0.001)
 	var hs := Vector2(velocity.x, velocity.z).length()
-	if body and body.has_method("set_locomotion"):
-		body.set_locomotion(hs, delta)
+	var bank := clampf(-turn_vel * 0.014 * clampf(hs / 3.8, 0.0, 1.1), -0.12, 0.12)
+	visual.rotation.z = lerp_angle(visual.rotation.z, bank, 8.0 * delta)
+	if body:
+		if body.has_method("set_airborne"):
+			body.call("set_airborne", velocity.y, is_on_floor(), turn_vel)
+		if body.has_method("set_locomotion"):
+			body.set_locomotion(hs, delta)
