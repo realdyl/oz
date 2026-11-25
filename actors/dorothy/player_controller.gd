@@ -46,6 +46,7 @@ var _armament_cd: float = 0.0
 var _combo_step: int = 0
 var _combo_reset_t: float = 0.0
 var _rapture_t: float = 0.0
+var _prev_vis_yaw: float = 0.0
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
@@ -296,12 +297,18 @@ func _blink() -> void:
 		dir = dir.normalized()
 	_sprint_surge_dir = dir
 	_sprint_surge_t = 0.10
+	var dep_pos := global_position
+	var dep_yaw := visual.rotation.y
 	var burst_spd := maxf(blink_distance / 0.10, 34.0)
 	velocity.x = dir.x * burst_spd
 	velocity.z = dir.z * burst_spd
 	if is_on_floor():
 		velocity.y = 7.4 # physical hop onto curbs/platforms!
 	visual.rotation.y = atan2(-dir.x, -dir.z)
+	if body and body.has_method("play_blink"):
+		body.call("play_blink")
+	if CombatFx.has_method("blink_afterimage"):
+		CombatFx.blink_afterimage(self, dep_pos, dir, dep_yaw)
 
 func _blink_destination(dir: Vector3) -> Vector3:
 	var space := get_world_3d().direct_space_state
@@ -344,10 +351,14 @@ func _kick() -> void:
 	if forward.length() < 0.01:
 		forward = -global_transform.basis.z
 	forward = forward.normalized()
-	# Choreographed High-Heel Stiletto Roundhouse Kick + Silver Crescent Arc
-	if body and body.has_method("play_kick"):
+	# Choreographed 3-Stage Martial Arts Stiletto Kicks + Combo Arcs!
+	if body and body.has_method("play_combo_kick"):
+		body.call("play_combo_kick", _combo_step)
+	elif body and body.has_method("play_kick"):
 		body.call("play_kick")
-	if CombatFx.has_method("kick_arc"):
+	if _combo_step == 3 and CombatFx.has_method("combo_finisher_burst"):
+		CombatFx.combo_finisher_burst(self, global_position, forward)
+	elif CombatFx.has_method("kick_arc"):
 		CombatFx.kick_arc(self, global_position, forward)
 	else:
 		CombatFx.slash_box(self, global_position, forward, Color(0.85, 0.9, 1.0), Vector3(0.95, 0.22, 1.2), 0.16)
@@ -391,6 +402,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_use_armament()
 		elif event.keycode == KEY_H:
 			_try_rapture_mode()
+		elif event.keycode == KEY_V and body and body.has_method("play_heel_click"):
+			body.call("play_heel_click")
+			CombatFx.ring(self, global_position, Color(0.88, 0.94, 1.0), 1.05, 0.34)
 
 func _cycle_armament(dir: int) -> void:
 	_armament_idx = (_armament_idx + dir + ARMAMENT_NAMES.size()) % ARMAMENT_NAMES.size()
@@ -402,6 +416,8 @@ func _use_armament() -> void:
 	if _armament_cd > 0.0:
 		return
 	_armament_cd = 0.85
+	if body and body.has_method("play_cast"):
+		body.call("play_cast", _armament_idx)
 	var sm := get_node_or_null("/root/SaveManager")
 	var whip_plus: bool = sm != null and sm.has_method("has_whip_mastery") and bool(sm.call("has_whip_mastery"))
 	var enemies := _find_live_enemies(13.5 if (_armament_idx == 0 and whip_plus) else 11.0)
@@ -492,13 +508,21 @@ func _hitstop() -> void:
 	Engine.time_scale = 1.0
 
 func _animate_visual(delta: float) -> void:
+	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)
+	_prev_vis_yaw = visual.rotation.y
+	var turn_vel := yaw_diff / maxf(delta, 0.001)
+	var hs := Vector2(velocity.x, velocity.z).length()
+	var bank_target := clampf(-turn_vel * 0.022 * clampf(hs / 4.5, 0.0, 1.2), -0.18, 0.18)
 	visual.rotation.x = lerp_angle(visual.rotation.x, 0.0, 14.0 * delta)
+	visual.rotation.z = lerp_angle(visual.rotation.z, bank_target, 10.0 * delta)
 	visual.scale = visual.scale.lerp(Vector3.ONE, 10.0 * delta)
 	if Input.is_action_just_pressed("interact") and body and body.has_method("play_interact"):
 		body.call("play_interact")
-	var hs := Vector2(velocity.x, velocity.z).length()
-	if body and body.has_method("set_locomotion"):
-		body.set_locomotion(hs, delta)
+	if body:
+		if body.has_method("set_airborne"):
+			body.call("set_airborne", velocity.y, is_on_floor(), turn_vel)
+		if body.has_method("set_locomotion"):
+			body.set_locomotion(hs, delta)
 
 func stumble(from: Vector3) -> void:
 	if iframe_timer > 0.0 or stun_timer > 0.0:
@@ -524,8 +548,10 @@ func empower_shoes() -> void:
 		visual.position.y = 0.03 # ensures Dorothy's entire Silver Shoes sit cleanly ON TOP of every road & floor!
 	if body:
 		body.set("show_silver_shoes", true)
-		# Rebuild visual so gleaming Silver Shoes show on her feet
-		if body.has_method("_ready"):
+		# Rebuild visual cleanly (clears joint arrays & preserves BasketMount!)
+		if body.has_method("_rebuild_character"):
+			body.call("_rebuild_character")
+		elif body.has_method("_ready"):
 			for c in body.get_children():
 				c.free()
 			body.call("_build")

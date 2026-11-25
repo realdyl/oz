@@ -180,6 +180,79 @@ func kick_arc(host: Node3D, origin: Vector3, forward: Vector3) -> void:
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.24)
 	tw.chain().tween_callback(holder.queue_free)
 
+## Silver-Shoe Blink Departure Afterimage Silhouette + Heel-Sparkle Starlight Trail!
+func blink_afterimage(host: Node3D, origin: Vector3, dir: Vector3, yaw: float) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var ghost := Node3D.new()
+	root.add_child(ghost)
+	ghost.global_position = origin
+	ghost.rotation.y = yaw
+
+	var gmat := StandardMaterial3D.new()
+	gmat.albedo_color = Color(0.76, 0.90, 1.0, 0.56)
+	gmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gmat.emission_enabled = true
+	gmat.emission = Color(0.72, 0.88, 1.0)
+	gmat.emission_energy_multiplier = 2.4
+
+	# Graceful feminine silhouette ghost (skirt bell, corset waist, head & silver heel sparks)
+	var skirt := MeshInstance3D.new()
+	var sc := CylinderMesh.new()
+	sc.top_radius = 0.14
+	sc.bottom_radius = 0.38
+	sc.height = 0.44
+	skirt.mesh = sc
+	skirt.position = Vector3(0, 0.62, 0)
+	skirt.material_override = gmat
+	ghost.add_child(skirt)
+
+	var torso := MeshInstance3D.new()
+	var tc := CapsuleMesh.new()
+	tc.radius = 0.12
+	tc.height = 0.44
+	torso.mesh = tc
+	torso.position = Vector3(0, 1.06, 0)
+	torso.material_override = gmat
+	ghost.add_child(torso)
+
+	var head := MeshInstance3D.new()
+	var hs := SphereMesh.new()
+	hs.radius = 0.115
+	hs.height = 0.23
+	head.mesh = hs
+	head.position = Vector3(0, 1.40, 0)
+	head.material_override = gmat
+	ghost.add_child(head)
+
+	# 6 trailing silver-shoe starlight sparks along the blink vector
+	var f := dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
+	for i in range(6):
+		var sp := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.055
+		sm.height = 0.11
+		sp.mesh = sm
+		sp.material_override = gmat
+		sp.position = Vector3((float(i % 2) - 0.5) * 0.22, 0.14 + float(i) * 0.10, -float(i) * 0.36)
+		ghost.add_child(sp)
+
+	ring(host, origin, Color(0.84, 0.94, 1.0), 1.15, 0.28)
+	var tw := host.get_tree().create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ghost, "global_position", origin + f * 0.55 + Vector3(0, 0.12, 0), 0.30).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ghost, "scale", Vector3(1.08, 1.06, 1.08), 0.30)
+	tw.tween_property(gmat, "albedo_color:a", 0.0, 0.30)
+	tw.chain().tween_callback(ghost.queue_free)
+
+## 3rd-Hit Combo Finisher: Dual Crossing Silver-Rose Crescent Arcs + Starlight Shockwave!
+func combo_finisher_burst(host: Node3D, origin: Vector3, forward: Vector3) -> void:
+	kick_arc(host, origin, forward)
+	ring(host, origin + Vector3(0, 0.15, 0), Color(1.0, 0.42, 0.68), 2.1, 0.36)
+	ring(host, origin + Vector3(0, 0.55, 0), Color(0.88, 0.95, 1.0), 1.55, 0.28)
+
 ## Murder of 9 sculpted 3D black crows with multi-cycle continuous flapping wings & drifting feathers.
 func crow_storm(host: Node3D, origin: Vector3, radius: float = 2.8) -> void:
 	var root := _host_root(host)

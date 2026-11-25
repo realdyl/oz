@@ -123,6 +123,8 @@ func _dlg(speaker: String, text: String) -> void:
 		d.say(speaker, text, true, 4.0)
 
 func _stabilize_lighting() -> void:
+	if world_env and world_env.environment:
+		WorldKit.apply_sky_and_weather(world_env, "kansas")
 	var sun := get_node_or_null("Sun") as DirectionalLight3D
 	if sun:
 		sun.shadow_enabled = true
@@ -785,6 +787,15 @@ func _add_kansas_whimsy() -> void:
 func _wind_props(delta: float) -> void:
 	wind_t += delta
 	var spin_mul := 1.2
+	var storm_fac := 0.0
+	if phase == Phase.NEED_SHUTTER:
+		storm_fac = 0.35
+	elif phase == Phase.NEED_CELLAR:
+		storm_fac = 0.62
+	elif phase >= Phase.STORM_RUN:
+		storm_fac = 1.0
+	if world_env:
+		WorldKit.set_sky_storm_factor(world_env, storm_fac, _lightning_flash)
 	if phase == Phase.STORM_RUN or phase == Phase.HOUSE_LIFT:
 		spin_mul = 4.5
 	var cloth_amp := 0.24 if phase < Phase.STORM_RUN else 0.72

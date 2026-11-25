@@ -296,6 +296,7 @@ func _build_world() -> void:
 	e.ambient_light_energy = 0.75
 	e.adjustment_enabled = true
 	e.adjustment_saturation = 0.05
+	WorldKit.apply_sky_and_weather_to_env(e, "homecoming")
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)

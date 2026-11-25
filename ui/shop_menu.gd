@@ -77,6 +77,8 @@ func _process(delta: float) -> void:
 	if not _dragging_stage:
 		_spin_yaw += delta * 0.50
 	_turntable.rotation.y = _spin_yaw
+	if _preview_actor and is_instance_valid(_preview_actor) and _preview_actor.has_method("set_locomotion"):
+		_preview_actor.call("set_locomotion", 0.0, delta)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -467,7 +469,7 @@ func _on_stage_input(event: InputEvent) -> void:
 		_last_drag_x = event.position.x
 		_spin_yaw += dx * 0.015
 
-func _rebuild_preview_actor(tint: Color) -> void:
+func _rebuild_preview_actor(tint: Color, item_id: String = "") -> void:
 	if _turntable == null or not is_instance_valid(_turntable):
 		return
 	if _preview_actor and is_instance_valid(_preview_actor):
@@ -480,8 +482,14 @@ func _rebuild_preview_actor(tint: Color) -> void:
 		actor.scale = Vector3(1.55, 1.55, 1.55)
 	elif VISUAL_SCRIPTS.has(_active_char):
 		actor.set_script(VISUAL_SCRIPTS[_active_char])
+		if _active_char == "dorothy":
+			actor.set("show_silver_shoes", true)
+			actor.set("outfit_id", item_id if item_id != "" else _selected_item_id)
 	_turntable.add_child(actor)
 	_preview_actor = actor
+	if _preview_actor.has_method("set_outfit"):
+		_preview_actor.call("set_outfit", item_id if item_id != "" else _selected_item_id)
+		return
 	for mi in _preview_actor.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m and m.material_override is StandardMaterial3D:
@@ -491,7 +499,7 @@ func _rebuild_preview_actor(tint: Color) -> void:
 
 func _select_item(it: Dictionary) -> void:
 	_selected_item_id = str(it.get("id", ""))
-	_rebuild_preview_actor(it.get("tint", Color.WHITE))
+	_rebuild_preview_actor(it.get("tint", Color.WHITE), _selected_item_id)
 	_update_detail_panel(it)
 
 func _update_detail_panel(it: Dictionary) -> void:
@@ -560,7 +568,7 @@ func _refresh() -> void:
 			break
 	if not selected_it.is_empty():
 		_selected_item_id = str(selected_it.get("id", ""))
-		_rebuild_preview_actor(selected_it.get("tint", Color.WHITE))
+		_rebuild_preview_actor(selected_it.get("tint", Color.WHITE), _selected_item_id)
 		_update_detail_panel(selected_it)
 
 	for it in items:
@@ -590,7 +598,7 @@ func _refresh() -> void:
 			var afx := get_node_or_null("/root/AudioFx")
 			if afx and afx.has_method("play"):
 				afx.play("ui_hover", -12.0)
-			_rebuild_preview_actor(item_ref.get("tint", Color.WHITE))
+			_rebuild_preview_actor(item_ref.get("tint", Color.WHITE), str(item_ref.get("id", "")))
 			_update_detail_panel(item_ref)
 		)
 		_grid.add_child(card)

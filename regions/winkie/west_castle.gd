@@ -205,10 +205,12 @@ func _build_world() -> void:
 	e.fog_enabled = true
 	e.fog_light_color = Color(0.22, 0.16, 0.18)
 	e.fog_density = 0.004
+	e.fog_sky_affect = 0.22
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	e.adjustment_enabled = true
 	e.adjustment_brightness = 1.12
 	e.adjustment_contrast = 1.05
+	WorldKit.apply_sky_and_weather_to_env(e, "winkie")
 	env.environment = e
 	add_child(env)
 	# Map border rails — north edge past the Emerald gate pad

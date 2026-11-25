@@ -16,6 +16,7 @@ var has_basket: bool = false
 var has_toto: bool = false
 var stunned: float = 0.0
 var input_locked: bool = false
+var _prev_vis_yaw: float = 0.0
 
 @onready var visual: Node3D = $Visual
 @onready var camera_pivot: Node3D = $CameraPivot
@@ -101,9 +102,19 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func _anim(delta: float) -> void:
+	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)
+	_prev_vis_yaw = visual.rotation.y
+	var turn_vel := yaw_diff / maxf(delta, 0.001)
 	var hs := Vector2(velocity.x, velocity.z).length()
-	if body and body.has_method("set_locomotion"):
-		body.set_locomotion(hs, delta)
+	var bank_target := clampf(-turn_vel * 0.020 * clampf(hs / 4.2, 0.0, 1.2), -0.15, 0.15)
+	visual.rotation.z = lerp_angle(visual.rotation.z, bank_target, 10.0 * delta)
+	if Input.is_action_just_pressed("interact") and body and body.has_method("play_interact"):
+		body.call("play_interact")
+	if body:
+		if body.has_method("set_airborne"):
+			body.call("set_airborne", velocity.y, is_on_floor(), turn_vel)
+		if body.has_method("set_locomotion"):
+			body.set_locomotion(hs, delta)
 
 func wants_look_hint() -> bool:
 	return not looking and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED

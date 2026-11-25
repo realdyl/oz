@@ -624,6 +624,8 @@ func _build_world() -> void:
 	e.fog_enabled = true
 	e.fog_light_color = Color(0.7, 0.25, 0.35)
 	e.fog_density = 0.0042
+	e.fog_sky_affect = 0.20
+	WorldKit.apply_aaa_post_processing(e, "poppy")
 	env.environment = e
 	add_child(env)
 	_add_map_border(PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0)

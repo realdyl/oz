@@ -219,8 +219,8 @@ func reapply_all_outfits() -> void:
 		var catalog: Array = SHOP_CATALOG.get(char_id, [])
 		for it in catalog:
 			if str(it.get("id", "")) == iid:
-				if not iid.ends_with("_classic") and iid != "dorothy_gingham":
-					apply_outfit_to_world(char_id, it.get("tint", Color.WHITE))
+				if char_id == "dorothy" or (not iid.ends_with("_classic") and iid != "dorothy_gingham"):
+					apply_outfit_to_world(char_id, it.get("tint", Color.WHITE), iid)
 				break
 
 func _slot_path(slot: int) -> String:
@@ -324,11 +324,11 @@ func buy_and_equip(char_id: String, item_id: String) -> bool:
 		desire_fragments -= cost
 		owned_items.append(item_id)
 	equipped_outfits[char_id] = item_id
-	apply_outfit_to_world(char_id, item.get("tint", Color.WHITE))
+	apply_outfit_to_world(char_id, item.get("tint", Color.WHITE), item_id)
 	state_changed.emit()
 	return true
 
-func apply_outfit_to_world(char_id: String, tint: Color) -> void:
+func apply_outfit_to_world(char_id: String, tint: Color, item_id: String = "") -> void:
 	var target: Node = null
 	if char_id == "dorothy":
 		target = get_tree().get_first_node_in_group("player")
@@ -340,6 +340,14 @@ func apply_outfit_to_world(char_id: String, tint: Color) -> void:
 				target = n
 				break
 	if target == null:
+		return
+	var resolved_id := item_id if item_id != "" else str(equipped_outfits.get(char_id, ""))
+	var body_vis := target.get_node_or_null("Visual/Body")
+	if body_vis and body_vis.has_method("set_outfit"):
+		body_vis.call("set_outfit", resolved_id)
+		return
+	if target.has_method("set_outfit"):
+		target.call("set_outfit", resolved_id)
 		return
 	for mi in target.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D

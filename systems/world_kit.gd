@@ -8,6 +8,7 @@ static var _grass_shader: Shader = null
 static var _leaf_shader: Shader = null
 static var _fishnet_shader: Shader = null
 static var _holo_shader: Shader = null
+static var _sky_shader: Shader = null
 static var _grass_mats: Array[ShaderMaterial] = []
 static var _pbr_tex_cache: Dictionary = {}
 
@@ -2093,9 +2094,12 @@ static func build_grand_portal_arch(parent: Node3D, at: Vector3, accent_col: Col
 	make_building_crest_sign(root, Vector3(0, 5.85, 0.45), title.to_upper(), accent_col, false)
 	return root
 
-## Phase P11: Forward+ ACES Filmic Tonemapping, Subtle Glow/Bloom & SSAO Post-Processing!
+## Phase P11 & P8.2: Forward+ ACES Filmic Tonemapping, Subtle Glow/Bloom, SSAO & Dynamic Volumetric Cloud Skies!
 static func apply_aaa_post_processing(env: Environment, biome: String = "oz") -> void:
 	if env == null:
+		return
+	apply_sky_and_weather_to_env(env, biome)
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
 		return
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 1.05
@@ -2108,7 +2112,175 @@ static func apply_aaa_post_processing(env: Environment, biome: String = "oz") ->
 	env.ssao_intensity = 1.15
 	if biome == "munchkin":
 		env.fog_enabled = true
-		env.fog_density = 0.0025
+		env.fog_light_color = Color(0.72, 0.62, 0.78)
+		env.fog_density = 0.0020
+		env.fog_sky_affect = 0.18
+
+## Phase P8.2: Applies seasonal & weather-varying volumetric cloud sky shader across all 7 Acts!
+static func apply_sky_and_weather(world_env: WorldEnvironment, biome: String = "munchkin") -> ShaderMaterial:
+	if world_env == null:
+		return null
+	if world_env.environment == null:
+		world_env.environment = Environment.new()
+	return apply_sky_and_weather_to_env(world_env.environment, biome)
+
+static func apply_sky_and_weather_to_env(env: Environment, biome: String = "munchkin") -> ShaderMaterial:
+	if env == null or DisplayServer.get_name() in ["headless", "Dummy"]:
+		return null
+	if _sky_shader == null:
+		_sky_shader = load("res://ui/shaders/oz_dynamic_sky.gdshader") as Shader
+	if _sky_shader == null:
+		return null
+
+	var sm := ShaderMaterial.new()
+	sm.shader = _sky_shader
+
+	match biome:
+		"kansas":
+			# Late-spring prairie before the cyclone: crisp silver-grey cirrus & gathering cumulus
+			sm.set_shader_parameter("zenith_col", Color(0.30, 0.31, 0.34))
+			sm.set_shader_parameter("mid_col", Color(0.48, 0.49, 0.52))
+			sm.set_shader_parameter("horizon_col", Color(0.68, 0.68, 0.70))
+			sm.set_shader_parameter("ground_col", Color(0.24, 0.24, 0.26))
+			sm.set_shader_parameter("cloud_lit_col", Color(0.90, 0.90, 0.92))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.28, 0.29, 0.32))
+			sm.set_shader_parameter("sun_tint", Color(0.95, 0.95, 0.96))
+			sm.set_shader_parameter("sun_dir", Vector3(-0.36, 0.52, -0.77).normalized())
+			sm.set_shader_parameter("cloud_coverage", 0.44)
+			sm.set_shader_parameter("cloud_softness", 0.26)
+			sm.set_shader_parameter("cirrus_amount", 0.48)
+			sm.set_shader_parameter("wind_vel", Vector2(0.042, 0.024))
+			sm.set_shader_parameter("weather_variance", 0.09)
+			sm.set_shader_parameter("weather_cycle_speed", 0.055)
+			sm.set_shader_parameter("monochrome_mix", 0.94)
+		"homecoming":
+			# Post-storm clearing Kansas prairie: breaking silver-lined cloud banks & peaceful sunbeams
+			sm.set_shader_parameter("zenith_col", Color(0.36, 0.37, 0.40))
+			sm.set_shader_parameter("mid_col", Color(0.56, 0.57, 0.60))
+			sm.set_shader_parameter("horizon_col", Color(0.78, 0.78, 0.80))
+			sm.set_shader_parameter("ground_col", Color(0.30, 0.30, 0.32))
+			sm.set_shader_parameter("cloud_lit_col", Color(0.97, 0.97, 0.98))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.40, 0.41, 0.44))
+			sm.set_shader_parameter("sun_tint", Color(1.0, 0.99, 0.97))
+			sm.set_shader_parameter("sun_dir", Vector3(0.38, 0.58, -0.72).normalized())
+			sm.set_shader_parameter("sun_halo", 0.85)
+			sm.set_shader_parameter("cloud_coverage", 0.36)
+			sm.set_shader_parameter("cloud_softness", 0.30)
+			sm.set_shader_parameter("cirrus_amount", 0.42)
+			sm.set_shader_parameter("wind_vel", Vector2(0.018, 0.010))
+			sm.set_shader_parameter("weather_variance", 0.07)
+			sm.set_shader_parameter("monochrome_mix", 0.92)
+		"poppy":
+			# Narcotic late-summer crimson dusk: velvet-plum zenith, scarlet-rose clouds & dreamy drift
+			sm.set_shader_parameter("zenith_col", Color(0.16, 0.08, 0.22))
+			sm.set_shader_parameter("mid_col", Color(0.44, 0.16, 0.30))
+			sm.set_shader_parameter("horizon_col", Color(0.88, 0.36, 0.42))
+			sm.set_shader_parameter("ground_col", Color(0.22, 0.08, 0.12))
+			sm.set_shader_parameter("cloud_lit_col", Color(1.0, 0.74, 0.68))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.34, 0.12, 0.24))
+			sm.set_shader_parameter("sun_tint", Color(1.0, 0.56, 0.44))
+			sm.set_shader_parameter("sun_dir", Vector3(0.28, 0.26, 0.92).normalized())
+			sm.set_shader_parameter("sun_halo", 0.90)
+			sm.set_shader_parameter("cloud_coverage", 0.46)
+			sm.set_shader_parameter("cloud_softness", 0.32)
+			sm.set_shader_parameter("cirrus_amount", 0.42)
+			sm.set_shader_parameter("wind_vel", Vector2(0.020, 0.012))
+			sm.set_shader_parameter("weather_variance", 0.10)
+			sm.set_shader_parameter("star_intensity", 0.35)
+		"winkie":
+			# Brooding autumn storm fortress: bruised slate-violet storm clouds & internal sheet lightning
+			sm.set_shader_parameter("zenith_col", Color(0.08, 0.07, 0.13))
+			sm.set_shader_parameter("mid_col", Color(0.18, 0.14, 0.24))
+			sm.set_shader_parameter("horizon_col", Color(0.42, 0.28, 0.30))
+			sm.set_shader_parameter("ground_col", Color(0.08, 0.07, 0.10))
+			sm.set_shader_parameter("cloud_lit_col", Color(0.66, 0.52, 0.58))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.13, 0.10, 0.18))
+			sm.set_shader_parameter("sun_tint", Color(0.92, 0.64, 0.46))
+			sm.set_shader_parameter("sun_dir", Vector3(-0.42, 0.28, -0.86).normalized())
+			sm.set_shader_parameter("sun_halo", 0.42)
+			sm.set_shader_parameter("cloud_coverage", 0.68)
+			sm.set_shader_parameter("cloud_softness", 0.24)
+			sm.set_shader_parameter("cirrus_amount", 0.25)
+			sm.set_shader_parameter("wind_vel", Vector2(0.052, 0.026))
+			sm.set_shader_parameter("weather_variance", 0.08)
+			sm.set_shader_parameter("lightning_flash", 0.28)
+		"emerald":
+			# Regal Emerald twilight: deep teal-obsidian dome, emerald aurora & jade-uplit clouds
+			sm.set_shader_parameter("zenith_col", Color(0.04, 0.14, 0.14))
+			sm.set_shader_parameter("mid_col", Color(0.08, 0.30, 0.24))
+			sm.set_shader_parameter("horizon_col", Color(0.24, 0.68, 0.46))
+			sm.set_shader_parameter("ground_col", Color(0.05, 0.14, 0.10))
+			sm.set_shader_parameter("cloud_lit_col", Color(0.76, 0.98, 0.84))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.08, 0.24, 0.20))
+			sm.set_shader_parameter("sun_tint", Color(0.68, 1.0, 0.80))
+			sm.set_shader_parameter("aurora_col", Color(0.24, 0.98, 0.62))
+			sm.set_shader_parameter("aurora_intensity", 0.52)
+			sm.set_shader_parameter("sun_dir", Vector3(0.22, 0.54, -0.81).normalized())
+			sm.set_shader_parameter("cloud_coverage", 0.42)
+			sm.set_shader_parameter("cirrus_amount", 0.38)
+			sm.set_shader_parameter("wind_vel", Vector2(0.022, 0.014))
+			sm.set_shader_parameter("weather_variance", 0.09)
+			sm.set_shader_parameter("star_intensity", 0.55)
+		"glinda":
+			# Quadling high-summer golden hour: rose-cerulean zenith, warm apricot horizon & cream clouds
+			sm.set_shader_parameter("zenith_col", Color(0.24, 0.22, 0.46))
+			sm.set_shader_parameter("mid_col", Color(0.58, 0.38, 0.58))
+			sm.set_shader_parameter("horizon_col", Color(0.98, 0.72, 0.66))
+			sm.set_shader_parameter("ground_col", Color(0.30, 0.18, 0.28))
+			sm.set_shader_parameter("cloud_lit_col", Color(1.0, 0.95, 0.92))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.56, 0.36, 0.54))
+			sm.set_shader_parameter("sun_tint", Color(1.0, 0.88, 0.74))
+			sm.set_shader_parameter("sun_dir", Vector3(0.30, 0.46, -0.83).normalized())
+			sm.set_shader_parameter("sun_halo", 0.82)
+			sm.set_shader_parameter("cloud_coverage", 0.35)
+			sm.set_shader_parameter("cloud_softness", 0.32)
+			sm.set_shader_parameter("cirrus_amount", 0.44)
+			sm.set_shader_parameter("wind_vel", Vector2(0.018, 0.011))
+			sm.set_shader_parameter("weather_variance", 0.08)
+		_:
+			# "munchkin" / default Oz storybook spring-twilight sky with golden-rimmed cumuli & faint stars
+			sm.set_shader_parameter("zenith_col", Color(0.14, 0.24, 0.48))
+			sm.set_shader_parameter("mid_col", Color(0.34, 0.44, 0.68))
+			sm.set_shader_parameter("horizon_col", Color(0.86, 0.66, 0.56))
+			sm.set_shader_parameter("ground_col", Color(0.18, 0.24, 0.18))
+			sm.set_shader_parameter("cloud_lit_col", Color(1.0, 0.95, 0.88))
+			sm.set_shader_parameter("cloud_shadow_col", Color(0.38, 0.36, 0.54))
+			sm.set_shader_parameter("sun_tint", Color(1.0, 0.88, 0.66))
+			sm.set_shader_parameter("aurora_col", Color(0.22, 0.92, 0.56))
+			sm.set_shader_parameter("aurora_intensity", 0.18)
+			sm.set_shader_parameter("sun_dir", Vector3(0.24, 0.38, 0.89).normalized())
+			sm.set_shader_parameter("sun_halo", 0.75)
+			sm.set_shader_parameter("cloud_coverage", 0.40)
+			sm.set_shader_parameter("cloud_softness", 0.30)
+			sm.set_shader_parameter("cirrus_amount", 0.40)
+			sm.set_shader_parameter("wind_vel", Vector2(0.025, 0.014))
+			sm.set_shader_parameter("weather_variance", 0.09)
+			sm.set_shader_parameter("star_intensity", 0.32)
+
+	var sky := Sky.new()
+	sky.sky_material = sm
+	sky.process_mode = Sky.PROCESS_MODE_REALTIME
+	sky.radiance_size = Sky.RADIANCE_SIZE_128
+	env.sky = sky
+	env.background_mode = Environment.BG_SKY
+	if env.fog_enabled:
+		env.fog_sky_affect = clampf(env.fog_sky_affect, 0.0, 0.22)
+	return sm
+
+## Dynamically drives Kansas / storm sky cloud thickening, wind speed & sheet lightning!
+static func set_sky_storm_factor(world_env: WorldEnvironment, storm_t: float, flash: float = 0.0) -> void:
+	if world_env == null or world_env.environment == null or world_env.environment.sky == null:
+		return
+	var sm := world_env.environment.sky.sky_material as ShaderMaterial
+	if sm == null:
+		return
+	var s := clampf(storm_t, 0.0, 1.0)
+	sm.set_shader_parameter("cloud_coverage", lerpf(0.44, 0.88, s))
+	sm.set_shader_parameter("cloud_lit_col", Color(0.90, 0.90, 0.92).lerp(Color(0.38, 0.40, 0.39), s))
+	sm.set_shader_parameter("cloud_shadow_col", Color(0.28, 0.29, 0.32).lerp(Color(0.09, 0.10, 0.10), s))
+	sm.set_shader_parameter("horizon_col", Color(0.68, 0.68, 0.70).lerp(Color(0.24, 0.26, 0.25), s))
+	sm.set_shader_parameter("wind_vel", Vector2(lerpf(0.042, 0.145, s), lerpf(0.024, 0.085, s)))
+	sm.set_shader_parameter("lightning_flash", clampf(flash, 0.0, 1.8))
 
 ## Phase P11/P12.1: Destructible Rococo Porcelain Amphora Urn (prop_03_porcelain_urn.jpg) — shatters on F/C hit for +5 Desire!
 static func spawn_destructible_urn(parent: Node3D, at: Vector3) -> StaticBody3D:
