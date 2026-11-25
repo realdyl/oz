@@ -24,6 +24,7 @@ const CHAR_TITLES := {
 	"tinman": "THE TIN WOODMAN  ·  STEEL HEART",
 	"lion": "THE COWARDLY LION  ·  PRIMAL ROAR",
 	"toto": "TOTO  ·  FAITHFUL TERRIER",
+	"charms": "SILVER-SHOE CURIOS  ·  RELICS OF ALLURE",
 }
 
 var _backdrop: ColorRect
@@ -66,6 +67,7 @@ const CHAR_TABS := [
 	{"id": "tinman", "label": "Tin Man"},
 	{"id": "lion", "label": "Lion"},
 	{"id": "toto", "label": "Toto"},
+	{"id": "charms", "label": "✦ Curios"},
 ]
 
 func _ready() -> void:
@@ -335,10 +337,22 @@ func _build_ui() -> void:
 	cta_col.add_child(_detail_cost)
 
 	_buy_btn = Button.new()
-	_buy_btn.custom_minimum_size = Vector2(180, 44)
-	OzThemeFactory.style_royal_button(_buy_btn, "primary", false, 14, 12)
+	_buy_btn.custom_minimum_size = Vector2(180, 42)
+	OzThemeFactory.style_gothic_plaque_button(_buy_btn, true, false, 14)
 	_buy_btn.pressed.connect(_on_buy_or_equip_pressed)
 	cta_col.add_child(_buy_btn)
+
+	var inspect_btn := Button.new()
+	inspect_btn.text = "INSPECT IN GRIMOIRE"
+	inspect_btn.custom_minimum_size = Vector2(180, 30)
+	OzThemeFactory.style_gothic_plaque_button(inspect_btn, false, false, 11)
+	inspect_btn.pressed.connect(func():
+		close()
+		var hud := get_parent()
+		if hud and hud.get("grimoire_menu"):
+			hud.get("grimoire_menu").call("open", 3 if _active_char == "charms" else 1)
+	)
+	cta_col.add_child(inspect_btn)
 
 	# Footer Balance Strip
 	var footer := HBoxContainer.new()
@@ -459,6 +473,36 @@ func _build_turntable_world() -> void:
 		ring.position = Vector3(0, -0.005, 0)
 		_turntable.add_child(ring)
 
+	# 12 Engraved Zodiac / Clockwork Brass Spokes + Volumetric Theatrical Spotlight Cone (ref_05_boutique_ui.jpg!)
+	for si in range(12):
+		var spoke := MeshInstance3D.new()
+		var sb := BoxMesh.new()
+		sb.size = Vector3(0.022, 0.028, 0.84)
+		spoke.mesh = sb
+		var smat := StandardMaterial3D.new()
+		smat.albedo_color = Color(0.84, 0.68, 0.34)
+		smat.metallic = 0.86
+		smat.roughness = 0.24
+		spoke.material_override = smat
+		spoke.rotation.y = float(si) * PI / 6.0
+		spoke.position = Vector3(0, -0.004, 0)
+		_turntable.add_child(spoke)
+
+	var cone := MeshInstance3D.new()
+	var cc := CylinderMesh.new()
+	cc.top_radius = 0.22
+	cc.bottom_radius = 1.05
+	cc.height = 3.2
+	cone.mesh = cc
+	var cmat := StandardMaterial3D.new()
+	cmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	cmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	cmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cmat.albedo_color = Color(1.0, 0.88, 0.62, 0.055)
+	cone.material_override = cmat
+	cone.position = Vector3(0, 1.55, 0)
+	stage.add_child(cone)
+
 func _on_stage_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -485,21 +529,43 @@ func _rebuild_preview_actor(tint: Color, item_id: String = "") -> void:
 	actor.name = "PreviewActor"
 	_toto_preview_parts.clear()
 	var resolved_id := item_id if item_id != "" else _selected_item_id
-	if _active_char == "toto":
+	var preview_char := "dorothy" if _active_char == "charms" else _active_char
+	if preview_char == "toto":
 		_toto_preview_parts = TotoCompanion.build_dog_visual(actor, false, resolved_id)
 		actor.scale = Vector3(1.55, 1.55, 1.55)
 		_turntable.add_child(actor)
 		_preview_actor = actor
 		return
-	elif VISUAL_SCRIPTS.has(_active_char):
-		actor.set_script(VISUAL_SCRIPTS[_active_char])
-		if _active_char == "dorothy":
+	elif VISUAL_SCRIPTS.has(preview_char):
+		actor.set_script(VISUAL_SCRIPTS[preview_char])
+		if preview_char == "dorothy":
 			actor.set("show_silver_shoes", true)
-		elif _active_char == "lion":
+		elif preview_char == "lion":
 			actor.set("cowering", false)
-		actor.set("outfit_id", resolved_id)
+		var sm_p := get_node_or_null("/root/SaveManager")
+		var d_eq := str(sm_p.equipped_outfits.get("dorothy", "dorothy_gingham")) if sm_p else "dorothy_gingham"
+		actor.set("outfit_id", d_eq if _active_char == "charms" else resolved_id)
 	_turntable.add_child(actor)
 	_preview_actor = actor
+	if _active_char == "charms":
+		if _preview_actor.has_method("set_outfit"):
+			var sm_c := get_node_or_null("/root/SaveManager")
+			_preview_actor.call("set_outfit", str(sm_c.equipped_outfits.get("dorothy", "dorothy_gingham")) if sm_c else "dorothy_gingham")
+		# Shimmering Curio Relic Halo orbiting Dorothy's Silver Shoes!
+		var halo := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.44
+		torus.outer_radius = 0.48
+		halo.mesh = torus
+		var hm := StandardMaterial3D.new()
+		hm.albedo_color = tint.lightened(0.25)
+		hm.emission_enabled = true
+		hm.emission = tint
+		hm.emission_energy_multiplier = 2.2
+		halo.material_override = hm
+		halo.position = Vector3(0, 0.14, 0)
+		actor.add_child(halo)
+		return
 	if _preview_actor.has_method("set_outfit"):
 		_preview_actor.call("set_outfit", resolved_id)
 		return
@@ -571,7 +637,7 @@ func _refresh() -> void:
 	_char_plaque_lbl.text = CHAR_TITLES.get(_active_char, _active_char.to_upper())
 	for i in range(CHAR_TABS.size()):
 		var is_active: bool = (CHAR_TABS[i]["id"] == _active_char)
-		OzThemeFactory.style_royal_button(_tab_buttons[i], "featured" if is_active else "secondary", false, 13, 10)
+		OzThemeFactory.style_gothic_plaque_button(_tab_buttons[i], is_active, false, 13)
 		_tab_buttons[i].modulate = Color.WHITE
 
 	var items: Array = sm.SHOP_CATALOG.get(_active_char, [])

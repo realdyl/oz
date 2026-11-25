@@ -264,6 +264,65 @@ static func style_royal_button(btn: Button, role: String = "secondary", kansas: 
 	btn.add_theme_constant_override("outline_size", 3)
 
 
+## Reference-True 2026 Smoked Bronzed-Obsidian & Double-Gold Filigree Plaque Button
+## (Matches ref_02_main_menu.jpg "CONTINUE / NEW JOURNEY / LOAD SAVE / SETTINGS / QUIT" & ref_05 Boutique!).
+static func style_gothic_plaque_button(btn: Button, hero: bool = false, kansas: bool = false, font_sz: int = 16) -> void:
+	if btn == null:
+		return
+	var norm_bg := Color(0.14, 0.15, 0.17, 0.94) if kansas else (
+		Color(0.215, 0.165, 0.130, 0.95) if hero else Color(0.125, 0.095, 0.125, 0.93)
+	)
+	var norm_border := KS_BORDER if kansas else (OZ_GOLD_BRIGHT if hero else OZ_BORDER_GOLD)
+	var norm := StyleBoxFlat.new()
+	norm.bg_color = norm_bg
+	norm.border_color = norm_border
+	norm.border_width_left = 2
+	norm.border_width_right = 2
+	norm.border_width_top = 2
+	norm.border_width_bottom = 3
+	norm.set_corner_radius_all(6)
+	norm.content_margin_left = 28
+	norm.content_margin_right = 28
+	norm.content_margin_top = 11
+	norm.content_margin_bottom = 11
+	norm.shadow_size = 14 if hero else 8
+	norm.shadow_color = Color(0.92, 0.76, 0.38, 0.20) if (hero and not kansas) else Color(0.0, 0.0, 0.0, 0.48)
+	norm.shadow_offset = Vector2(0, 3)
+	norm.anti_aliasing = true
+
+	var hov := norm.duplicate() as StyleBoxFlat
+	hov.bg_color = Color(0.24, 0.25, 0.28, 0.98) if kansas else Color(0.285, 0.215, 0.155, 0.98)
+	hov.border_color = KS_ACCENT_BRIGHT if kansas else Color(0.98, 0.88, 0.58, 1.0)
+	hov.set_border_width_all(2)
+	hov.border_width_bottom = 3
+	hov.shadow_size = 18
+	hov.shadow_color = Color(0.95, 0.96, 1.0, 0.22) if kansas else Color(0.96, 0.80, 0.42, 0.34)
+
+	var prs := norm.duplicate() as StyleBoxFlat
+	prs.bg_color = norm_bg.darkened(0.18)
+	prs.border_color = hov.border_color
+	prs.shadow_size = 4
+
+	var dis := norm.duplicate() as StyleBoxFlat
+	dis.bg_color = Color(0.08, 0.07, 0.09, 0.65)
+	dis.border_color = Color(norm_border.r, norm_border.g, norm_border.b, 0.32)
+	dis.shadow_size = 0
+
+	btn.add_theme_stylebox_override("normal", norm)
+	btn.add_theme_stylebox_override("hover", hov)
+	btn.add_theme_stylebox_override("focus", hov)
+	btn.add_theme_stylebox_override("pressed", prs)
+	btn.add_theme_stylebox_override("disabled", dis)
+	btn.add_theme_font_size_override("font_size", font_sz)
+	btn.add_theme_color_override("font_color", KS_TEXT if kansas else Color(0.95, 0.89, 0.78))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.97, 0.88))
+	btn.add_theme_color_override("font_focus_color", Color(1.0, 0.97, 0.88))
+	btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.94, 0.78))
+	btn.add_theme_color_override("font_disabled_color", Color(0.55, 0.50, 0.48, 0.60))
+	btn.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.05, 0.90))
+	btn.add_theme_constant_override("outline_size", 3)
+
+
 static func accent_color(kansas: bool) -> Color:
 	return KS_ACCENT_BRIGHT if kansas else OZ_GOLD_BRIGHT
 

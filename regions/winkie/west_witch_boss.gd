@@ -79,11 +79,15 @@ func take_damage(amount: int, source_position: Vector3, tags: Dictionary = {}) -
 	if CombatFx and CombatFx.has_method("blood_splatter"):
 		CombatFx.blood_splatter(self, global_position + Vector3(0, 0.4, 0), global_position - source_position, Color(0.32, 0.04, 0.38))
 	# Ground her after enough pressure or axe hits while low.
-	if health <= 70 or (armor_break and health <= 100):
+	if not grounded and (health <= 70 or (armor_break and health <= 100)):
 		grounded = true
 		_hover_y = 0.08
 		if CombatFx and CombatFx.has_method("label"):
 			CombatFx.label(self, global_position + Vector3(0, 2.4, 0), "GROUNDED — WATER!", Color(0.4, 0.75, 1.0))
+		var sm_c := get_node_or_null("/root/SaveManager")
+		if sm_c and sm_c.has_method("has_charm") and bool(sm_c.call("has_charm", "charm_clockwork_heart")):
+			sm_c.hp = mini(sm_c.hp + 1, sm_c.max_hp)
+			sm_c.state_changed.emit()
 	if level and level.has_method("on_west_damaged"):
 		level.on_west_damaged(health, grounded)
 	_sync_boss_hud()
@@ -123,6 +127,14 @@ func _physics_process(delta: float) -> void:
 						if sm and sm.has_method("take_damage"):
 							sm.take_damage(1)
 				)
+				# Phase II: Winged-Monkey Shadow Dive-Bomb flanking telegraph!
+				if health <= int(_max_hp * 0.65):
+					var flank_pos := strike_pos + Vector3(3.4, 0.0, -2.2)
+					CombatFx.aoe_telegraph(self, flank_pos, 2.4, 1.35, Color(0.96, 0.34, 0.22), func():
+						if tgt and is_instance_valid(tgt) and tgt.global_position.distance_to(flank_pos) < 2.5:
+							if tgt.has_method("stumble"):
+								tgt.call("stumble", flank_pos)
+					)
 	var party := get_node_or_null("/root/Party")
 	var target: Node3D = null
 	if party and party.has_method("leader_body"):

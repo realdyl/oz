@@ -6,6 +6,8 @@ extends Node
 signal state_changed
 signal memory_unlocked(mem_id: String, title: String)
 signal desire_gained(amount: int, reason: String)
+signal style_changed(rank_label: String, points: float, mult: float)
+signal quest_updated(quest_id: String, title: String, completed: bool)
 
 const SAVE_DIR := "user://saves"
 const MAX_SLOTS := 3
@@ -14,8 +16,16 @@ var desire_fragments: int = 0
 var hp: int = 5
 var max_hp: int = 5
 var allure: float = 35.0
+var style_points: float = 0.0
+var _style_hold_t: float = 0.0
 var unlocked_memories: Array[String] = []
 var opened_chests: Array[String] = []
+var completed_sanctums: Array[String] = []
+var quest_progress: Dictionary = {}
+var completed_quests: Array[String] = []
+var velvet_road_unlocked: bool = false
+var velvet_road_active: bool = false
+var emerald_spectacles_on: bool = false
 var owned_items: Array[String] = ["dorothy_gingham", "scarecrow_classic", "tinman_classic", "lion_classic", "toto_classic"]
 var equipped_outfits: Dictionary = {
 	"dorothy": "dorothy_gingham",
@@ -23,6 +33,7 @@ var equipped_outfits: Dictionary = {
 	"tinman": "tinman_classic",
 	"lion": "lion_classic",
 	"toto": "toto_classic",
+	"charms": "",
 }
 var current_scene_path: String = "res://regions/kansas/farmyard.tscn"
 var current_chapter: String = "Act 0 · Kansas — The Gale Farm"
@@ -63,6 +74,57 @@ const SHOP_CATALOG := {
 		{"id": "toto_classic", "name": "Cairn Terrier", "cost": 0, "perk": "Loyal dark-brindle prairie terrier.", "tint": Color(0.24, 0.18, 0.14)},
 		{"id": "toto_silver_collar", "name": "Silver-Spiked Collar", "cost": 15, "perk": "Shimmering silver-star collar · Wider bark aura.", "tint": Color(0.55, 0.58, 0.68)},
 	],
+	"charms": [
+		{"id": "charm_echo_heel", "name": "Echoing Silver Heel", "cost": 25, "perk": "Curio · Every 3rd Kick unleashes a +10 AoE silver shockwave.", "tint": Color(0.84, 0.92, 1.0)},
+		{"id": "charm_velvet_thorn", "name": "Thorn of Allure", "cost": 30, "perk": "Curio · +35% damage vs Bound/Enamored foes & +3 Desire.", "tint": Color(0.88, 0.20, 0.44)},
+		{"id": "charm_clockwork_heart", "name": "Tin Clockwork Locket", "cost": 35, "perk": "Curio · +1 Max Silver-Rose Petal (6 HP) & heals on boss stagger.", "tint": Color(0.96, 0.78, 0.36)},
+		{"id": "charm_winged_cap", "name": "Winged Cap Sigil", "cost": 40, "perk": "Curio · 25% faster Heel-Blink & Armament cooldowns.", "tint": Color(0.58, 0.86, 0.72)},
+	],
+}
+
+const SIDE_QUEST_CATALOG := {
+	"kansas_storm_prep": {
+		"act": "kansas",
+		"title": "The Dropping Barometer",
+		"goal": 2,
+		"desc": "Inspect Uncle Henry's Storm Barometer and rescue Aunt Em's Silver Thimble near the Barn before the cyclone hits.",
+		"reward": 20,
+	},
+	"munchkin_baker_debt": {
+		"act": "munchkin",
+		"title": "Vile Request: Sugar & Chains",
+		"goal": 3,
+		"desc": "Shatter 3 Lollipop Guild Tax Coffers or ring the Scarecrow's Crow-Bell Totem to free the Indebted Confectioner.",
+		"reward": 35,
+	},
+	"poppy_mouse_scouts": {
+		"act": "poppy",
+		"title": "Vile Request: Queen's Lost Scouts",
+		"goal": 2,
+		"desc": "Ring the Scent-Chimes along the Poppy Canyon rim to rouse 2 drowsy Field-Mouse Scouts.",
+		"reward": 30,
+	},
+	"winkie_bell_shackles": {
+		"act": "winkie",
+		"title": "Vile Request: Unchained Iron",
+		"goal": 2,
+		"desc": "Sunder 2 Winkie Slave-Shackle Pylons in the outer courtyard using Tin Man's Axe or Dorothy's Kick.",
+		"reward": 35,
+	},
+	"emerald_contraband": {
+		"act": "emerald",
+		"title": "Vile Request: Behind Green Glass",
+		"goal": 3,
+		"desc": "Toggle Locked Green Spectacles [G] on the Emerald Plaza and dispel 3 Humbug Illusion Seals.",
+		"reward": 40,
+	},
+	"glinda_porcelain_chimes": {
+		"act": "glinda",
+		"title": "Vile Request: China Country Harmony",
+		"goal": 3,
+		"desc": "Attune 3 Alabaster Porcelain Chimes around Glinda's Reflecting Pools before clicking your heels.",
+		"reward": 35,
+	},
 }
 
 const MEMORY_CATALOG := {
@@ -162,6 +224,104 @@ func _ready() -> void:
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		DirAccess.make_dir_recursive_absolute(SAVE_DIR)
 
+func _process(delta: float) -> void:
+	if style_points > 0.0 and not get_tree().paused:
+		if _style_hold_t > 0.0:
+			_style_hold_t = maxf(_style_hold_t - delta, 0.0)
+		else:
+			var prev_r := style_rank()
+			style_points = maxf(style_points - delta * 8.5, 0.0)
+			if style_rank() != prev_r or style_points <= 0.0:
+				style_changed.emit(style_rank(), style_points, style_multiplier())
+
+func style_rank() -> String:
+	if style_points >= 140.0:
+		return "★ SOVEREIGN"
+	elif style_points >= 100.0:
+		return "S · SUBLIME"
+	elif style_points >= 70.0:
+		return "A · ALLURING"
+	elif style_points >= 45.0:
+		return "B · BEWITCHING"
+	elif style_points >= 25.0:
+		return "C · CRUEL"
+	elif style_points >= 10.0:
+		return "D · DARING"
+	return ""
+
+func style_multiplier() -> float:
+	var mult := 1.0
+	if style_points >= 140.0:
+		mult = 2.25
+	elif style_points >= 100.0:
+		mult = 1.85
+	elif style_points >= 70.0:
+		mult = 1.55
+	elif style_points >= 45.0:
+		mult = 1.35
+	elif style_points >= 25.0:
+		mult = 1.20
+	elif style_points >= 10.0:
+		mult = 1.10
+	if velvet_road_active:
+		mult *= 1.5
+	return mult
+
+func register_style_action(pts: float, _label: String = "") -> void:
+	style_points = clampf(style_points + pts, 0.0, 180.0)
+	_style_hold_t = 3.2
+	style_changed.emit(style_rank(), style_points, style_multiplier())
+
+func has_charm(charm_id: String) -> bool:
+	return str(equipped_outfits.get("charms", "")) == charm_id or (velvet_road_active and charm_id == "charm_echo_heel")
+
+func grant_charm(charm_id: String) -> void:
+	if charm_id not in owned_items:
+		owned_items.append(charm_id)
+	if str(equipped_outfits.get("charms", "")) == "":
+		equipped_outfits["charms"] = charm_id
+	_sync_max_hp_from_charm()
+	state_changed.emit()
+
+func _sync_max_hp_from_charm() -> void:
+	var target_max := 6 if ("charm_clockwork_heart" in owned_items and str(equipped_outfits.get("charms", "")) == "charm_clockwork_heart") else 5
+	if target_max != max_hp:
+		max_hp = target_max
+		hp = mini(hp + 1, max_hp) if max_hp == 6 else mini(hp, max_hp)
+
+func advance_side_quest(quest_id: String, step: int = 1) -> bool:
+	if not SIDE_QUEST_CATALOG.has(quest_id) or quest_id in completed_quests:
+		return false
+	var meta: Dictionary = SIDE_QUEST_CATALOG[quest_id]
+	var cur := int(quest_progress.get(quest_id, 0)) + step
+	var goal := int(meta.get("goal", 1))
+	quest_progress[quest_id] = mini(cur, goal)
+	var done := cur >= goal
+	if done:
+		completed_quests.append(quest_id)
+		add_desire(int(meta.get("reward", 25)), "Completed: %s" % str(meta.get("title", quest_id)))
+		heal_full()
+	quest_updated.emit(quest_id, str(meta.get("title", quest_id)), done)
+	state_changed.emit()
+	return done
+
+func active_side_quest_line(act_key: String) -> String:
+	for qid in SIDE_QUEST_CATALOG.keys():
+		var meta: Dictionary = SIDE_QUEST_CATALOG[qid]
+		if str(meta.get("act", "")) == act_key:
+			if qid in completed_quests:
+				return "✓ %s (Complete)" % str(meta.get("title", ""))
+			var cur := int(quest_progress.get(qid, 0))
+			var goal := int(meta.get("goal", 1))
+			return "• %s (%d/%d)" % [str(meta.get("title", "")), cur, goal]
+	return ""
+
+func unlock_velvet_road() -> void:
+	velvet_road_unlocked = true
+	velvet_road_active = true
+	grant_charm("charm_echo_heel")
+	state_changed.emit()
+
 func get_allure_multiplier() -> float:
 	var eq_d := str(equipped_outfits.get("dorothy", "dorothy_gingham"))
 	if eq_d == "dorothy_sovereign":
@@ -174,9 +334,10 @@ func has_whip_mastery() -> bool:
 	return ("dorothy_whip_plus" in owned_items) or (str(equipped_outfits.get("dorothy", "")) == "dorothy_whip_plus")
 
 func add_desire(amount: int, reason: String = "") -> void:
-	desire_fragments += amount
-	allure = clampf(allure + float(amount) * 0.65 * get_allure_multiplier(), 0.0, 100.0)
-	desire_gained.emit(amount, reason)
+	var boosted := maxi(1, int(round(float(amount) * style_multiplier()))) if amount > 0 else 0
+	desire_fragments += boosted
+	allure = clampf(allure + float(boosted) * 0.65 * get_allure_multiplier(), 0.0, 100.0)
+	desire_gained.emit(boosted, reason)
 	state_changed.emit()
 
 func take_damage(amount: int = 1) -> void:
@@ -242,6 +403,11 @@ func save_slot(slot: int) -> bool:
 		"opened_chests": opened_chests,
 		"owned_items": owned_items,
 		"equipped_outfits": equipped_outfits,
+		"completed_sanctums": completed_sanctums,
+		"quest_progress": quest_progress,
+		"completed_quests": completed_quests,
+		"velvet_road_unlocked": velvet_road_unlocked,
+		"velvet_road_active": velvet_road_active,
 		"difficulty": difficulty,
 		"saved_at": Time.get_datetime_string_from_system(false, true),
 	}
@@ -283,6 +449,16 @@ func load_slot(slot: int) -> bool:
 	if info.has("equipped_outfits") and info["equipped_outfits"] is Dictionary:
 		for k in info["equipped_outfits"].keys():
 			equipped_outfits[str(k)] = str(info["equipped_outfits"][k])
+	completed_sanctums.clear()
+	for cs in info.get("completed_sanctums", []):
+		completed_sanctums.append(str(cs))
+	quest_progress = info.get("quest_progress", {}).duplicate() if info.get("quest_progress") is Dictionary else {}
+	completed_quests.clear()
+	for cq in info.get("completed_quests", []):
+		completed_quests.append(str(cq))
+	velvet_road_unlocked = bool(info.get("velvet_road_unlocked", false))
+	velvet_road_active = bool(info.get("velvet_road_active", false))
+	_sync_max_hp_from_charm()
 	if info.has("difficulty"):
 		difficulty = str(info.get("difficulty", "standard"))
 	current_scene_path = str(info.get("scene_path", "res://regions/kansas/farmyard.tscn"))
@@ -324,7 +500,9 @@ func buy_and_equip(char_id: String, item_id: String) -> bool:
 		desire_fragments -= cost
 		owned_items.append(item_id)
 	equipped_outfits[char_id] = item_id
-	apply_outfit_to_world(char_id, item.get("tint", Color.WHITE), item_id)
+	_sync_max_hp_from_charm()
+	if char_id != "charms":
+		apply_outfit_to_world(char_id, item.get("tint", Color.WHITE), item_id)
 	state_changed.emit()
 	return true
 

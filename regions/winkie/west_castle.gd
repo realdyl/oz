@@ -1,6 +1,7 @@
 extends Node3D
 
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 
 ## Act 3 · Winkie Country — Witch of the West castle (vault [[Witch of the West]]).
 ## Dark iron/ember arena. Book-true water melt (Baum) as the finish window — not a film gag alone.
@@ -563,3 +564,9 @@ func _add_west_whimsy() -> void:
 		{"pos": Vector3(8, 0, -44), "kind": "giggle", "name": "Gate giggle"},
 		{"pos": Vector3(-8, 0, -28), "kind": "chime", "name": "Arch chime"},
 	], "winkie")
+	# Phase P9.3: Winkie Slave-Shackle Pylons, Velvet Sanctum of the Winged Cap & Destructibles!
+	OzEncounters.spawn_monument(self, Vector3(-18.0, 0.0, 14.0), "rusted_chain", "West Shackle Pylon", "winkie_bell_shackles", Color(0.95, 0.56, 0.28), 20)
+	OzEncounters.spawn_monument(self, Vector3(18.0, 0.0, 14.0), "rusted_chain", "East Shackle Pylon", "winkie_bell_shackles", Color(0.95, 0.56, 0.28), 20)
+	OzEncounters.spawn_velvet_sanctum(self, Vector3(24.0, 0.0, -12.0), "sanctum_winkie", "charm_winged_cap", "Sanctum of the Winged Cap")
+	for up in [Vector3(-14.0, 0, 22), Vector3(14.0, 0, 22), Vector3(-15.0, 0, -20), Vector3(15.0, 0, -20)]:
+		WorldKit.spawn_destructible_urn(self, up)

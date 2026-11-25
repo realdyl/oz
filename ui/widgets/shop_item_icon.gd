@@ -17,6 +17,10 @@ const ICON_MAP := {
 	"lion_primal": "res://assets/art/icons/shop/lion_primal.png",
 	"toto_classic": "res://assets/art/portraits/toto.png",
 	"toto_silver_collar": "res://assets/art/icons/shop/toto_spiked.png",
+	"charm_echo_heel": "res://assets/art/icons/silver_shoes.png",
+	"charm_velvet_thorn": "res://assets/art/icons/arm_whip.png",
+	"charm_clockwork_heart": "res://assets/art/icons/mem_aunt_em_locket.png",
+	"charm_winged_cap": "res://assets/art/icons/mem_emerald_spectacles.png",
 }
 
 static var _tex_cache: Dictionary = {}

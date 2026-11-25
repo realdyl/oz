@@ -23,14 +23,49 @@ var _prev_vis_yaw: float = 0.0
 @onready var spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var body: Node3D = $Visual/Body
 
+const CAM_PITCH_MIN_DEG := -62.0
+const CAM_PITCH_MAX_DEG := -3.5
+const CAM_FLOOR_CLEARANCE := 0.42
+
 func _ready() -> void:
 	add_to_group("player")
 	floor_snap_length = 0.3
-	spring_arm.collision_mask = 0
+	spring_arm.collision_mask = 1
+	spring_arm.margin = 0.24
+	if spring_arm.shape == null:
+		var sph := SphereShape3D.new()
+		sph.radius = 0.22
+		spring_arm.shape = sph
+	spring_arm.add_excluded_object(get_rid())
 	spring_arm.spring_length = 4.8
 	spring_arm.rotation_degrees = Vector3(-16.0, 0.0, 0.0)
 	looking = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _clamp_kansas_camera() -> void:
+	if camera_pivot == null or spring_arm == null:
+		return
+	var floor_y := global_position.y
+	var world := get_world_3d()
+	if world and world.direct_space_state:
+		var cam_n := spring_arm.find_child("Camera3D", true, false) as Camera3D
+		var p_xz := cam_n.global_position if cam_n else camera_pivot.global_position
+		var q := PhysicsRayQueryParameters3D.create(
+			Vector3(p_xz.x, camera_pivot.global_position.y + 3.5, p_xz.z),
+			Vector3(p_xz.x, camera_pivot.global_position.y - 6.0, p_xz.z),
+			1,
+			[get_rid()]
+		)
+		var hit := world.direct_space_state.intersect_ray(q)
+		if not hit.is_empty():
+			floor_y = maxf(floor_y, float(hit.position.y))
+	var pivot_h := maxf(0.45, camera_pivot.global_position.y - floor_y)
+	var max_sin := clampf((pivot_h - CAM_FLOOR_CLEARANCE) / maxf(1.2, spring_arm.spring_length), -0.92, 0.45)
+	var dyn_max := minf(CAM_PITCH_MAX_DEG, rad_to_deg(asin(max_sin)))
+	spring_arm.rotation_degrees = Vector3(clampf(spring_arm.rotation_degrees.x, CAM_PITCH_MIN_DEG, dyn_max), 0.0, 0.0)
+	var cam := spring_arm.find_child("Camera3D", true, false) as Camera3D
+	if cam and cam.global_position.y < floor_y + CAM_FLOOR_CLEARANCE * 0.88:
+		cam.global_position.y = floor_y + CAM_FLOOR_CLEARANCE * 0.88
 
 func _unhandled_input(event: InputEvent) -> void:
 	if input_locked:
@@ -45,10 +80,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()
 		return
+	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			spring_arm.spring_length = clampf(spring_arm.spring_length - 0.35, 2.5, 6.2)
+			_clamp_kansas_camera()
+			return
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			spring_arm.spring_length = clampf(spring_arm.spring_length + 0.35, 2.5, 6.2)
+			_clamp_kansas_camera()
+			return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		camera_pivot.rotate_y(-event.relative.x * mouse_sensitivity)
 		var pitch: float = spring_arm.rotation_degrees.x - event.relative.y * mouse_sensitivity * 60.0
-		spring_arm.rotation_degrees = Vector3(clampf(pitch, -60.0, 25.0), 0.0, 0.0)
+		spring_arm.rotation_degrees = Vector3(pitch, 0.0, 0.0)
+		_clamp_kansas_camera()
 
 func _physics_process(delta: float) -> void:
 	stunned = maxf(stunned - delta, 0.0)
@@ -60,16 +105,25 @@ func _physics_process(delta: float) -> void:
 			orbit += 1.0
 		if Input.is_action_pressed("camera_right"):
 			orbit -= 1.0
+		# DualSense / Gamepad Right-Stick 360° Orbit & Floor-Safe Pitch!
+		if not get_tree().paused:
+			var rx := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
+			var ry := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
+			if Vector2(rx, ry).length() > 0.16:
+				orbit -= rx * 1.35
+				spring_arm.rotation_degrees.x -= ry * 85.0 * delta
+				looking = true
 		# RMB + A/D (or left/right) orbits yaw 360°
 		if orbiting:
 			var stick := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 			orbit += -stick.x
 			if absf(stick.y) > 0.05:
 				var pitch: float = spring_arm.rotation_degrees.x + stick.y * key_orbit_speed * 25.0 * delta
-				spring_arm.rotation_degrees = Vector3(clampf(pitch, -60.0, 25.0), 0.0, 0.0)
+				spring_arm.rotation_degrees = Vector3(pitch, 0.0, 0.0)
 		if orbit != 0.0:
 			camera_pivot.rotate_y(orbit * key_orbit_speed * delta)
 			looking = true
+		_clamp_kansas_camera()
 
 	if not is_on_floor():
 		velocity.y -= gravity * delta

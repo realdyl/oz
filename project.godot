@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Oz: The Road Home"
-run/main_scene="res://regions/kansas/farmyard.tscn"
+run/main_scene="res://ui/shell/title_screen.tscn"
 config/features=PackedStringArray("4.8")
 
 [autoload]

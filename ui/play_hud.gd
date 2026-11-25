@@ -12,6 +12,7 @@ const ArmamentDock := preload("res://ui/widgets/armament_dock.gd")
 const AllureGauge := preload("res://ui/widgets/allure_gauge.gd")
 const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
 const RaptureShader := preload("res://ui/shaders/rapture_vignette.gdshader")
+const SpectaclesShader := preload("res://ui/shaders/emerald_spectacles.gdshader")
 const WorldKit := preload("res://systems/world_kit.gd")
 const TotoCompanionScript := preload("res://actors/companions/toto_companion.gd")
 
@@ -62,6 +63,12 @@ var _boss_bar: ProgressBar
 var _wheel_root: Control
 var _wheel_open: bool = false
 var _wheel_buttons: Dictionary = {}
+var _style_panel: PanelContainer
+var _style_rank_lbl: Label
+var _style_mult_lbl: Label
+var _spectacles_overlay: ColorRect
+var _sub_objective_lbl: Label
+var _act_key: String = ""
 
 var _is_final_step: bool = false
 var _last_objective: String = ""
@@ -421,7 +428,11 @@ func set_objective(text: String) -> void:
 		return
 	var changed := (text != _last_objective)
 	_last_objective = text
-	objective.text = text
+	var clean_txt := text if text.begins_with("◈") else ("◈  " + text)
+	objective.text = clean_txt
+	if kicker and not _is_final_step:
+		kicker.text = "CURRENT OBJECTIVE"
+	_refresh_sub_objective()
 
 	var now_final := text.to_upper().contains("FINAL STEP")
 	if now_final != _is_final_step:
@@ -742,7 +753,70 @@ func _connect_save_manager() -> void:
 		sm.memory_unlocked.connect(_on_memory_unlocked)
 	if sm.has_signal("desire_gained") and not sm.desire_gained.is_connected(_on_desire_gained):
 		sm.desire_gained.connect(_on_desire_gained)
+	if sm.has_signal("style_changed") and not sm.style_changed.is_connected(_on_style_changed):
+		sm.style_changed.connect(_on_style_changed)
+	if sm.has_signal("quest_updated") and not sm.quest_updated.is_connected(_on_quest_updated):
+		sm.quest_updated.connect(_on_quest_updated)
 	_refresh_vitality_ribbon()
+	_refresh_sub_objective()
+
+func _detect_act_key() -> String:
+	var host := get_parent()
+	if host == null:
+		return ""
+	var sp := host.scene_file_path.to_lower()
+	if "farmyard" in sp:
+		return "kansas"
+	if "landing_square" in sp:
+		return "munchkin"
+	if "poppy" in sp:
+		return "poppy"
+	if "west_castle" in sp:
+		return "winkie"
+	if "wizard_tower" in sp:
+		return "emerald"
+	if "glinda" in sp:
+		return "glinda"
+	return ""
+
+func _refresh_sub_objective() -> void:
+	if objective == null:
+		return
+	if _sub_objective_lbl == null and objective.get_parent() is VBoxContainer:
+		_sub_objective_lbl = Label.new()
+		_sub_objective_lbl.name = "SubObjective"
+		_sub_objective_lbl.add_theme_font_size_override("font_size", 12)
+		_sub_objective_lbl.add_theme_color_override("font_color", Color(0.88, 0.76, 0.54, 0.92))
+		_sub_objective_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		(objective.get_parent() as VBoxContainer).add_child(_sub_objective_lbl)
+	if _sub_objective_lbl == null:
+		return
+	if _act_key == "":
+		_act_key = _detect_act_key()
+	var sm := get_node_or_null("/root/SaveManager")
+	var sq := str(sm.call("active_side_quest_line", _act_key)) if (sm and _act_key != "" and sm.has_method("active_side_quest_line")) else ""
+	_sub_objective_lbl.visible = (sq != "")
+	_sub_objective_lbl.text = sq
+
+func _on_quest_updated(_qid: String, title: String, completed: bool) -> void:
+	_refresh_sub_objective()
+	if has_method("show_toast"):
+		call("show_toast", ("★ Vile Request Complete: %s!" if completed else "◈ Progress: %s") % title, 3.2)
+
+func _on_style_changed(rank_label: String, _pts: float, mult: float) -> void:
+	if _style_panel == null:
+		return
+	if rank_label == "" or kansas_mode:
+		_style_panel.visible = false
+		return
+	_style_panel.visible = true
+	_style_rank_lbl.text = rank_label
+	_style_mult_lbl.text = "%.2f× DESIRE" % mult
+	if not _is_headless():
+		_style_panel.pivot_offset = _style_panel.size * 0.5
+		_style_panel.scale = Vector2(1.08, 1.08)
+		var tw := create_tween()
+		tw.tween_property(_style_panel, "scale", Vector2.ONE, 0.14).set_ease(Tween.EASE_OUT)
 
 func _on_memory_unlocked(_mem_id: String, title: String) -> void:
 	if has_method("show_toast"):
@@ -789,7 +863,7 @@ func _build_vitality_ribbon() -> void:
 	cluster.add_child(_allure_gauge)
 
 	_desire_lbl = Label.new()
-	_desire_lbl.text = "[B] Boutique  ·  [J] Grimoire  ·  [Q] Wheel"
+	_desire_lbl.text = "[B] Boutique  ·  [J] Grimoire  ·  [Q] Wheel  ·  [G] Lens"
 	_desire_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_desire_lbl.add_theme_font_size_override("font_size", 10)
 	_desire_lbl.add_theme_color_override("font_color", Color(0.84, 0.76, 0.68, 0.88))
@@ -797,6 +871,58 @@ func _build_vitality_ribbon() -> void:
 	_desire_lbl.add_theme_constant_override("outline_size", 3)
 	_desire_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cluster.add_child(_desire_lbl)
+
+	# ========================================================================
+	# RIGHT-MIDDLE: Live 2026 Combo & Allure Style Rank Emblem (D -> ★ SOVEREIGN)
+	# ========================================================================
+	_style_panel = PanelContainer.new()
+	_style_panel.name = "StyleRankEmblem"
+	_style_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_style_panel.offset_left = -224.0
+	_style_panel.offset_right = -18.0
+	_style_panel.offset_top = 160.0
+	_style_panel.offset_bottom = 216.0
+	_style_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sp_st := StyleBoxFlat.new()
+	sp_st.bg_color = Color(0.11, 0.055, 0.145, 0.92)
+	sp_st.border_color = Color(0.95, 0.80, 0.44, 0.95)
+	sp_st.set_border_width_all(2)
+	sp_st.set_corner_radius_all(8)
+	sp_st.content_margin_left = 16
+	sp_st.content_margin_right = 16
+	sp_st.content_margin_top = 8
+	sp_st.content_margin_bottom = 8
+	_style_panel.add_theme_stylebox_override("panel", sp_st)
+	var s_vb := VBoxContainer.new()
+	s_vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	s_vb.add_theme_constant_override("separation", 1)
+	_style_panel.add_child(s_vb)
+	_style_rank_lbl = Label.new()
+	_style_rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_style_rank_lbl.add_theme_font_size_override("font_size", 16)
+	_style_rank_lbl.add_theme_color_override("font_color", Color(0.99, 0.88, 0.52))
+	s_vb.add_child(_style_rank_lbl)
+	_style_mult_lbl = Label.new()
+	_style_mult_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_style_mult_lbl.add_theme_font_size_override("font_size", 10)
+	_style_mult_lbl.add_theme_color_override("font_color", Color(0.92, 0.58, 0.74))
+	s_vb.add_child(_style_mult_lbl)
+	_style_panel.visible = false
+	safe.add_child(_style_panel)
+
+	# Full-screen Emerald Spectacles Lens Overlay ([G] toggle!)
+	_spectacles_overlay = ColorRect.new()
+	_spectacles_overlay.name = "EmeraldSpectaclesOverlay"
+	_spectacles_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_spectacles_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spectacles_overlay.color = Color(0.06, 0.48, 0.28, 0.14)
+	if not _is_headless():
+		var gmat := ShaderMaterial.new()
+		gmat.shader = SpectaclesShader
+		_spectacles_overlay.material = gmat
+	_spectacles_overlay.visible = false
+	safe.add_child(_spectacles_overlay)
+	safe.move_child(_spectacles_overlay, 0)
 
 	# ========================================================================
 	# BOTTOM-LEFT: Circular 5-Portrait Party Medallion Wheel (ref_03_gameplay_hud.jpg)
@@ -946,18 +1072,19 @@ func _build_quick_wheel() -> void:
 	add_child(_wheel_root)
 
 	var pc := PanelContainer.new()
-	pc.custom_minimum_size = Vector2(460, 260)
+	pc.custom_minimum_size = Vector2(500, 290)
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.06, 0.04, 0.09, 0.93)
+	st.bg_color = Color(0.068, 0.036, 0.085, 0.95)
 	st.border_color = Color(0.90, 0.74, 0.36, 0.95)
 	st.set_border_width_all(2)
-	st.set_corner_radius_all(18)
-	st.content_margin_left = 20
-	st.content_margin_right = 20
-	st.content_margin_top = 16
-	st.content_margin_bottom = 16
+	st.set_corner_radius_all(16)
+	st.content_margin_left = 30
+	st.content_margin_right = 30
+	st.content_margin_top = 24
+	st.content_margin_bottom = 24
 	pc.add_theme_stylebox_override("panel", st)
 	var q_frame := OrnateFrame.new()
+	q_frame.outer_pad = 8.0
 	q_frame.inset = 5.0
 	q_frame.corner_size = 13.0
 	q_frame.animated_sheen = true
@@ -1026,4 +1153,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_Q:
 			_toggle_quick_wheel()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_G and not kansas_mode:
+			if _spectacles_overlay:
+				_spectacles_overlay.visible = not _spectacles_overlay.visible
+				var sm := get_node_or_null("/root/SaveManager")
+				if sm:
+					sm.emerald_spectacles_on = _spectacles_overlay.visible
+				show_toast("✦ Locked Green-Tinted Spectacles: ON (Illusions Revealed)" if _spectacles_overlay.visible else "Green-Tinted Spectacles removed.", 2.6)
 			get_viewport().set_input_as_handled()

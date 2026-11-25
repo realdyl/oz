@@ -7,6 +7,7 @@ extends Node3D
 const MUNCHKIN_SCENE := "res://regions/munchkinland/landing_square.tscn"
 const DEBRIS_SCENE := preload("res://regions/kansas/debris.tscn")
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 
 enum Phase {
 	INTRO,
@@ -783,6 +784,9 @@ func _add_kansas_whimsy() -> void:
 		{"pos": Vector3(-8, 0, 28), "kind": "dance", "name": "Barn dance ring"},
 		{"pos": Vector3(18, 0, 30), "kind": "giggle", "name": "Yard giggle"},
 	], "kansas")
+	# Phase P6.3: Kansas Storm Barometer & Aunt Em's Silver Thimble Side Quest ("The Dropping Barometer")
+	OzEncounters.spawn_monument(self, Vector3(-13.5, 0.0, 12.5), "chime", "Storm Barometer", "kansas_storm_prep", Color(0.78, 0.80, 0.84), 10)
+	OzEncounters.spawn_monument(self, Vector3(-19.5, 0.0, 21.5), "chime", "Aunt Em's Thimble", "kansas_storm_prep", Color(0.88, 0.90, 0.94), 10)
 
 func _wind_props(delta: float) -> void:
 	wind_t += delta

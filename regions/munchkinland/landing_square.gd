@@ -10,6 +10,7 @@ const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const PUPPET_SCENE := preload("res://actors/enemies/puppet_munchkin.tscn")
 const TREE_SCRIPT := preload("res://actors/enemies/living_tree.gd")
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 const WEST_SCENE := "res://regions/winkie/west_castle.tscn"
 const POPPY_SCENE := "res://regions/poppy/poppy_road.tscn"
 const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
@@ -198,9 +199,17 @@ func _expand_world() -> void:
 		{"pos": Vector3(-34.0, 0.0, 82.0), "radius": 13.0, "height": 2.8},
 	], Color(0.38, 0.58, 0.30))
 	WorldKit.dress_ybr_spine(self, -54.0, 126.0, 2.75)
-	# Phase P11: Destructible Gilded Porcelain Urns along Munchkinland + Forward+ ACES Post-Processing!
-	for up in [Vector3(-4.2, 0, -22), Vector3(4.2, 0, 12), Vector3(-4.2, 0, 46), Vector3(4.2, 0, 82)]:
+	# Phase P11 & P7.3: Destructible Urns, Companion Synergy Puzzles, Vile Request & Secret Velvet Sanctum!
+	for up in [
+		Vector3(-4.2, 0, -22), Vector3(4.2, 0, 12), Vector3(-4.2, 0, 46), Vector3(4.2, 0, 82),
+		Vector3(18.5, 0, 12), Vector3(-16.5, 0, 42), Vector3(15.0, 0, 84), Vector3(-18.0, 0, 96),
+	]:
 		WorldKit.spawn_destructible_urn(self, up)
+	OzEncounters.spawn_monument(self, Vector3(16.0, 0.0, -14.0), "chime", "Guild Tax Coffer I", "munchkin_baker_debt", Color(0.96, 0.78, 0.36), 15)
+	OzEncounters.spawn_monument(self, Vector3(-18.0, 0.0, 16.0), "rusted_chain", "Chained Tax Coffer II", "munchkin_baker_debt", Color(0.92, 0.62, 0.34), 20)
+	OzEncounters.spawn_monument(self, Vector3(14.5, 0.0, 32.0), "crow_bell", "Scarecrow Crow-Bell", "munchkin_baker_debt", Color(0.96, 0.84, 0.42), 20)
+	OzEncounters.spawn_monument(self, Vector3(-15.5, 0.0, -18.0), "toto_scent", "Toto Scent Cache", "", Color(0.88, 0.94, 1.0), 20, "", "munchkin_porcelain_mask")
+	OzEncounters.spawn_velvet_sanctum(self, Vector3(-28.0, 0.0, 72.0), "sanctum_munchkin", "charm_echo_heel", "Velvet Sanctum of Echoes")
 	var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we and we.environment:
 		WorldKit.apply_aaa_post_processing(we.environment, "munchkin")

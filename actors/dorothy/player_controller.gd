@@ -57,8 +57,14 @@ func _ready() -> void:
 	add_to_group("player")
 	add_to_group("party")
 	floor_snap_length = 0.3
-	# Godot 4 SpringArm places children along local +Z. Pitch down a little.
-	spring_arm.collision_mask = 0
+	# Godot 4 SpringArm places children along local +Z. Enable Layer 1 collision + floor-safe pitch.
+	spring_arm.collision_mask = 1
+	spring_arm.margin = 0.24
+	if spring_arm.shape == null:
+		var cam_sph := SphereShape3D.new()
+		cam_sph.radius = 0.22
+		spring_arm.shape = cam_sph
+	spring_arm.add_excluded_object(get_rid())
 	_set_arm_pitch(-18.0)
 	looking = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -280,8 +286,10 @@ func _try_step(dir: Vector3) -> void:
 func _blink() -> void:
 	var sm_b := get_node_or_null("/root/SaveManager")
 	var sov_fast := 0.85 if (sm_b and str(sm_b.equipped_outfits.get("dorothy", "")) == "dorothy_sovereign") else 1.0
+	if sm_b and sm_b.has_method("has_charm") and bool(sm_b.call("has_charm", "charm_winged_cap")):
+		sov_fast *= 0.75
 	blink_timer = blink_cooldown * sov_fast
-	iframe_timer = iframe_time
+	iframe_timer = iframe_time + 0.08
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var dir := Vector3.ZERO
 	if input.length() > 0.05:
@@ -309,6 +317,19 @@ func _blink() -> void:
 		body.call("play_blink")
 	if CombatFx.has_method("blink_afterimage"):
 		CombatFx.blink_afterimage(self, dep_pos, dir, dep_yaw)
+	# Phase P4.3: "Silver Mirage" Perfect Blink-Dodge when dodging right near an active threat!
+	var near_foes := _find_live_enemies(3.6)
+	if not near_foes.is_empty() and DisplayServer.get_name() not in ["headless", "Dummy"]:
+		CombatFx.ring(self, dep_pos, Color(0.86, 0.95, 1.0), 2.8, 0.36)
+		CombatFx.label(self, dep_pos + Vector3(0, 0.6, 0), "✦ SILVER MIRAGE!", Color(0.88, 0.96, 1.0))
+		for nf in near_foes:
+			if nf.has_method("apply_bind"):
+				nf.call("apply_bind", 1.4)
+		if sm_b:
+			if sm_b.has_method("register_style_action"):
+				sm_b.call("register_style_action", 26.0, "Silver Mirage")
+			if sm_b.has_method("add_desire"):
+				sm_b.add_desire(4, "Silver Mirage Dodge")
 
 func _blink_destination(dir: Vector3) -> Vector3:
 	var space := get_world_3d().direct_space_state
@@ -378,17 +399,37 @@ func _kick() -> void:
 	params.transform = Transform3D(Basis(), global_position + Vector3(0, 0.55, 0) + forward * kick_range)
 	var hits := space.intersect_shape(params, 6)
 	var connected := false
+	var sm := get_node_or_null("/root/SaveManager")
+	var has_thorn: bool = sm != null and sm.has_method("has_charm") and bool(sm.call("has_charm", "charm_velvet_thorn"))
+	var has_echo: bool = sm != null and sm.has_method("has_charm") and bool(sm.call("has_charm", "charm_echo_heel"))
 	for hit in hits:
 		var collider: Object = hit.collider
 		if collider and collider.has_method("take_damage"):
-			collider.take_damage(step_dmg, global_position, {"knockback": 8.5 + float(_combo_step) * 1.5, "launch": true})
+			var final_dmg := step_dmg
+			var is_afflicted := ("bind_t" in collider and float(collider.get("bind_t")) > 0.0) \
+				or ("enamored_t" in collider and float(collider.get("enamored_t")) > 0.0) \
+				or ("_bind_t" in collider and float(collider.get("_bind_t")) > 0.0) \
+				or ("_enamored_t" in collider and float(collider.get("_enamored_t")) > 0.0)
+			if has_thorn and is_afflicted:
+				final_dmg = int(round(float(final_dmg) * 1.35))
+				if sm:
+					sm.add_desire(3, "Thorn of Allure")
+			collider.take_damage(final_dmg, global_position, {"knockback": 8.5 + float(_combo_step) * 1.5, "launch": true})
 			connected = true
+	if _combo_step == 3 and has_echo:
+		CombatFx.ring(self, global_position + forward * 1.1, Color(0.86, 0.94, 1.0), 3.4, 0.34)
+		for echo_foe in _find_live_enemies(3.4):
+			if echo_foe.has_method("take_damage"):
+				echo_foe.take_damage(10, global_position, {"knockback": 6.0})
+				connected = true
 	if connected:
 		_hitstop()
 		velocity += forward * 3.2
-		var sm := get_node_or_null("/root/SaveManager")
-		if sm and sm.has_method("add_desire") and (_combo_step == 3 or _rapture_t > 0.0):
-			sm.add_desire(5 if _combo_step == 3 else 3, "")
+		if sm:
+			if sm.has_method("register_style_action"):
+				sm.call("register_style_action", 14.0 + float(_combo_step) * 5.0, "Silver Kick")
+			if sm.has_method("add_desire") and (_combo_step == 3 or _rapture_t > 0.0):
+				sm.add_desire(5 if _combo_step == 3 else 3, "")
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not leading or parked or not shoes_claimed:

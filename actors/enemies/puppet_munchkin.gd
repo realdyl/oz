@@ -211,6 +211,13 @@ func _physics_process(delta: float) -> void:
 				velocity.x = 0.0
 				velocity.z = 0.0
 				visual.rotation.x = lerp_angle(visual.rotation.x, 0.45, 8.0 * delta)
+				if is_marshal and health <= 45 and state_time < delta * 1.5 and target and CombatFx and CombatFx.has_method("aoe_telegraph"):
+					var strike_p := target.global_position
+					CombatFx.aoe_telegraph(get_parent(), strike_p, 2.7, 0.72, Color(0.96, 0.26, 0.42), func():
+						if target and is_instance_valid(target) and target.global_position.distance_to(strike_p) < 2.8:
+							if target.has_method("stumble"):
+								target.call("stumble", global_position)
+					)
 				if state_time > (0.7 if is_marshal else 0.55):
 					hit_this_lunge = false
 					_set_state(State.LUNGE)

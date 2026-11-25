@@ -11,6 +11,7 @@ extends Control
 @export var show_diamonds: bool = true
 @export var kansas_mode: bool = false
 @export var animated_sheen: bool = false
+@export var clockwork_gears: bool = false
 
 var _sheen_t: float = 0.0
 
@@ -71,6 +72,25 @@ func _draw() -> void:
 		draw_circle(pt_c + Vector2(s.x * 4.5, s.y * 4.5), 2.3, g_col)
 		draw_circle(pt_c + Vector2(s.x * (c + 3.0), s.y * 1.5), 1.5, b_col)
 		draw_circle(pt_c + Vector2(s.x * 1.5, s.y * (c + 3.0)), 1.5, b_col)
+		if clockwork_gears:
+			# Interlocking antique-brass corner cogwheels + thorny bramble vine arcs (ref_02 Main Menu!)
+			var g_center := pt_c + Vector2(s.x * (c * 0.56), s.y * (c * 0.56))
+			var g_rad := clampf(c * 0.34, 5.5, 13.0)
+			var spin := _sheen_t * 0.35 * s.x * s.y
+			draw_arc(g_center, g_rad, 0.0, TAU, 24, b_col, 2.0, true)
+			draw_arc(g_center, g_rad * 0.48, 0.0, TAU, 16, g_col, 1.4, true)
+			for ti in range(8):
+				var ta := spin + float(ti) * TAU / 8.0
+				var dir_v := Vector2(cos(ta), sin(ta))
+				draw_line(g_center + dir_v * (g_rad - 1.0), g_center + dir_v * (g_rad + 3.2), g_col, 2.2, true)
+			# Secondary smaller interlocking gear
+			var g2 := pt_c + Vector2(s.x * (c * 1.12), s.y * (c * 0.32))
+			var r2 := g_rad * 0.58
+			draw_arc(g2, r2, 0.0, TAU, 18, b_col, 1.5, true)
+			for ti2 in range(6):
+				var ta2 := -spin * 1.3 + float(ti2) * TAU / 6.0
+				var dv2 := Vector2(cos(ta2), sin(ta2))
+				draw_line(g2 + dv2 * (r2 - 0.8), g2 + dv2 * (r2 + 2.2), b_col, 1.8, true)
 
 	# Center-edge diamond filigree accents (top, bottom, left, right)
 	if show_diamonds:

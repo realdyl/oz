@@ -11,6 +11,7 @@ const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 const HOMECOMING_SCENE := "res://regions/kansas/homecoming.tscn"
 
 const PLAY_BOUND_X := 42.0
@@ -305,6 +306,12 @@ func _add_glinda_whimsy() -> void:
 		{"pos": Vector3(-10, 0, -10), "kind": "dance", "name": "Quadling dance"},
 		{"pos": Vector3(8, 0, -32), "kind": "giggle", "name": "Home giggle"},
 	], "glinda")
+	# Phase P11.3: China Country Alabaster Porcelain Chimes & Rose-Quartz Destructible Urns!
+	OzEncounters.spawn_monument(self, Vector3(-16.5, 0.0, 16.0), "chime", "Porcelain Chime I", "glinda_porcelain_chimes", Color(1.0, 0.78, 0.92), 15)
+	OzEncounters.spawn_monument(self, Vector3(16.5, 0.0, 8.0), "chime", "Porcelain Chime II", "glinda_porcelain_chimes", Color(1.0, 0.78, 0.92), 15)
+	OzEncounters.spawn_monument(self, Vector3(-16.5, 0.0, -14.0), "chime", "Porcelain Chime III", "glinda_porcelain_chimes", Color(1.0, 0.78, 0.92), 15)
+	for up in [Vector3(-6.5, 0, 22), Vector3(6.5, 0, 12), Vector3(-6.5, 0, -6), Vector3(6.5, 0, -24)]:
+		WorldKit.spawn_destructible_urn(self, up)
 
 func _advance_glinda() -> void:
 	if _glinda_line >= _glinda_lines.size():

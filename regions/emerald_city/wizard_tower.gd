@@ -10,6 +10,7 @@ const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 const GLINDA_SCENE := "res://regions/quadling/glinda_court.tscn"
 enum Beat {
 	APPROACH,
@@ -610,3 +611,10 @@ func _add_emerald_whimsy() -> void:
 		{"pos": Vector3(-14.5, 0, 12), "kind": "dance", "name": "Gate dance"},
 		{"pos": Vector3(9, 0, -22), "kind": "giggle", "name": "Plaza giggle"},
 	], "emerald")
+	# Phase P10.3: Humbug Illusion Seals ([G] Green Spectacles!), Velvet Sanctum of Clockwork & Emerald Urns!
+	OzEncounters.spawn_monument(self, Vector3(13.5, 0.0, 22.0), "chime", "Boulevard Illusion Seal", "emerald_contraband", Color(0.38, 0.98, 0.64), 15, "", "emerald_spectacles")
+	OzEncounters.spawn_monument(self, Vector3(-13.5, 0.0, 6.0), "chime", "Gatekeeper Illusion Seal", "emerald_contraband", Color(0.38, 0.98, 0.64), 15)
+	OzEncounters.spawn_monument(self, Vector3(15.5, 0.0, -20.0), "chime", "Plaza Illusion Seal", "emerald_contraband", Color(0.38, 0.98, 0.64), 15)
+	OzEncounters.spawn_velvet_sanctum(self, Vector3(22.0, 0.0, -28.0), "sanctum_emerald", "charm_clockwork_heart", "Velvet Sanctum of Clockwork")
+	for up in [Vector3(-6.2, 0, 24), Vector3(6.2, 0, 14), Vector3(-12.0, 0, -16), Vector3(12.0, 0, -16)]:
+		WorldKit.spawn_destructible_urn(self, up)

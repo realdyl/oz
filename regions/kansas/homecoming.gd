@@ -8,6 +8,7 @@ extends Node3D
 const PLAYER_SCENE := preload("res://actors/dorothy/player.tscn")
 const HUD_SCENE := preload("res://ui/play_hud.tscn")
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 
 const PLAY_BOUND_X := 40.0
 const PLAY_BOUND_Z := 36.0
@@ -97,6 +98,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F9:
 			_finish("The road rests — home.")
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F5:
+			get_tree().change_scene_to_file("res://ui/shell/title_screen.tscn")
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_F8:
 			_aunt_line = AUNT_LINES.size()
@@ -205,13 +209,16 @@ func _finish(msg: String) -> void:
 	if hud:
 		hud.set_objective("The Road Home — complete.")
 		hud.set_prompt(msg)
+	var sm_end := get_node_or_null("/root/SaveManager")
+	if sm_end and sm_end.has_method("unlock_velvet_road"):
+		sm_end.call("unlock_velvet_road")
 	var lt := get_node_or_null("/root/LevelTransition")
 	if lt and lt.has_method("play_exit"):
 		lt.play_exit(msg)
-	# Stay on scene after sting — prototype credits hold. No loop to L1 unless F9 again.
+	# Stay on scene after sting — unlock New Game+ ("The Velvet Road") & F5 Title Screen!
 	await get_tree().create_timer(2.4).timeout
 	if hud:
-		hud.set_prompt("Spine complete · F5 replay from Kansas · Oz remembers.")
+		hud.set_prompt("★ THE VELVET ROAD (NG+) UNLOCKED · [F5] Title & Chapter Select · [J] Grimoire")
 
 func _build_world() -> void:
 	_add_box(Vector3(0, -0.2, 0), Vector3(90, 0.4, 80), Color(0.42, 0.42, 0.44), "Ground")
@@ -226,6 +233,7 @@ func _build_world() -> void:
 	_add_box_to(farmhouse, Vector3(0, 2.0, 0), Vector3(7.0, 4.0, 5.5), Color(0.48, 0.48, 0.50), "HouseBody")
 	WorldKit.dress_cottage_exterior(farmhouse, 3.5, 2.75, 4.0, Color(0.48, 0.48, 0.50), Color(0.28, 0.28, 0.31))
 	WorldKit.make_building_crest_sign(farmhouse, Vector3(0, 4.15, 3.1), "GALE FARMHOUSE", Color(0.55, 0.55, 0.58), true)
+	OzEncounters.spawn_monument(self, Vector3(-5.8, 0.0, -6.2), "chime", "Porch Memory Album", "", Color(0.88, 0.90, 0.94), 25, "", "kansas_locket")
 	# Matching L1 Kansas landmarks: Barn, Clothesline, Lattice Windmill, Prairie Grass & Horizon Hills
 	var barn := Node3D.new()
 	barn.name = "Barn"

@@ -1,6 +1,7 @@
 extends Node3D
 
 const WorldKit := preload("res://systems/world_kit.gd")
+const OzEncounters := preload("res://systems/oz_encounters.gd")
 
 ## L3 · The Deadly Poppy Field (Baum ch.VIII–IX) — between Munchkin party and West.
 ## Flesh (Dorothy + Lion) both fall asleep in the scarlet scent on first pass.
@@ -710,6 +711,13 @@ func _add_poppy_whimsy() -> void:
 		{"pos": Vector3(-8, 0, 48), "kind": "dance", "name": "Safe meadow dance"},
 		{"pos": Vector3(9, 0, 52), "kind": "giggle", "name": "West-gate giggle"},
 	], "candy")
+	# Phase P8.3: Queen's Lost Mouse-Scouts Chimes, Kalidah Shadow-Chimera & Velvet Sanctum of Thorns!
+	OzEncounters.spawn_monument(self, Vector3(-12.5, 0.0, -36.0), "chime", "North Scout Scent-Chime", "poppy_mouse_scouts", Color(0.98, 0.82, 0.44), 15)
+	OzEncounters.spawn_monument(self, Vector3(13.5, 0.0, 34.0), "chime", "South Scout Scent-Chime", "poppy_mouse_scouts", Color(0.98, 0.82, 0.44), 15)
+	OzEncounters.spawn_kalidah_ambush(self, Vector3(18.5, 0.08, 12.0))
+	OzEncounters.spawn_velvet_sanctum(self, Vector3(-20.0, 0.0, 42.0), "sanctum_poppy", "charm_velvet_thorn", "Velvet Sanctum of Thorns")
+	for up in [Vector3(-6.5, 0, -48), Vector3(6.5, 0, -42), Vector3(-6.5, 0, 42), Vector3(6.5, 0, 48)]:
+		WorldKit.spawn_destructible_urn(self, up)
 
 func _ensure_compass() -> void:
 	compass = Label.new()

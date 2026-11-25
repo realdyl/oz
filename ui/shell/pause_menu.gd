@@ -3,34 +3,56 @@ extends CanvasLayer
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const SettingsMenuScript := preload("res://ui/shell/settings_menu.gd")
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
+const GothicCrest := preload("res://ui/widgets/gothic_crest.gd")
 const FrostedShader := preload("res://ui/shaders/frosted_velvet_backdrop.gdshader")
+const PlaqueShader := preload("res://ui/shaders/ui_velvet_plaque.gdshader")
 
-## Phase P11.2: 2026 Glossy Tactile Jewel Pause & Main Menu Shell.
-## Features generous breathing room, distinct color-coded 3D-cushion beveled jewel buttons
-## (Emerald Hero CTA, 2-column Amethyst Grimoire & Crimson Boutique tiles, Sapphire Utility row,
-## Garnet Exit footer), springy hover/press juice, and embedded Settings & 3-Slot Save/Load.
+## Phase P2.3 / P3.3: Reference-True 2026 Gothic Filigree Pause & Chapter Shell (ref_02_main_menu.jpg).
+## Unifies the Pause Menu 1:1 with the Main Title Screen & Tailor of Vices Boutique:
+## - Clockwork-Gear & Thorny-Vine Antique-Gold Screen Frame
+## - Winged Silver-Rose & Clockwork Crest ("OZ: THE ROAD HOME — GAME PAUSED")
+## - Smoked Bronzed-Obsidian & Double-Gold Filigree Plaque Buttons (zero rainbow clash!)
+## - Live Glowing Silver-Rose Focus Cursor beside the hovered/focused button
+## - Embedded Save/Load (Slots 1–3), Chapter Select (Acts I–VII), Settings, Grimoire & Boutique!
+
+const CHAPTERS := [
+	{"title": "Act I · Kansas — The Gale Farm", "scene": "res://regions/kansas/farmyard.tscn"},
+	{"title": "Act II · Munchkinland — Crash Square", "scene": "res://regions/munchkinland/landing_square.tscn"},
+	{"title": "Act III · The Deadly Poppy Field", "scene": "res://regions/poppy/poppy_road.tscn"},
+	{"title": "Act IV · Winkie Country — Iron Keep", "scene": "res://regions/winkie/west_castle.tscn"},
+	{"title": "Act V · The Emerald City — Wizard's Palace", "scene": "res://regions/emerald_city/wizard_tower.tscn"},
+	{"title": "Act VI · Quadling Country — Glinda's Court", "scene": "res://regions/quadling/glinda_court.tscn"},
+	{"title": "Act VII · Kansas — Homecoming", "scene": "res://regions/kansas/homecoming.tscn"},
+]
 
 var kansas_mode: bool = false
 var is_open: bool = false
 
 var _root: Control
 var _backdrop: ColorRect
+var _screen_frame: Control
+var _crest: Control
 var _main_card: PanelContainer
 var _title: Label
-var _subtitle_pill: PanelContainer
 var _subtitle: Label
 var _objective_recap: Label
 var _settings_view: Control
 var _saves_card: PanelContainer
 var _saves_list: VBoxContainer
+var _chapters_card: PanelContainer
+var _rose_cursor: Control
+var _active_btn: Button
 
 var _resume_btn: Button
 var _grimoire_btn: Button
 var _shop_btn: Button
 var _saves_btn: Button
+var _chapters_btn: Button
 var _settings_btn: Button
 var _restart_btn: Button
+var _title_btn: Button
 var _quit_btn: Button
+var _all_plaque_btns: Array[Button] = []
 
 func _ready() -> void:
 	layer = 100
@@ -39,12 +61,22 @@ func _ready() -> void:
 	visible = false
 	apply_theme_mode(kansas_mode)
 
+func _process(delta: float) -> void:
+	if not is_open or DisplayServer.get_name() in ["headless", "Dummy"]:
+		return
+	if _rose_cursor and _active_btn and is_instance_valid(_active_btn) and _main_card and _main_card.visible:
+		_rose_cursor.visible = true
+		var t_pos := _active_btn.global_position + Vector2(_active_btn.size.x + 10.0, (_active_btn.size.y - 26.0) * 0.5)
+		_rose_cursor.global_position = _rose_cursor.global_position.lerp(t_pos, clampf(delta * 18.0, 0.0, 1.0))
+	elif _rose_cursor:
+		_rose_cursor.visible = false
+
 func _input(event: InputEvent) -> void:
 	if DisplayServer.get_name() in ["headless", "Dummy"]:
 		return
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
 		if is_open:
-			if (_settings_view and _settings_view.visible) or (_saves_card and _saves_card.visible):
+			if (_settings_view and _settings_view.visible) or (_saves_card and _saves_card.visible) or (_chapters_card and _chapters_card.visible):
 				_show_main_card()
 			else:
 				close()
@@ -67,10 +99,13 @@ func open() -> void:
 	_show_main_card()
 	if _main_card and DisplayServer.get_name() not in ["headless", "Dummy"]:
 		_main_card.pivot_offset = _main_card.size * 0.5
-		_main_card.scale = Vector2(0.92, 0.92)
-		var tw := create_tween()
-		tw.tween_property(_main_card, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_main_card.scale = Vector2(0.95, 0.95)
+		_main_card.modulate.a = 0.0
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(_main_card, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_main_card, "modulate:a", 1.0, 0.16)
 	if _resume_btn:
+		_active_btn = _resume_btn
 		_resume_btn.grab_focus()
 
 func close() -> void:
@@ -91,101 +126,81 @@ func _refresh_shop_badge() -> void:
 		return
 	var sm := get_node_or_null("/root/SaveManager")
 	var df: int = int(sm.desire_fragments) if (sm and "desire_fragments" in sm) else 0
-	_shop_btn.text = "♦  BOUTIQUE (B)\n%d Desire" % df
+	_shop_btn.text = "BOUTIQUE (B)  ·  ♦ %d" % df
 
 func apply_theme_mode(p_kansas: bool) -> void:
 	kansas_mode = p_kansas
 	if _main_card == null:
 		return
 	var modal_sb := StyleBoxFlat.new()
-	modal_sb.bg_color = Color(0.08, 0.09, 0.10, 0.97) if p_kansas else OzThemeFactory.OZ_SURFACE_DEEP
-	modal_sb.border_color = Color(0.76, 0.78, 0.82, 0.95) if p_kansas else OzThemeFactory.OZ_BORDER_GOLD
-	modal_sb.set_border_width_all(3)
-	modal_sb.border_width_bottom = 6
-	modal_sb.set_corner_radius_all(20)
-	modal_sb.content_margin_left = 46
-	modal_sb.content_margin_right = 46
-	modal_sb.content_margin_top = 38
-	modal_sb.content_margin_bottom = 36
-	modal_sb.shadow_size = 34
-	modal_sb.shadow_color = Color(0.0, 0.0, 0.0, 0.76)
+	modal_sb.bg_color = Color(0.075, 0.082, 0.092, 0.96) if p_kansas else Color(0.068, 0.036, 0.082, 0.96)
+	modal_sb.border_color = OzThemeFactory.KS_BORDER if p_kansas else OzThemeFactory.OZ_BORDER_GOLD
+	modal_sb.set_border_width_all(2)
+	modal_sb.border_width_bottom = 4
+	modal_sb.set_corner_radius_all(12)
+	modal_sb.content_margin_left = 48
+	modal_sb.content_margin_right = 48
+	modal_sb.content_margin_top = 34
+	modal_sb.content_margin_bottom = 32
+	modal_sb.shadow_size = 36
+	modal_sb.shadow_color = Color(0.0, 0.0, 0.0, 0.78)
 	modal_sb.shadow_offset = Vector2(0, 12)
 	_main_card.add_theme_stylebox_override("panel", modal_sb)
 	if _saves_card:
 		_saves_card.add_theme_stylebox_override("panel", modal_sb.duplicate())
+	if _chapters_card:
+		_chapters_card.add_theme_stylebox_override("panel", modal_sb.duplicate())
 
-	_title.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98) if p_kansas else OzThemeFactory.OZ_GOLD_BRIGHT)
-	_subtitle.add_theme_color_override("font_color", Color(0.84, 0.86, 0.90) if p_kansas else OzThemeFactory.OZ_TEXT_MUTED)
+	if _title:
+		_title.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98) if p_kansas else Color(0.95, 0.85, 0.58))
+	if _subtitle:
+		_subtitle.add_theme_color_override("font_color", Color(0.84, 0.86, 0.90) if p_kansas else Color(0.88, 0.76, 0.52))
+	if _crest:
+		_crest.set("kansas_mode", p_kansas)
+		_crest.queue_redraw()
+	if _screen_frame:
+		_screen_frame.set("kansas_mode", p_kansas)
+		_screen_frame.queue_redraw()
 
-	# Unified 2026 Royal Jewel Palette matching The Tailor of Vices Boutique:
-	# Imperial Emerald Hero CTA, Royal Velvet Amethyst + Crimson-Gold Feature Tiles,
-	# Harmonized Obsidian-Velvet Utility Stack, Muted Garnet Exit.
-	OzThemeFactory.style_royal_button(_resume_btn, "primary", p_kansas, 18, 16)
-	OzThemeFactory.style_royal_button(_grimoire_btn, "featured", p_kansas, 14, 14)
-	OzThemeFactory.style_royal_button(_shop_btn, "crimson", p_kansas, 14, 14)
-	OzThemeFactory.style_royal_button(_saves_btn, "secondary", p_kansas, 15, 14)
-	OzThemeFactory.style_royal_button(_settings_btn, "secondary", p_kansas, 15, 14)
-	OzThemeFactory.style_royal_button(_restart_btn, "secondary", p_kansas, 15, 14)
-	OzThemeFactory.style_royal_button(_quit_btn, "danger", p_kansas, 15, 14)
+	for b in _all_plaque_btns:
+		if b and is_instance_valid(b):
+			OzThemeFactory.style_gothic_plaque_button(b, b == _resume_btn, p_kansas, 15 if b != _resume_btn else 17)
+			for ch in b.get_children():
+				if ch.has_method("queue_redraw") and "kansas_mode" in ch:
+					ch.set("kansas_mode", p_kansas)
+					ch.queue_redraw()
 
 	if _settings_view:
 		_settings_view.call("apply_theme_mode", p_kansas)
 	if _backdrop and _backdrop.material is ShaderMaterial:
 		(_backdrop.material as ShaderMaterial).set_shader_parameter("kansas_mix", 1.0 if p_kansas else 0.0)
 
-func _style_jewel_button(btn: Button, bg_col: Color, bevel_col: Color, rim_col: Color, font_sz: int = 16) -> void:
-	if btn == null:
-		return
-	var norm := StyleBoxFlat.new()
-	norm.bg_color = bg_col
-	norm.border_color = bevel_col
-	norm.border_width_left = 2
-	norm.border_width_right = 2
-	norm.border_width_top = 3
-	norm.border_width_bottom = 6 # Tactile 3D-cushion bevel!
-	norm.set_corner_radius_all(16)
-	norm.content_margin_left = 20
-	norm.content_margin_right = 20
-	norm.content_margin_top = 11
-	norm.content_margin_bottom = 11
-	norm.shadow_size = 10
-	norm.shadow_color = Color(0.0, 0.0, 0.0, 0.42)
-	norm.shadow_offset = Vector2(0, 4)
-	norm.anti_aliasing = true
-
-	var hov := norm.duplicate() as StyleBoxFlat
-	hov.bg_color = bg_col.lightened(0.15)
-	hov.border_color = rim_col
-	hov.shadow_size = 16
-	hov.shadow_color = Color(rim_col.r, rim_col.g, rim_col.b, 0.32)
-
-	var prs := norm.duplicate() as StyleBoxFlat
-	prs.bg_color = bg_col.darkened(0.12)
-	prs.border_width_top = 5
-	prs.border_width_bottom = 2
-	prs.shadow_size = 4
-
-	btn.add_theme_stylebox_override("normal", norm)
-	btn.add_theme_stylebox_override("hover", hov)
-	btn.add_theme_stylebox_override("focus", hov)
-	btn.add_theme_stylebox_override("pressed", prs)
-	btn.add_theme_font_size_override("font_size", font_sz)
-	btn.add_theme_color_override("font_color", Color(0.99, 0.98, 0.95))
-	btn.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
-	btn.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.06, 0.85))
-	btn.add_theme_constant_override("outline_size", 3)
-
-func _wire_button_juice(btn: Button) -> void:
+func _make_gothic_btn(txt: String, hero: bool, min_h: float, cb: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = txt
+	btn.custom_minimum_size = Vector2(0, min_h)
+	OzThemeFactory.style_gothic_plaque_button(btn, hero, kansas_mode, 17 if hero else 14)
+	var fr := OrnateFrame.new()
+	fr.outer_pad = 3.0
+	fr.inset = 3.0
+	fr.corner_size = 9.0
+	fr.show_diamonds = false
+	btn.add_child(fr)
 	btn.mouse_entered.connect(func():
+		_active_btn = btn
 		var afx := get_node_or_null("/root/AudioFx")
 		if afx and afx.has_method("play"):
 			afx.play("ui_hover", -12.0)
 	)
+	btn.focus_entered.connect(func(): _active_btn = btn)
 	btn.pressed.connect(func():
 		var afx := get_node_or_null("/root/AudioFx")
 		if afx and afx.has_method("play"):
 			afx.play("ui_click", -8.0)
+		cb.call()
 	)
+	_all_plaque_btns.append(btn)
+	return btn
 
 func _build_ui() -> void:
 	_root = Control.new()
@@ -195,170 +210,155 @@ func _build_ui() -> void:
 
 	_backdrop = ColorRect.new()
 	_backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.06, 0.025, 0.075, 0.88)
+	_backdrop.color = Color(0.055, 0.024, 0.070, 0.90)
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		var bmat := ShaderMaterial.new()
 		bmat.shader = FrostedShader
 		_backdrop.material = bmat
 	_root.add_child(_backdrop)
 
-	var screen_frame := OrnateFrame.new()
-	screen_frame.inset = 14.0
-	screen_frame.corner_size = 24.0
-	screen_frame.animated_sheen = true
-	_root.add_child(screen_frame)
+	_screen_frame = OrnateFrame.new()
+	_screen_frame.outer_pad = 14.0
+	_screen_frame.inset = 6.0
+	_screen_frame.corner_size = 30.0
+	_screen_frame.clockwork_gears = true
+	_screen_frame.animated_sheen = true
+	_root.add_child(_screen_frame)
 
 	var center := CenterContainer.new()
 	center.name = "ModalCenter"
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(center)
 
-	# Generously padded 2026 Tactile Modal Card
 	_main_card = PanelContainer.new()
-	_main_card.custom_minimum_size = Vector2(600, 648)
+	_main_card.custom_minimum_size = Vector2(610, 646)
 	center.add_child(_main_card)
 
 	var card_frame := OrnateFrame.new()
-	card_frame.outer_pad = 11.0
-	card_frame.inset = 6.0
+	card_frame.outer_pad = 10.0
+	card_frame.inset = 5.0
 	card_frame.corner_size = 16.0
 	_main_card.add_child(card_frame)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 16)
+	vbox.add_theme_constant_override("separation", 12)
 	_main_card.add_child(vbox)
 
-	# 1. Hero Jeweled Crest Header
-	var header := VBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	var crest := Label.new()
-	crest.text = "✦   ♦   ✿   ♦   ✦"
-	crest.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	crest.add_theme_font_size_override("font_size", 18)
-	crest.add_theme_color_override("font_color", Color(0.95, 0.82, 0.46))
-	header.add_child(crest)
+	# 1. Winged Clockwork & Silver-Rose Crest Header (ref_02_main_menu.jpg)
+	var crest_box := Control.new()
+	crest_box.custom_minimum_size = Vector2(440, 128)
+	crest_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(crest_box)
+
+	_crest = GothicCrest.new()
+	_crest.set_anchors_preset(Control.PRESET_FULL_RECT)
+	crest_box.add_child(_crest)
 
 	_title = Label.new()
 	_title.text = "OZ: THE ROAD HOME"
+	_title.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_title.offset_top = 46.0
+	_title.offset_bottom = 86.0
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override("font_size", 28)
-	_title.add_theme_color_override("font_outline_color", Color(0.05, 0.02, 0.07, 0.90))
+	_title.add_theme_font_size_override("font_size", 26)
+	_title.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.06, 0.95))
 	_title.add_theme_constant_override("outline_size", 5)
-	header.add_child(_title)
+	crest_box.add_child(_title)
 
-	var sub_center := CenterContainer.new()
-	_subtitle_pill = PanelContainer.new()
-	var pill_sb := StyleBoxFlat.new()
-	pill_sb.bg_color = Color(0.18, 0.10, 0.24, 0.92)
-	pill_sb.border_color = Color(0.86, 0.70, 0.36, 0.75)
-	pill_sb.set_border_width_all(1)
-	pill_sb.set_corner_radius_all(999)
-	pill_sb.content_margin_left = 18
-	pill_sb.content_margin_right = 18
-	pill_sb.content_margin_top = 4
-	pill_sb.content_margin_bottom = 4
-	_subtitle_pill.add_theme_stylebox_override("panel", pill_sb)
 	_subtitle = Label.new()
 	_subtitle.text = "GAME PAUSED"
-	_subtitle.add_theme_font_size_override("font_size", 12)
-	_subtitle_pill.add_child(_subtitle)
-	sub_center.add_child(_subtitle_pill)
-	header.add_child(sub_center)
-	vbox.add_child(header)
+	_subtitle.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_subtitle.offset_top = 104.0
+	_subtitle.offset_bottom = 124.0
+	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_subtitle.add_theme_font_size_override("font_size", 11)
+	crest_box.add_child(_subtitle)
 
-	# 2. Distinct Recessed Objective Ribbon Card
+	# 2. Recessed Current Objective Plaque with Safe-Zone Margins
 	var recap_panel := PanelContainer.new()
 	var rsb := StyleBoxFlat.new()
-	rsb.bg_color = Color(0.115, 0.068, 0.155, 0.96)
-	rsb.border_color = Color(0.84, 0.68, 0.36, 0.68)
-	rsb.set_border_width_all(2)
-	rsb.set_corner_radius_all(14)
+	rsb.bg_color = Color(0.105, 0.064, 0.135, 0.95)
+	rsb.border_color = Color(0.769, 0.620, 0.353, 0.65)
+	rsb.set_border_width_all(1)
+	rsb.set_corner_radius_all(8)
 	rsb.content_margin_left = 22
 	rsb.content_margin_right = 22
-	rsb.content_margin_top = 14
-	rsb.content_margin_bottom = 14
+	rsb.content_margin_top = 12
+	rsb.content_margin_bottom = 12
 	recap_panel.add_theme_stylebox_override("panel", rsb)
 	var recap_vb := VBoxContainer.new()
 	recap_vb.add_theme_constant_override("separation", 4)
 	var goal_hdr := Label.new()
-	goal_hdr.text = "✦  CURRENT OBJECTIVE"
+	goal_hdr.text = "◈  CURRENT OBJECTIVE"
 	goal_hdr.add_theme_font_size_override("font_size", 11)
-	goal_hdr.add_theme_color_override("font_color", Color(0.95, 0.80, 0.44))
+	goal_hdr.add_theme_color_override("font_color", Color(0.91, 0.78, 0.48))
 	recap_vb.add_child(goal_hdr)
 	_objective_recap = Label.new()
 	_objective_recap.text = "Follow the Yellow Brick Road"
 	_objective_recap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective_recap.add_theme_font_size_override("font_size", 14)
-	_objective_recap.add_theme_color_override("font_color", Color(0.96, 0.92, 0.84))
+	_objective_recap.add_theme_color_override("font_color", Color(0.95, 0.90, 0.80))
 	recap_vb.add_child(_objective_recap)
 	recap_panel.add_child(recap_vb)
 	vbox.add_child(recap_panel)
 
-	# 3. Primary Emerald Hero CTA Button
-	_resume_btn = Button.new()
-	_resume_btn.text = "▶   RESUME GAME"
-	_resume_btn.custom_minimum_size = Vector2(0, 56)
-	_resume_btn.pressed.connect(close)
-	_wire_button_juice(_resume_btn)
+	# 3. Harmonized Gothic Filigree Plaque Buttons
+	_resume_btn = _make_gothic_btn("CONTINUE JOURNEY", true, 48.0, close)
 	vbox.add_child(_resume_btn)
 
-	# 4. 2-Column Chunky Feature Jewel Tiles (Grimoire & Tailor of Vices Boutique!)
 	var feat_row := HBoxContainer.new()
-	feat_row.add_theme_constant_override("separation", 14)
+	feat_row.add_theme_constant_override("separation", 12)
 	vbox.add_child(feat_row)
 
-	_grimoire_btn = Button.new()
-	_grimoire_btn.text = "📖  GRIMOIRE (J)\nCodex & Lore"
+	_grimoire_btn = _make_gothic_btn("OZ GRIMOIRE (J)", false, 44.0, _open_grimoire)
 	_grimoire_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_grimoire_btn.custom_minimum_size = Vector2(0, 58)
-	_grimoire_btn.pressed.connect(_open_grimoire)
-	_wire_button_juice(_grimoire_btn)
 	feat_row.add_child(_grimoire_btn)
 
-	_shop_btn = Button.new()
-	_shop_btn.text = "♦  BOUTIQUE (B)\n0 Desire"
+	_shop_btn = _make_gothic_btn("BOUTIQUE (B)  ·  ♦ 0", false, 44.0, _open_shop)
 	_shop_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_shop_btn.custom_minimum_size = Vector2(0, 58)
-	_shop_btn.pressed.connect(_open_shop)
-	_wire_button_juice(_shop_btn)
 	feat_row.add_child(_shop_btn)
 
-	# 5. Secondary Utility Stack with Generous Spacing
-	var util_box := VBoxContainer.new()
-	util_box.add_theme_constant_override("separation", 12)
-	vbox.add_child(util_box)
+	var mid_row := HBoxContainer.new()
+	mid_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(mid_row)
 
-	_saves_btn = Button.new()
-	_saves_btn.text = "💾   Save / Load Game  (Slots 1–3)"
-	_saves_btn.custom_minimum_size = Vector2(0, 48)
-	_saves_btn.pressed.connect(_show_saves)
-	_wire_button_juice(_saves_btn)
-	util_box.add_child(_saves_btn)
+	_saves_btn = _make_gothic_btn("SAVE / LOAD", false, 42.0, _show_saves)
+	_saves_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mid_row.add_child(_saves_btn)
 
-	_settings_btn = Button.new()
-	_settings_btn.text = "⚙   Settings & Controls"
-	_settings_btn.custom_minimum_size = Vector2(0, 48)
-	_settings_btn.pressed.connect(_show_settings)
-	_wire_button_juice(_settings_btn)
-	util_box.add_child(_settings_btn)
+	_chapters_btn = _make_gothic_btn("CHAPTER SELECT", false, 42.0, _show_chapters)
+	_chapters_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mid_row.add_child(_chapters_btn)
 
-	_restart_btn = Button.new()
-	_restart_btn.text = "↺   Restart Checkpoint"
-	_restart_btn.custom_minimum_size = Vector2(0, 48)
-	_restart_btn.pressed.connect(_on_restart_checkpoint)
-	_wire_button_juice(_restart_btn)
-	util_box.add_child(_restart_btn)
+	var util_row := HBoxContainer.new()
+	util_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(util_row)
 
-	# 6. Distinct Divider & Garnet Exit Footer
-	var div := HSeparator.new()
-	vbox.add_child(div)
+	_settings_btn = _make_gothic_btn("SETTINGS", false, 42.0, _show_settings)
+	_settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	util_row.add_child(_settings_btn)
 
-	_quit_btn = Button.new()
-	_quit_btn.text = "✕   Quit to Desktop"
-	_quit_btn.custom_minimum_size = Vector2(0, 46)
-	_quit_btn.pressed.connect(func(): get_tree().quit())
-	_wire_button_juice(_quit_btn)
-	vbox.add_child(_quit_btn)
+	_restart_btn = _make_gothic_btn("RESTART ACT", false, 42.0, _on_restart_checkpoint)
+	_restart_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	util_row.add_child(_restart_btn)
+
+	var exit_row := HBoxContainer.new()
+	exit_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(exit_row)
+
+	_title_btn = _make_gothic_btn("TITLE SCREEN", false, 40.0, _go_title_screen)
+	_title_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	exit_row.add_child(_title_btn)
+
+	_quit_btn = _make_gothic_btn("QUIT TO DESKTOP", false, 40.0, func(): get_tree().quit())
+	_quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	exit_row.add_child(_quit_btn)
+
+	# Glowing Silver-Rose Focus Cursor
+	_rose_cursor = GothicCrest.new()
+	_rose_cursor.mode = "rose_cursor"
+	_rose_cursor.size = Vector2(26, 26)
+	_root.add_child(_rose_cursor)
 
 	# Embedded Settings View
 	_settings_view = SettingsMenuScript.new()
@@ -368,29 +368,68 @@ func _build_ui() -> void:
 
 	# Embedded 3-Slot Save / Load Panel
 	_saves_card = PanelContainer.new()
-	_saves_card.custom_minimum_size = Vector2(560, 430)
+	_saves_card.custom_minimum_size = Vector2(600, 440)
 	_saves_card.visible = false
+	var sv_fr := OrnateFrame.new()
+	sv_fr.outer_pad = 10.0
+	sv_fr.inset = 5.0
+	_saves_card.add_child(sv_fr)
 	center.add_child(_saves_card)
 	var svb := VBoxContainer.new()
-	svb.add_theme_constant_override("separation", 16)
+	svb.add_theme_constant_override("separation", 14)
 	_saves_card.add_child(svb)
 	var shdr := Label.new()
 	shdr.text = "✦   SAVE & LOAD SLOTS   ✦"
 	shdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	shdr.add_theme_font_size_override("font_size", 22)
-	shdr.add_theme_color_override("font_color", Color(0.98, 0.86, 0.48))
+	shdr.add_theme_font_size_override("font_size", 20)
+	shdr.add_theme_color_override("font_color", Color(0.95, 0.85, 0.56))
 	svb.add_child(shdr)
 	_saves_list = VBoxContainer.new()
-	_saves_list.add_theme_constant_override("separation", 12)
+	_saves_list.add_theme_constant_override("separation", 10)
 	_saves_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	svb.add_child(_saves_list)
-	var sback := Button.new()
-	sback.text = "◀   Back to Pause Menu"
-	sback.custom_minimum_size = Vector2(0, 48)
-	OzThemeFactory.style_royal_button(sback, "secondary", kansas_mode, 15, 14)
-	_wire_button_juice(sback)
-	sback.pressed.connect(_show_main_card)
+	var sback := _make_gothic_btn("◀   BACK TO PAUSE MENU", false, 44.0, _show_main_card)
 	svb.add_child(sback)
+
+	# Embedded Chapter Select Panel (Acts I–VII)
+	_chapters_card = PanelContainer.new()
+	_chapters_card.custom_minimum_size = Vector2(610, 520)
+	_chapters_card.visible = false
+	var ch_fr := OrnateFrame.new()
+	ch_fr.outer_pad = 10.0
+	ch_fr.inset = 5.0
+	_chapters_card.add_child(ch_fr)
+	center.add_child(_chapters_card)
+	var cvb := VBoxContainer.new()
+	cvb.add_theme_constant_override("separation", 10)
+	_chapters_card.add_child(cvb)
+	var chdr := Label.new()
+	chdr.text = "✦   CHAPTER SELECT  (ACTS I–VII)   ✦"
+	chdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	chdr.add_theme_font_size_override("font_size", 19)
+	chdr.add_theme_color_override("font_color", Color(0.95, 0.85, 0.56))
+	cvb.add_child(chdr)
+	var c_scroll := ScrollContainer.new()
+	c_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cvb.add_child(c_scroll)
+	var clist := VBoxContainer.new()
+	clist.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	clist.add_theme_constant_override("separation", 8)
+	c_scroll.add_child(clist)
+	for ch in CHAPTERS:
+		var ch_ref: Dictionary = ch
+		var cb_btn := _make_gothic_btn("◈   %s" % str(ch["title"]), false, 40.0, func():
+			close()
+			var lt := get_node_or_null("/root/LevelTransition")
+			if lt and lt.has_method("go_to"):
+				lt.go_to(str(ch_ref["scene"]), "Traveling to %s…" % str(ch_ref["title"]), str(ch_ref["title"]))
+			else:
+				get_tree().change_scene_to_file(str(ch_ref["scene"]))
+		)
+		cb_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		clist.add_child(cb_btn)
+	var cback := _make_gothic_btn("◀   BACK TO PAUSE MENU", false, 44.0, _show_main_card)
+	cvb.add_child(cback)
 
 func _open_grimoire() -> void:
 	close()
@@ -407,8 +446,15 @@ func _open_shop() -> void:
 func _show_saves() -> void:
 	_main_card.visible = false
 	_settings_view.visible = false
+	_chapters_card.visible = false
 	_saves_card.visible = true
 	_refresh_saves_list()
+
+func _show_chapters() -> void:
+	_main_card.visible = false
+	_settings_view.visible = false
+	_saves_card.visible = false
+	_chapters_card.visible = true
 
 func _refresh_saves_list() -> void:
 	for c in _saves_list.get_children():
@@ -420,12 +466,12 @@ func _refresh_saves_list() -> void:
 		var info: Dictionary = sm.get_slot_info(slot)
 		var slot_card := PanelContainer.new()
 		var sc_sb := StyleBoxFlat.new()
-		sc_sb.bg_color = Color(0.14, 0.08, 0.19, 0.95)
-		sc_sb.border_color = Color(0.76, 0.62, 0.35, 0.65)
+		sc_sb.bg_color = Color(0.11, 0.068, 0.145, 0.95)
+		sc_sb.border_color = Color(0.769, 0.620, 0.353, 0.65)
 		sc_sb.set_border_width_all(1)
-		sc_sb.set_corner_radius_all(12)
-		sc_sb.content_margin_left = 14
-		sc_sb.content_margin_right = 14
+		sc_sb.set_corner_radius_all(8)
+		sc_sb.content_margin_left = 16
+		sc_sb.content_margin_right = 16
 		sc_sb.content_margin_top = 10
 		sc_sb.content_margin_bottom = 10
 		slot_card.add_theme_stylebox_override("panel", sc_sb)
@@ -441,21 +487,21 @@ func _refresh_saves_list() -> void:
 		else:
 			lbl.text = "Slot %d  ·  %s\n♦ %d Desire  ·  %s" % [slot, str(info.get("chapter", "Oz")), int(info.get("desire_fragments", 0)), str(info.get("saved_at", ""))]
 		lbl.add_theme_font_size_override("font_size", 13)
-		lbl.add_theme_color_override("font_color", Color(0.95, 0.91, 0.83))
+		lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.80))
 		row.add_child(lbl)
 		var s_idx := slot
 		var b_save := Button.new()
-		b_save.text = "Save"
-		OzThemeFactory.style_royal_button(b_save, "primary", kansas_mode, 13, 10)
+		b_save.text = "SAVE"
+		OzThemeFactory.style_gothic_plaque_button(b_save, true, kansas_mode, 12)
 		b_save.pressed.connect(func():
 			sm.save_slot(s_idx)
 			_refresh_saves_list()
 		)
 		row.add_child(b_save)
 		var b_load := Button.new()
-		b_load.text = "Load"
+		b_load.text = "LOAD"
 		b_load.disabled = info.is_empty()
-		OzThemeFactory.style_royal_button(b_load, "featured", kansas_mode, 13, 10)
+		OzThemeFactory.style_gothic_plaque_button(b_load, false, kansas_mode, 12)
 		b_load.pressed.connect(func():
 			close()
 			sm.load_slot(s_idx)
@@ -464,7 +510,7 @@ func _refresh_saves_list() -> void:
 		var b_del := Button.new()
 		b_del.text = "✕"
 		b_del.disabled = info.is_empty()
-		OzThemeFactory.style_royal_button(b_del, "danger", kansas_mode, 13, 10)
+		OzThemeFactory.style_gothic_plaque_button(b_del, false, kansas_mode, 12)
 		b_del.pressed.connect(func():
 			sm.delete_slot(s_idx)
 			_refresh_saves_list()
@@ -473,17 +519,23 @@ func _refresh_saves_list() -> void:
 
 func _show_settings() -> void:
 	_main_card.visible = false
-	if _saves_card:
-		_saves_card.visible = false
+	_saves_card.visible = false
+	_chapters_card.visible = false
 	_settings_view.visible = true
 
 func _show_main_card() -> void:
 	_settings_view.visible = false
-	if _saves_card:
-		_saves_card.visible = false
+	_saves_card.visible = false
+	_chapters_card.visible = false
 	_main_card.visible = true
 	_refresh_shop_badge()
-	_resume_btn.grab_focus()
+	if _resume_btn:
+		_active_btn = _resume_btn
+		_resume_btn.grab_focus()
+
+func _go_title_screen() -> void:
+	close()
+	get_tree().change_scene_to_file("res://ui/shell/title_screen.tscn")
 
 func _on_restart_checkpoint() -> void:
 	close()

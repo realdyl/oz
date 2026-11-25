@@ -36,25 +36,93 @@ func reset_party() -> void:
 	_camera_rig = null
 	last_fail = ""
 
+const CAM_PITCH_MIN_DEG := -64.0
+const CAM_PITCH_MAX_DEG := -3.5
+const CAM_MIN_LEN := 2.5
+const CAM_MAX_LEN := 6.2
+const CAM_FLOOR_CLEARANCE := 0.42
+const STICK_DEADZONE := 0.16
+
+func _clamp_camera_above_ground(rig: Node3D, arm: SpringArm3D) -> void:
+	if rig == null or arm == null or not is_instance_valid(rig) or not is_instance_valid(arm):
+		return
+	# Configure real SpringArm3D world collision (Layer 1) so walls/hills push camera smoothly inward
+	if arm.collision_mask != 1:
+		arm.collision_mask = 1
+		arm.margin = 0.24
+		if arm.shape == null:
+			var sph := SphereShape3D.new()
+			sph.radius = 0.22
+			arm.shape = sph
+	for b in _members.values():
+		if b is CollisionObject3D and is_instance_valid(b):
+			arm.add_excluded_object((b as CollisionObject3D).get_rid())
+
+	# Compute dynamic max pitch so pivot_y - sin(pitch)*len NEVER dips below ground + clearance!
+	var lead := leader_body()
+	var floor_y: float = lead.global_position.y if (lead and is_instance_valid(lead)) else 0.0
+	var world := rig.get_world_3d()
+	if world and world.direct_space_state:
+		var space := world.direct_space_state
+		var cam_test := arm.find_child("Camera3D", true, false) as Camera3D
+		var probe_xz := cam_test.global_position if cam_test else rig.global_position
+		var q := PhysicsRayQueryParameters3D.create(
+			Vector3(probe_xz.x, rig.global_position.y + 3.5, probe_xz.z),
+			Vector3(probe_xz.x, rig.global_position.y - 6.0, probe_xz.z),
+			1
+		)
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			floor_y = maxf(floor_y, float(hit.position.y))
+
+	var pivot_h := maxf(0.45, rig.global_position.y - floor_y)
+	var arm_len := maxf(1.2, arm.spring_length)
+	# Camera world Y ≈ rig.y - arm_len * sin(pitch_rad). Require >= floor_y + CAM_FLOOR_CLEARANCE:
+	var max_sin := clampf((pivot_h - CAM_FLOOR_CLEARANCE) / arm_len, -0.92, 0.45)
+	var dyn_max_pitch := minf(CAM_PITCH_MAX_DEG, rad_to_deg(asin(max_sin)))
+	var clamped_pitch := clampf(arm.rotation_degrees.x, CAM_PITCH_MIN_DEG, dyn_max_pitch)
+	arm.rotation_degrees = Vector3(clamped_pitch, 0.0, 0.0)
+
+	# Final post-transform safety floor clamp on Camera3D local offset so lens NEVER clips under terrain
+	var cam := arm.find_child("Camera3D", true, false) as Camera3D
+	if cam:
+		var min_world_y := floor_y + CAM_FLOOR_CLEARANCE * 0.88
+		if cam.global_position.y < min_world_y:
+			cam.global_position.y = min_world_y
+
 func _process(delta: float) -> void:
 	_swap_cd = maxf(_swap_cd - delta, 0.0)
 	if _camera_rig and is_instance_valid(_camera_rig):
+		var arm := _camera_rig.find_child("SpringArm3D", true, false) as SpringArm3D
 		var orbit := 0.0
+		var pitch_delta_deg := 0.0
 		if Input.is_action_pressed("camera_left"):
 			orbit += 1.0
 		if Input.is_action_pressed("camera_right"):
 			orbit -= 1.0
+
+		# PlayStation DualSense / Xbox Gamepad Right-Stick 360° Orbit & Floor-Safe Pitch!
+		if not get_tree().paused:
+			var rx := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
+			var ry := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
+			if Vector2(rx, ry).length() > STICK_DEADZONE:
+				orbit -= rx * 1.35
+				pitch_delta_deg -= ry * 85.0 * delta
+				looking = true
+
 		var orbiting := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 		if orbiting:
 			var stick := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 			orbit += -stick.x
-			var arm := _camera_rig.find_child("SpringArm3D", true, false) as SpringArm3D
-			if arm and absf(stick.y) > 0.05:
-				var pitch_deg: float = arm.rotation_degrees.x + stick.y * 55.0 * delta
-				arm.rotation_degrees = Vector3(clampf(pitch_deg, -55.0, 20.0), 0.0, 0.0)
+			if absf(stick.y) > 0.05:
+				pitch_delta_deg += stick.y * 55.0 * delta
 		if orbit != 0.0:
 			_camera_rig.rotate_y(orbit * 2.2 * delta)
 			looking = true
+		if arm and absf(pitch_delta_deg) > 0.0001:
+			arm.rotation_degrees = Vector3(arm.rotation_degrees.x + pitch_delta_deg, 0.0, 0.0)
+		if arm:
+			_clamp_camera_above_ground(_camera_rig, arm)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
@@ -68,13 +136,24 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			get_viewport().set_input_as_handled()
 			return
+	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and _camera_rig:
+		var z_arm := _camera_rig.find_child("SpringArm3D", true, false) as SpringArm3D
+		if z_arm:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				z_arm.spring_length = clampf(z_arm.spring_length - 0.35, CAM_MIN_LEN, CAM_MAX_LEN)
+				_clamp_camera_above_ground(_camera_rig, z_arm)
+				return
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				z_arm.spring_length = clampf(z_arm.spring_length + 0.35, CAM_MIN_LEN, CAM_MAX_LEN)
+				_clamp_camera_above_ground(_camera_rig, z_arm)
+				return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and _camera_rig:
 		_camera_rig.rotate_y(-event.relative.x * mouse_sensitivity)
 		var arm := _camera_rig.find_child("SpringArm3D", true, false) as SpringArm3D
 		if arm:
 			var pitch_deg: float = arm.rotation_degrees.x - event.relative.y * mouse_sensitivity * 60.0
-			pitch_deg = clampf(pitch_deg, -55.0, 20.0)
 			arm.rotation_degrees = Vector3(pitch_deg, 0.0, 0.0)
+			_clamp_camera_above_ground(_camera_rig, arm)
 
 	# Lead swap — handle Tab in unhandled_input so UI focus cannot eat it silently
 	if _swap_cd > 0.0:
