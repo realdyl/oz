@@ -272,11 +272,15 @@ func go_to(scene_path: String, exit_title: String = "The hourglass turns…", en
 
 func _pick_backdrop_for(title: String) -> Texture2D:
 	var lt := title.to_lower()
-	var res_path := "res://assets/art/scenes/munchkinland.jpg"
+	var res_path := "res://assets/art/scenes/title_hero_oz.jpg"
 	if "homecoming" in lt or "home" in lt or "porch" in lt:
 		res_path = "res://assets/art/scenes/kansas_homecoming.jpg"
-	elif "kansas" in lt or "farm" in lt or "cyclone" in lt or "prairie" in lt:
+	elif "cyclone" in lt or "storm" in lt or "twister" in lt:
+		res_path = "res://assets/art/scenes/title_kansas_cyclone.jpg"
+	elif "kansas" in lt or "farm" in lt or "prairie" in lt:
 		res_path = "res://assets/art/scenes/kansas_calm.jpg"
+	elif "munchkin" in lt or "landing" in lt:
+		res_path = "res://assets/art/scenes/munchkinland.jpg"
 	elif "poppy" in lt or "meadow" in lt:
 		res_path = "res://assets/art/scenes/poppy_field.jpg"
 	elif "winkie" in lt or "west" in lt or "castle" in lt or "witch" in lt:
