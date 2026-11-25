@@ -254,11 +254,16 @@ func _build_ui() -> void:
 	var ribbon := BookmarkRibbon.new()
 	ribbon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ribbon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	ribbon.offset_left = -42.0
-	ribbon.offset_right = -8.0
-	ribbon.offset_top = -12.0
-	ribbon.offset_bottom = 136.0
-	right_page.add_child(ribbon)
+	ribbon.offset_left = -46.0
+	ribbon.offset_right = -14.0
+	ribbon.offset_top = 8.0
+	ribbon.offset_bottom = 140.0
+	# Attach to outer cover (not right_page PanelContainer) so PanelContainer never pulls it over text!
+	var rib_overlay := Control.new()
+	rib_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rib_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rib_overlay.add_child(ribbon)
+	cover.add_child(rib_overlay)
 
 	var right_vb := VBoxContainer.new()
 	right_vb.add_theme_constant_override("separation", 10)

@@ -1149,9 +1149,14 @@ func _try_build_door() -> bool:
 func _set_host_collisions(host: Node, enabled: bool) -> void:
 	if host == null:
 		return
+	var fit := host.get_node_or_null("InteriorFitout")
 	for c in host.find_children("*", "CollisionShape3D", true, false):
+		if fit and (c == fit or fit.is_ancestor_of(c)):
+			continue
 		if c is CollisionShape3D:
 			(c as CollisionShape3D).disabled = not enabled
+	if fit:
+		WorldKit.set_interior_colliders_enabled(fit, not enabled)
 
 func _enter_building(door: Area3D) -> void:
 	if door == null or player == null:

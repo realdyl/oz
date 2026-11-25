@@ -712,10 +712,45 @@ static func _add_window(
 	_mi(wroot, _sph(0.11, 0.16, 8), fl1, Vector3(0.30, -0.56, 0.14))
 
 ## Richly furnished storybook interior replacing empty boxes + double floating text.
+static func add_interior_wall_colliders(fit: Node3D, half_w: float, half_d: float, wall_h: float) -> void:
+	if fit == null or fit.get_node_or_null("InteriorWallColliders") != null:
+		return
+	var sb := StaticBody3D.new()
+	sb.name = "InteriorWallColliders"
+	sb.collision_layer = 1
+	sb.collision_mask = 0
+	fit.add_child(sb)
+	var thick := 0.40
+	var walls := [
+		{"pos": Vector3(0.0, wall_h * 0.5, -half_d + 0.05), "size": Vector3(half_w * 2.0 + thick, wall_h, thick)},
+		{"pos": Vector3(0.0, wall_h * 0.5, half_d - 0.05), "size": Vector3(half_w * 2.0 + thick, wall_h, thick)},
+		{"pos": Vector3(-half_w + 0.05, wall_h * 0.5, 0.0), "size": Vector3(thick, wall_h, half_d * 2.0 + thick)},
+		{"pos": Vector3(half_w - 0.05, wall_h * 0.5, 0.0), "size": Vector3(thick, wall_h, half_d * 2.0 + thick)},
+	]
+	for w in walls:
+		var cs := CollisionShape3D.new()
+		var bx := BoxShape3D.new()
+		bx.size = w["size"]
+		cs.shape = bx
+		cs.position = w["pos"]
+		cs.disabled = true # Enabled only while player is inside this interior!
+		sb.add_child(cs)
+
+static func set_interior_colliders_enabled(fit: Node, on: bool) -> void:
+	if fit == null:
+		return
+	var sb := fit.get_node_or_null("InteriorWallColliders")
+	if sb == null:
+		return
+	for c in sb.get_children():
+		if c is CollisionShape3D:
+			(c as CollisionShape3D).disabled = not on
+
 static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wall_h: float, wall_col: Color, title: String) -> Node3D:
 	var fit := Node3D.new()
 	fit.name = "InteriorFitout"
 	parent.add_child(fit)
+	add_interior_wall_colliders(fit, half_w, half_d, wall_h)
 
 	# PBR warm planked oak floor & rich dark-walnut wainscoting (prop_02 & prop_03 interior palette!)
 	var wood_floor := make_pbr_mat("kansas_wood.jpg", Color(0.56, 0.38, 0.25), 0.72, 0.0, 0.45)
@@ -954,6 +989,7 @@ static func build_kansas_interior(fit: Node3D, title: String) -> void:
 	var hw := 3.8
 	var hd := 3.4
 	var wh := 3.6
+	add_interior_wall_colliders(fit, hw, hd, wh)
 	var plank_fl := make_pbr_mat("kansas_wood.jpg", Color(0.46, 0.46, 0.48), 0.85, 0.0, 0.45)
 	var plank_wall := make_pbr_mat("kansas_wood.jpg", Color(0.62, 0.62, 0.65), 0.88, 0.0, 0.38)
 	var timber := _mat(Color(0.28, 0.28, 0.30), 0.88)
@@ -1718,12 +1754,28 @@ static func build_chicken_coop(parent: Node3D) -> void:
 		_mi(parent, _cyl(0.055, 0.065, 1.25, 8), trim, Vector3(float(px), 0.62, 4.4))
 		_mi(parent, _cyl(0.055, 0.065, 1.25, 8), trim, Vector3(float(px), 0.62, -2.4))
 	# South fence left & right wings with 2.2m gap in center for swinging wooden gate!
-	_mi(parent, _box(Vector3(2.8, 1.1, 0.04)), wire_m, Vector3(-1.2, 0.58, 4.4))
-	_mi(parent, _box(Vector3(2.8, 1.1, 0.04)), wire_m, Vector3(3.8, 0.58, 4.4))
-	_mi(parent, _box(Vector3(7.8, 1.1, 0.04)), wire_m, Vector3(1.3, 0.58, -2.4))
-	_mi(parent, _box(Vector3(0.04, 1.1, 6.8)), wire_m, Vector3(5.2, 0.58, 1.0))
-	_mi(parent, _box(Vector3(0.04, 1.1, 6.8)), wire_m, Vector3(-2.6, 0.58, 1.0))
-	# Hinged swinging chicken-run gate (auto-opens 95 deg when Dorothy walks up!)
+	var fence_wings := [
+		{"pos": Vector3(-1.2, 0.58, 4.4), "size": Vector3(2.8, 1.1, 0.04)},
+		{"pos": Vector3(3.8, 0.58, 4.4), "size": Vector3(2.8, 1.1, 0.04)},
+		{"pos": Vector3(1.3, 0.58, -2.4), "size": Vector3(7.8, 1.1, 0.04)},
+		{"pos": Vector3(5.2, 0.58, 1.0), "size": Vector3(0.04, 1.1, 6.8)},
+		{"pos": Vector3(-2.6, 0.58, 1.0), "size": Vector3(0.04, 1.1, 6.8)},
+	]
+	var fence_body := StaticBody3D.new()
+	fence_body.name = "CoopFenceColliders"
+	fence_body.collision_layer = 1
+	fence_body.collision_mask = 0
+	parent.add_child(fence_body)
+	for fw_item in fence_wings:
+		_mi(parent, _box(fw_item["size"]), wire_m, fw_item["pos"])
+		var fcs := CollisionShape3D.new()
+		var fsh := BoxShape3D.new()
+		var fsz: Vector3 = fw_item["size"]
+		fsh.size = Vector3(maxf(fsz.x, 0.24), 1.65, maxf(fsz.z, 0.24))
+		fcs.shape = fsh
+		fcs.position = Vector3(fw_item["pos"].x, 0.82, fw_item["pos"].z)
+		fence_body.add_child(fcs)
+	# Hinged two-way swinging chicken-run gate (solid when shut; swings naturally away from Dorothy entering OR exiting!)
 	var gate_piv := Node3D.new()
 	gate_piv.name = "CoopGatePivot"
 	gate_piv.position = Vector3(0.2, 0.0, 4.4)
@@ -1731,6 +1783,17 @@ static func build_chicken_coop(parent: Node3D) -> void:
 	_mi(gate_piv, _box(Vector3(2.1, 0.08, 0.06)), trim, Vector3(1.05, 1.05, 0))
 	_mi(gate_piv, _box(Vector3(2.1, 0.08, 0.06)), trim, Vector3(1.05, 0.25, 0))
 	_mi(gate_piv, _box(Vector3(2.0, 0.85, 0.03)), wire_m, Vector3(1.05, 0.65, 0))
+	var gate_solid := StaticBody3D.new()
+	gate_solid.name = "CoopGateSolid"
+	gate_solid.collision_layer = 1
+	gate_solid.collision_mask = 0
+	gate_piv.add_child(gate_solid)
+	var gl_cs := CollisionShape3D.new()
+	var gl_sh := BoxShape3D.new()
+	gl_sh.size = Vector3(2.15, 1.55, 0.22)
+	gl_cs.shape = gl_sh
+	gl_cs.position = Vector3(1.05, 0.78, 0.0)
+	gate_solid.add_child(gl_cs)
 	var gate_trig := Area3D.new()
 	gate_trig.collision_layer = 0
 	gate_trig.collision_mask = 2
@@ -1743,13 +1806,21 @@ static func build_chicken_coop(parent: Node3D) -> void:
 	gate_trig.add_child(gcs)
 	gate_trig.body_entered.connect(func(b):
 		if b.is_in_group("player"):
+			gl_cs.set_deferred("disabled", true)
+			# Swing naturally AWAY from the side Dorothy is approaching from (inward when entering, outward when exiting!)
+			var local_z: float = parent.to_local(b.global_position).z
+			var target_deg: float = 95.0 if local_z >= 4.4 else -95.0
 			var tw := parent.create_tween()
-			tw.tween_property(gate_piv, "rotation_degrees:y", 95.0, 0.42).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(gate_piv, "rotation_degrees:y", target_deg, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	)
 	gate_trig.body_exited.connect(func(b):
 		if b.is_in_group("player"):
 			var tw := parent.create_tween()
-			tw.tween_property(gate_piv, "rotation_degrees:y", 0.0, 0.55).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(gate_piv, "rotation_degrees:y", 0.0, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_callback(func():
+				if is_instance_valid(gl_cs):
+					gl_cs.disabled = false
+			)
 	)
 	make_building_crest_sign(parent, Vector3(0, 2.55, 1.35), "CHICKEN COOP", Color(0.46, 0.46, 0.49), true)
 	# 5 Sculpted 3D prairie chickens scratching & roosting inside the fenced run!

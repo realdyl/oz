@@ -432,20 +432,29 @@ func _kick() -> void:
 				sm.add_desire(5 if _combo_step == 3 else 3, "")
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if not leading or parked or not shoes_claimed:
+	if not leading or parked:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_Z:
-			_cycle_armament(-1)
-		elif event.keycode == KEY_X:
-			_cycle_armament(1)
-		elif event.keycode == KEY_C:
-			_use_armament()
-		elif event.keycode == KEY_H:
+		if event.keycode in [KEY_Z, KEY_X, KEY_C]:
+			get_viewport().set_input_as_handled()
+			if not shoes_claimed:
+				var hud_n := get_tree().get_first_node_in_group("hud")
+				if hud_n and hud_n.has_method("show_toast"):
+					hud_n.call("show_toast", "Claim the Silver Shoes to unlock Dorothy's Armaments (Z/X swap · C cast)!", 2.4)
+				return
+			if event.keycode == KEY_Z:
+				_cycle_armament(-1)
+			elif event.keycode == KEY_X:
+				_cycle_armament(1)
+			elif event.keycode == KEY_C:
+				_use_armament()
+		elif event.keycode == KEY_H and shoes_claimed:
 			_try_rapture_mode()
-		elif event.keycode == KEY_V and body and body.has_method("play_heel_click"):
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_V and shoes_claimed and body and body.has_method("play_heel_click"):
 			body.call("play_heel_click")
 			CombatFx.ring(self, global_position, Color(0.88, 0.94, 1.0), 1.05, 0.34)
+			get_viewport().set_input_as_handled()
 
 func _cycle_armament(dir: int) -> void:
 	_armament_idx = (_armament_idx + dir + ARMAMENT_NAMES.size()) % ARMAMENT_NAMES.size()

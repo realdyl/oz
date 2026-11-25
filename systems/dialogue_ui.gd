@@ -25,6 +25,7 @@ var _tts_voice: String = ""
 var _type_progress: float = 0.0
 var _typing: bool = false
 var _kansas_cached: bool = false
+var _should_show: bool = false
 
 const TYPE_CPS := 75.0
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
@@ -42,7 +43,8 @@ func _ready() -> void:
 func _build() -> void:
 	var layer := CanvasLayer.new()
 	layer.name = "DialogueLayer"
-	layer.layer = 80
+	# Strictly tucked below Grimoire (28), Boutique (30), and Pause Menu (100), above PlayHUD (10)
+	layer.layer = 18
 	add_child(layer)
 
 	_box = Control.new()
@@ -80,21 +82,25 @@ func _build() -> void:
 	card_hbox.add_theme_constant_override("separation", 20)
 	_panel.add_child(card_hbox)
 
-	# Gilded Circular Speaker Portrait Medallion
+	# Gilded Circular Speaker Portrait Medallion (strict 1:1 square so golden circle NEVER crops!)
 	_portrait_frame = PanelContainer.new()
 	_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_portrait_frame.visible = false
 	var pf_st := StyleBoxFlat.new()
 	pf_st.bg_color = Color(0.06, 0.03, 0.08, 0.0)
 	pf_st.set_border_width_all(0)
-	pf_st.set_content_margin_all(2)
+	pf_st.set_content_margin_all(4)
 	_portrait_frame.add_theme_stylebox_override("panel", pf_st)
 	card_hbox.add_child(_portrait_frame)
 
 	_portrait_tex = TextureRect.new()
 	_portrait_tex.custom_minimum_size = Vector2(96, 96)
+	_portrait_tex.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_portrait_tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_portrait_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait_tex.stretch_mode = TextureRect.STRETCH_SCALE
 	_portrait_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not _is_headless():
 		_portrait_mat = ShaderMaterial.new()
@@ -207,6 +213,10 @@ func _detect_kansas_mode() -> bool:
 	return false
 
 func _process(delta: float) -> void:
+	# Automatically tuck dialogue behind/hidden whenever any full-screen menu pauses the game!
+	if _box:
+		var paused := get_tree() != null and get_tree().paused
+		_box.visible = _should_show and not paused
 	if _visible_t > 0.0:
 		_visible_t = maxf(_visible_t - delta, 0.0)
 	if _box and _box.visible:
@@ -261,7 +271,8 @@ func say(speaker: String, text: String, also_tts: bool = true, hold: float = 0.0
 	if kansas != _kansas_cached:
 		_apply_palette(kansas)
 
-	_box.visible = true
+	_should_show = true
+	_box.visible = not (get_tree() != null and get_tree().paused)
 	_panel.visible = true
 	_speaker.text = speaker.to_upper()
 	_nameplate.visible = speaker.strip_edges() != ""
@@ -299,6 +310,7 @@ func clear() -> void:
 	stop_tts()
 
 func _hide() -> void:
+	_should_show = false
 	_typing = false
 	if _box:
 		_box.visible = false

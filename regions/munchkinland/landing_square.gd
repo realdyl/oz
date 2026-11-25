@@ -727,6 +727,13 @@ func _set_interior_view(building: Node, inside: bool) -> void:
 	var fit := building.get_node_or_null("InteriorFitout")
 	if fit:
 		fit.visible = inside
+		WorldKit.set_interior_colliders_enabled(fit, inside)
+	# Disable exterior building colliders while inside so interior wall colliders contain player cleanly!
+	for c in building.find_children("*", "CollisionShape3D", true, false):
+		if fit and (c == fit or fit.is_ancestor_of(c)):
+			continue
+		if c is CollisionShape3D and c.get_parent() is StaticBody3D:
+			(c as CollisionShape3D).disabled = inside
 	# Hide leftover solid shell pieces & floating sign labels on baked cottages while inside.
 	for n in building.get_children():
 		if fit and (n == fit or fit.is_ancestor_of(n)):

@@ -493,6 +493,7 @@ func _build_barn_interior(host: Node3D) -> void:
 	lamp.position = Vector3(0, wh - 0.65, 0)
 	_barn_fitout.add_child(lamp)
 	WorldKit.make_world_badge(_barn_fitout, Vector3(0, 2.45, hd - 0.24), "✦  Exit Barn (E)", Color(0.96, 0.96, 1.0), 10.0)
+	WorldKit.add_interior_wall_colliders(_barn_fitout, hw, hd, wh)
 	WorldKit.add_interior_activities(_barn_fitout, "homecoming_barn", "", Vector3(1.6, 0.06, -0.8), Vector3.ZERO, true)
 
 func _toggle_barn_interior(enter: bool) -> void:
@@ -500,8 +501,11 @@ func _toggle_barn_interior(enter: bool) -> void:
 		return
 	_inside_barn = enter
 	for c in _barn_node.find_children("*", "CollisionShape3D", true, false):
+		if _barn_fitout.is_ancestor_of(c):
+			continue
 		if c is CollisionShape3D:
 			(c as CollisionShape3D).disabled = enter
+	WorldKit.set_interior_colliders_enabled(_barn_fitout, enter)
 	for n in _barn_node.find_children("*", "MeshInstance3D", true, false):
 		if _barn_fitout.is_ancestor_of(n):
 			continue
@@ -567,6 +571,7 @@ func _build_coop_interior(host: Node3D) -> void:
 	lamp.position = Vector3(0, wh - 0.55, 0)
 	_coop_fitout.add_child(lamp)
 	WorldKit.make_world_badge(_coop_fitout, Vector3(0, 2.2, hd - 0.24), "✦  Exit Chicken Coop (E)", Color(0.96, 0.96, 1.0), 10.0)
+	WorldKit.add_interior_wall_colliders(_coop_fitout, hw, hd, wh)
 	WorldKit.add_interior_activities(_coop_fitout, "homecoming_coop", "", Vector3(1.1, 0.06, 0.1), Vector3.ZERO, true)
 
 func _toggle_coop_interior(enter: bool) -> void:
@@ -574,8 +579,11 @@ func _toggle_coop_interior(enter: bool) -> void:
 		return
 	_inside_coop = enter
 	for c in _coop_node.find_children("*", "CollisionShape3D", true, false):
+		if _coop_fitout.is_ancestor_of(c):
+			continue
 		if c is CollisionShape3D:
 			(c as CollisionShape3D).disabled = enter
+	WorldKit.set_interior_colliders_enabled(_coop_fitout, enter)
 	for n in _coop_node.find_children("*", "MeshInstance3D", true, false):
 		if _coop_fitout.is_ancestor_of(n):
 			continue

@@ -387,9 +387,9 @@ camera_left={
 "meta_pressed": false,
 "pressed": false,
 "keycode": 0,
-"physical_keycode": 90,
+"physical_keycode": 91,
 "key_label": 0,
-"unicode": 122,
+"unicode": 91,
 "location": 0,
 "echo": false,
 "script": null
@@ -408,9 +408,9 @@ camera_right={
 "meta_pressed": false,
 "pressed": false,
 "keycode": 0,
-"physical_keycode": 67,
+"physical_keycode": 93,
 "key_label": 0,
-"unicode": 99,
+"unicode": 93,
 "location": 0,
 "echo": false,
 "script": null
