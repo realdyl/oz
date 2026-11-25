@@ -1098,53 +1098,7 @@ func _make_enterable_simple(at: Vector3, title: String, size: Vector3, col: Colo
 	_make_enterable_box(body, title, at + Vector3(0, 0.12, 0), at + Vector3(0, 0.12, size.z * 0.5 + 1.6), size)
 
 func _add_kansas_interior(fit: Node3D, title: String) -> void:
-	# Spacious 4-wall monochrome prairie interior with warm lantern lighting + Exit Door (Munchkinland-grade!).
-	var hw := 3.8
-	var hd := 3.4
-	var wh := 3.6
-	# Floor + 4 walls (including front +Z wall with framed Exit Door) + ceiling
-	_ks_prop(fit, Vector3(0, 0.03, 0), Vector3(hw * 2.0, 0.06, hd * 2.0), Color(0.32, 0.32, 0.35))
-	_ks_prop(fit, Vector3(0, wh * 0.5, -hd), Vector3(hw * 2.0, wh, 0.14), Color(0.54, 0.54, 0.58))
-	_ks_prop(fit, Vector3(-hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.48, 0.48, 0.52))
-	_ks_prop(fit, Vector3(hw, wh * 0.5, 0), Vector3(0.14, wh, hd * 2.0), Color(0.48, 0.48, 0.52))
-	_ks_prop(fit, Vector3(0, wh * 0.5, hd), Vector3(hw * 2.0, wh, 0.14), Color(0.50, 0.50, 0.54))
-	# Framed interior Exit Door on +Z wall
-	_ks_prop(fit, Vector3(0, 1.12, hd - 0.10), Vector3(1.42, 2.26, 0.10), Color(0.36, 0.36, 0.39))
-	_ks_prop(fit, Vector3(0, 1.08, hd - 0.14), Vector3(1.18, 2.12, 0.08), Color(0.22, 0.22, 0.25))
-	WorldKit.make_world_badge(fit, Vector3(0, 2.45, hd - 0.24), "✦  Exit %s (E)" % title, Color(0.96, 0.96, 1.0), 10.0)
-	_ks_prop(fit, Vector3(0, wh, 0), Vector3(hw * 2.0, 0.14, hd * 2.0), Color(0.30, 0.30, 0.33))
-	# Overhead interior lantern + OmniLight so Dorothy and furnishings are crisp and bright!
-	var lamp := OmniLight3D.new()
-	lamp.light_color = Color(0.95, 0.95, 1.0)
-	lamp.light_energy = 2.8
-	lamp.omni_range = 12.0
-	lamp.position = Vector3(0, wh - 0.65, 0)
-	fit.add_child(lamp)
-	var t := title.to_lower()
-	if "farm" in t:
-		# Woven floor rug (flush at y = 0.06m) + perimeter kitchen counter, cast-iron stove, table & cot
-		_ks_prop(fit, Vector3(0, 0.065, -0.2), Vector3(2.8, 0.02, 2.2), Color(0.42, 0.42, 0.46))
-		_ks_prop(fit, Vector3(-2.4, 0.45, -2.6), Vector3(2.2, 0.90, 0.85), Color(0.28, 0.28, 0.31)) # kitchen counter
-		_ks_prop(fit, Vector3(2.5, 0.58, -2.5), Vector3(1.05, 1.16, 0.90), Color(0.18, 0.18, 0.21)) # cast-iron stove
-		_ks_prop(fit, Vector3(2.5, 2.20, -2.5), Vector3(0.26, 2.40, 0.26), Color(0.16, 0.16, 0.19)) # stove chimney pipe
-		_ks_prop(fit, Vector3(-2.7, 0.36, 0.8), Vector3(1.15, 0.72, 1.95), Color(0.38, 0.38, 0.42)) # Dorothy's bed/cot
-		_ks_prop(fit, Vector3(2.4, 0.40, 0.9), Vector3(1.45, 0.80, 1.15), Color(0.34, 0.34, 0.37)) # dining table
-		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Farmhouse Interior", Color(0.96, 0.96, 1.0), 12.0)
-		WorldKit.add_interior_activities(fit, "kansas_farmhouse", "kansas_locket", Vector3(1.8, 0.06, -1.3), Vector3(-1.3, 0.06, -1.2), true)
-	elif "barn" in t:
-		_ks_prop(fit, Vector3(-2.5, 0.65, -2.2), Vector3(1.5, 1.3, 1.8), Color(0.38, 0.38, 0.41)) # stacked hay bales
-		_ks_prop(fit, Vector3(2.5, 0.55, -2.2), Vector3(1.4, 1.1, 1.6), Color(0.44, 0.44, 0.47)) # hay bales
-		_ks_prop(fit, Vector3(-2.7, 0.60, 1.0), Vector3(1.2, 1.2, 2.2), Color(0.28, 0.28, 0.31)) # horse stall partition
-		_ks_prop(fit, Vector3(2.6, 0.48, 1.1), Vector3(1.2, 0.96, 1.8), Color(0.30, 0.30, 0.33)) # workbench
-		WorldKit.make_world_badge(fit, Vector3(0, 2.65, -hd + 0.22), "✦  Gale Barn & Hayloft", Color(0.96, 0.96, 1.0), 12.0)
-		WorldKit.add_interior_activities(fit, "kansas_barn", "kansas_barn_diary", Vector3(1.6, 0.06, -0.8), Vector3(-1.4, 0.06, -1.0), true)
-	else:
-		_ks_prop(fit, Vector3(-1.8, 0.36, -1.6), Vector3(1.6, 0.72, 0.9), Color(0.38, 0.38, 0.41)) # straw nesting boxes
-		_ks_prop(fit, Vector3(1.7, 0.55, -1.6), Vector3(1.8, 0.12, 0.14), Color(0.28, 0.28, 0.31)) # roosting perch
-		WorldKit.build_chicken_visual(fit, Vector3(-1.6, 0.72, -1.5), 20.0)
-		WorldKit.build_chicken_visual(fit, Vector3(1.5, 0.62, -1.55), -35.0)
-		WorldKit.build_chicken_visual(fit, Vector3(-0.6, 0.06, 0.6), 110.0)
-		WorldKit.make_world_badge(fit, Vector3(0, 2.35, -hd + 0.22), "✦  Chicken Coop Interior", Color(0.96, 0.96, 1.0), 10.0)
+	WorldKit.build_kansas_interior(fit, title)
 
 func _set_indoor_camera(inside: bool) -> void:
 	if player == null:

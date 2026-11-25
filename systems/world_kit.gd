@@ -717,33 +717,47 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	fit.name = "InteriorFitout"
 	parent.add_child(fit)
 
-	var wood_floor := _mat(Color(0.38, 0.25, 0.16), 0.78)
-	var timber := _mat(Color(0.24, 0.15, 0.09), 0.84)
-	var plaster := _mat(wall_col.lerp(Color(0.94, 0.89, 0.80), 0.55), 0.90)
-	var wainscot := _mat(Color(0.32, 0.21, 0.14), 0.82)
-	var rug_mat := _mat(Color(0.56, 0.14, 0.24), 0.94)
-	var rug_trim := _mat(Color(0.88, 0.72, 0.32), 0.85)
-	var brass := _mat(Color(0.86, 0.70, 0.30), 0.3, 0.85)
+	# PBR warm planked oak floor & rich dark-walnut wainscoting (prop_02 & prop_03 interior palette!)
+	var wood_floor := make_pbr_mat("kansas_wood.jpg", Color(0.56, 0.38, 0.25), 0.72, 0.0, 0.45)
+	var timber := _mat(Color(0.22, 0.13, 0.08), 0.78)
+	var walnut := _mat(Color(0.28, 0.16, 0.10), 0.62)
+	var plaster := _mat(wall_col.lerp(Color(0.92, 0.87, 0.79), 0.50), 0.90)
+	var wainscot := _mat(Color(0.26, 0.16, 0.10), 0.76)
+	var velvet_plum := _mat(Color(0.28, 0.08, 0.22), 0.84, 0.04, Color(0.10, 0.02, 0.08), 0.08)
+	var velvet_em := _mat(Color(0.08, 0.26, 0.20), 0.84, 0.04)
+	var rug_mat := _mat(Color(0.48, 0.10, 0.22), 0.94)
+	var rug_trim := _mat(Color(0.90, 0.74, 0.32), 0.82)
+	var brass := _mat(Color(0.90, 0.74, 0.32), 0.24, 0.90, Color(0.84, 0.66, 0.24), 0.14)
+	var iron := _mat(Color(0.14, 0.13, 0.16), 0.42, 0.82)
 	var stone := _mat(Color(0.36, 0.34, 0.38), 0.92)
-	var fire_glow := _mat(Color(1.0, 0.55, 0.14), 0.2, 0.0, Color(1.0, 0.45, 0.10), 2.4)
-	var candle_glow := _mat(Color(1.0, 0.92, 0.65), 0.2, 0.0, Color(1.0, 0.88, 0.52), 2.0)
+	var fire_glow := _mat(Color(1.0, 0.55, 0.14), 0.20, 0.0, Color(1.0, 0.45, 0.10), 2.5)
+	var candle_glow := _mat(Color(1.0, 0.92, 0.65), 0.18, 0.0, Color(1.0, 0.88, 0.52), 2.4)
+	var crystal_m := _mat(Color(0.84, 0.94, 1.0), 0.08, 0.20, Color(0.78, 0.92, 1.0), 1.45)
 	var parchment := _mat(Color(0.95, 0.90, 0.78), 0.82)
+	var glass_rose := _mat(Color(0.78, 0.44, 0.74), 0.10, 0.12, Color(0.68, 0.38, 0.68), 1.15)
+	var glass_teal := _mat(Color(0.36, 0.76, 0.78), 0.10, 0.12, Color(0.30, 0.72, 0.76), 1.15)
 
 	var fw := half_w * 2.0 - 0.25
 	var fd := half_d * 2.0 - 0.25
 
-	# Planked floor + woven parlor rug
+	# Planked PBR floor + concentric gilded-border parlor rug
 	_mi(fit, _box(Vector3(fw, 0.10, fd)), wood_floor, Vector3(0, 0.05, 0))
-	_mi(fit, _cyl(minf(half_w, half_d) * 0.58, minf(half_w, half_d) * 0.58, 0.03, 20), rug_trim, Vector3(0, 0.11, 0.2))
-	_mi(fit, _cyl(minf(half_w, half_d) * 0.50, minf(half_w, half_d) * 0.50, 0.035, 20), rug_mat, Vector3(0, 0.115, 0.2))
+	var rug_r := minf(half_w, half_d) * 0.56
+	_mi(fit, _cyl(rug_r, rug_r, 0.025, 24), rug_trim, Vector3(0, 0.108, 0.2))
+	_mi(fit, _cyl(rug_r * 0.90, rug_r * 0.90, 0.030, 24), rug_mat, Vector3(0, 0.112, 0.2))
+	_mi(fit, _cyl(rug_r * 0.66, rug_r * 0.66, 0.032, 24), rug_trim, Vector3(0, 0.114, 0.2))
+	_mi(fit, _cyl(rug_r * 0.60, rug_r * 0.60, 0.034, 24), velvet_plum, Vector3(0, 0.116, 0.2))
 
-	# Warm plaster walls + wood wainscoting skirt + FULL 4th front wall (+Z) with Exit Door + ceiling slab
+	# Plaster walls, recessed wood wainscoting panels, crown molding & solid ceiling
 	_mi(fit, _box(Vector3(fw, wall_h - 0.1, 0.08)), plaster, Vector3(0, wall_h * 0.5, -half_d + 0.12))
 	_mi(fit, _box(Vector3(0.08, wall_h - 0.1, fd)), plaster, Vector3(-half_w + 0.12, wall_h * 0.5, 0))
 	_mi(fit, _box(Vector3(0.08, wall_h - 0.1, fd)), plaster, Vector3(half_w - 0.12, wall_h * 0.5, 0))
-	_mi(fit, _box(Vector3(fw, 0.12, fd)), timber, Vector3(0, wall_h - 0.06, 0)) # solid ceiling above rafters
+	_mi(fit, _box(Vector3(fw, 0.12, fd)), timber, Vector3(0, wall_h - 0.06, 0))
+	_mi(fit, _box(Vector3(fw, 0.14, 0.16)), wainscot, Vector3(0, wall_h - 0.18, -half_d + 0.18))
+	_mi(fit, _box(Vector3(0.16, 0.14, fd)), wainscot, Vector3(-half_w + 0.18, wall_h - 0.18, 0))
+	_mi(fit, _box(Vector3(0.16, 0.14, fd)), wainscot, Vector3(half_w - 0.18, wall_h - 0.18, 0))
 
-	# 4th Front Wall (+Z) flanking the interior Exit Doorway so turning around never shows the outside!
+	# 4th Front Wall (+Z) flanking ornate interior Exit Doorway
 	var front_z := half_d - 0.12
 	var door_w := 1.25
 	var door_h := 2.25
@@ -751,14 +765,13 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	_mi(fit, _box(Vector3(side_w, wall_h - 0.1, 0.08)), plaster, Vector3(-(door_w * 0.5 + side_w * 0.5), wall_h * 0.5, front_z))
 	_mi(fit, _box(Vector3(side_w, wall_h - 0.1, 0.08)), plaster, Vector3(door_w * 0.5 + side_w * 0.5, wall_h * 0.5, front_z))
 	_mi(fit, _box(Vector3(door_w + 0.2, maxf(0.3, wall_h - door_h), 0.08)), plaster, Vector3(0, door_h + (wall_h - door_h) * 0.5, front_z))
-	# Ornate closed interior Exit Door + timber jambs + iron hinges + glowing brass handle + lintel plaque
-	_mi(fit, _box(Vector3(door_w, door_h, 0.10)), timber, Vector3(0, door_h * 0.5, front_z - 0.02))
+	_mi(fit, _box(Vector3(door_w, door_h, 0.10)), walnut, Vector3(0, door_h * 0.5, front_z - 0.02))
 	_mi(fit, _box(Vector3(0.14, door_h + 0.12, 0.16)), wainscot, Vector3(-door_w * 0.5 - 0.05, door_h * 0.5, front_z - 0.04))
 	_mi(fit, _box(Vector3(0.14, door_h + 0.12, 0.16)), wainscot, Vector3(door_w * 0.5 + 0.05, door_h * 0.5, front_z - 0.04))
 	_mi(fit, _box(Vector3(door_w + 0.28, 0.16, 0.18)), wainscot, Vector3(0, door_h + 0.08, front_z - 0.04))
-	_mi(fit, _sph(0.065, 0.13, 10), brass, Vector3(0.42, 1.05, front_z - 0.10)) # brass doorknob
-	_mi(fit, _box(Vector3(0.35, 0.06, 0.04)), _mat(Color(0.12, 0.12, 0.14), 0.4, 0.8), Vector3(-0.42, 1.75, front_z - 0.08))
-	_mi(fit, _box(Vector3(0.35, 0.06, 0.04)), _mat(Color(0.12, 0.12, 0.14), 0.4, 0.8), Vector3(-0.42, 0.55, front_z - 0.08))
+	_mi(fit, _sph(0.065, 0.13, 12), brass, Vector3(0.42, 1.05, front_z - 0.10))
+	_mi(fit, _box(Vector3(0.38, 0.06, 0.04)), iron, Vector3(-0.42, 1.75, front_z - 0.08))
+	_mi(fit, _box(Vector3(0.38, 0.06, 0.04)), iron, Vector3(-0.42, 0.55, front_z - 0.08))
 	var exit_plaque := Label3D.new()
 	exit_plaque.set_meta("styled_plaque", true)
 	exit_plaque.text = "EXIT (E)"
@@ -778,76 +791,134 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	_mi(fit, _box(Vector3(side_w, 0.95, 0.12)), wainscot, Vector3(-(door_w * 0.5 + side_w * 0.5), 0.52, front_z - 0.04))
 	_mi(fit, _box(Vector3(side_w, 0.95, 0.12)), wainscot, Vector3(door_w * 0.5 + side_w * 0.5, 0.52, front_z - 0.04))
 
-	# Ceiling beams + hanging wrought-iron candelabrum
+	# Gothic Arched Stained-Glass Window + Draped Plum Velvet Curtains on Left Wall (prop_03_porcelain_urn.jpg!)
+	var wx := -half_w + 0.18
+	for wi in range(-1, 2):
+		var wz := -0.4 + float(wi) * 0.62
+		var gmat: Material = glass_rose if wi == 0 else glass_teal
+		_mi(fit, _box(Vector3(0.06, 1.35, 0.48)), gmat, Vector3(wx, 1.85, wz))
+		_mi(fit, _cyl(0.24, 0.24, 0.07, 14), gmat, Vector3(wx, 2.52, wz), Vector3(0, 0, 90))
+		_mi(fit, _torus(0.14, 0.17, 12), brass, Vector3(wx + 0.04, 2.46, wz), Vector3(0, 0, 90))
+		_mi(fit, _box(Vector3(0.10, 1.65, 0.07)), timber, Vector3(wx + 0.02, 1.95, wz + 0.28))
+	# Draped Plum Velvet Curtains + Gilded Tie-Backs flanking the stained-glass window
+	for cz in [-1.42, 0.62]:
+		_mi(fit, _cyl(0.14, 0.19, 2.45, 12), velvet_plum, Vector3(wx + 0.10, 1.82, float(cz)))
+		_mi(fit, _torus(0.14, 0.18, 12), brass, Vector3(wx + 0.12, 1.42, float(cz)))
+	_mi(fit, _cyl(0.04, 0.04, 2.35, 10), brass, Vector3(wx + 0.12, 3.05, -0.4), Vector3(90, 0, 0))
+	_mi(fit, _box(Vector3(0.26, 0.34, 2.25)), velvet_plum, Vector3(wx + 0.14, 2.95, -0.4)) # scalloped valance
+
+	# Timber Rafters + Ornate Brass & Crystal-Drop Chandelier
 	for bi in range(3):
 		var bz := -half_d * 0.55 + float(bi) * (half_d * 0.55)
 		_mi(fit, _box(Vector3(fw, 0.18, 0.22)), timber, Vector3(0, wall_h - 0.25, bz))
-	_mi(fit, _cyl(0.03, 0.03, 0.75, 8), timber, Vector3(0, wall_h - 0.62, 0))
-	_mi(fit, _cyl(0.55, 0.55, 0.06, 14), brass, Vector3(0, wall_h - 0.98, 0))
-	for ci in range(4):
-		var ca := float(ci) * PI * 0.5
-		_mi(fit, _cyl(0.035, 0.04, 0.18, 8), parchment, Vector3(cos(ca) * 0.48, wall_h - 0.88, sin(ca) * 0.48))
-		_mi(fit, _sph(0.045, 0.09, 8), candle_glow, Vector3(cos(ca) * 0.48, wall_h - 0.76, sin(ca) * 0.48))
+	_mi(fit, _cyl(0.025, 0.025, 0.72, 8), brass, Vector3(0, wall_h - 0.60, 0))
+	_mi(fit, _torus(0.52, 0.58, 20), brass, Vector3(0, wall_h - 0.96, 0))
+	_mi(fit, _torus(0.24, 0.28, 16), brass, Vector3(0, wall_h - 0.80, 0))
+	_mi(fit, _sph(0.09, 0.18, 12), crystal_m, Vector3(0, wall_h - 1.15, 0))
+	for ci in range(6):
+		var ca := float(ci) / 6.0 * TAU
+		var cx := cos(ca) * 0.54
+		var cz := sin(ca) * 0.54
+		_mi(fit, _cyl(0.032, 0.038, 0.18, 10), parchment, Vector3(cx, wall_h - 0.86, cz))
+		_mi(fit, _sph(0.044, 0.095, 10), candle_glow, Vector3(cx, wall_h - 0.73, cz))
+		_mi(fit, _sph(0.032, 0.085, 8), crystal_m, Vector3(cx, wall_h - 1.08, cz))
 
-	# Stone brick hearth & crackling 3D fire on right wall
+	# Stone Brick Hearth, Fire-Irons, Crackling 3D Fire & Brass Mantle Candlesticks on Right Wall
 	var hx := half_w - 0.75
-	_mi(fit, _box(Vector3(0.95, 1.45, 1.65)), stone, Vector3(hx, 0.78, -0.6))
-	_mi(fit, _box(Vector3(1.15, 0.16, 1.95)), timber, Vector3(hx - 0.05, 1.56, -0.6)) # mantelpiece
-	_mi(fit, _box(Vector3(0.55, 0.75, 0.95)), _mat(Color(0.08, 0.06, 0.07), 0.95), Vector3(hx - 0.25, 0.46, -0.6))
-	_mi(fit, _cyl(0.07, 0.08, 0.65, 8), timber, Vector3(hx - 0.30, 0.24, -0.6), Vector3(80, 20, 0))
-	_mi(fit, _sph(0.22, 0.48, 10), fire_glow, Vector3(hx - 0.30, 0.44, -0.6))
+	_mi(fit, _box(Vector3(0.95, 1.50, 1.72)), stone, Vector3(hx, 0.80, -0.6))
+	_mi(fit, _box(Vector3(1.18, 0.18, 2.04)), walnut, Vector3(hx - 0.05, 1.60, -0.6))
+	_mi(fit, _box(Vector3(0.55, 0.78, 0.98)), _mat(Color(0.07, 0.05, 0.06), 0.95), Vector3(hx - 0.25, 0.48, -0.6))
+	_mi(fit, _cyl(0.068, 0.078, 0.68, 10), timber, Vector3(hx - 0.30, 0.24, -0.6), Vector3(80, 20, 0))
+	_mi(fit, _cyl(0.058, 0.068, 0.60, 10), timber, Vector3(hx - 0.28, 0.28, -0.58), Vector3(72, -32, 0))
+	_mi(fit, _sph(0.24, 0.50, 12), fire_glow, Vector3(hx - 0.30, 0.46, -0.6))
+	# Pair of brass candlesticks & antique mantle clock atop fireplace
+	for mz in [-1.25, 0.05]:
+		_mi(fit, _cyl(0.05, 0.09, 0.26, 12), brass, Vector3(hx - 0.16, 1.82, float(mz)))
+		_mi(fit, _cyl(0.025, 0.028, 0.18, 8), parchment, Vector3(hx - 0.16, 2.02, float(mz)))
+		_mi(fit, _sph(0.032, 0.07, 8), candle_glow, Vector3(hx - 0.16, 2.15, float(mz)))
+	_mi(fit, _cyl(0.16, 0.18, 0.26, 14), walnut, Vector3(hx - 0.14, 1.82, -0.60))
+	_mi(fit, _cyl(0.11, 0.11, 0.04, 14), parchment, Vector3(hx - 0.28, 1.84, -0.60), Vector3(0, 0, 90))
+	_mi(fit, _torus(0.10, 0.125, 14), brass, Vector3(hx - 0.29, 1.84, -0.60), Vector3(0, 0, 90))
 
-	# Stocked bookshelf / ledger cabinet against back-left wall
+	# Stocked Carved Bookshelf / Ledger Cabinet against back-left wall
 	var bx := -half_w + 1.15
 	var bz_back := -half_d + 0.52
-	_mi(fit, _box(Vector3(1.65, 2.25, 0.48)), timber, Vector3(bx, 1.18, bz_back))
-	var book_cols := [Color(0.65, 0.16, 0.22), Color(0.18, 0.42, 0.28), Color(0.22, 0.30, 0.58), Color(0.76, 0.58, 0.20)]
+	_mi(fit, _box(Vector3(1.68, 2.30, 0.50)), walnut, Vector3(bx, 1.20, bz_back))
+	_mi(fit, _box(Vector3(1.80, 0.14, 0.58)), timber, Vector3(bx, 2.38, bz_back))
+	var book_cols := [Color(0.62, 0.12, 0.18), Color(0.14, 0.38, 0.24), Color(0.18, 0.26, 0.54), Color(0.76, 0.56, 0.18), Color(0.42, 0.16, 0.38)]
 	for sh_i in range(3):
-		var sy := 0.65 + float(sh_i) * 0.55
-		for bk in range(5):
-			var bcol: Color = book_cols[(sh_i + bk) % book_cols.size()]
-			_mi(fit, _box(Vector3(0.18, 0.34, 0.26)), _mat(bcol, 0.75), Vector3(bx - 0.52 + float(bk) * 0.25, sy, bz_back + 0.12))
+		var sy := 0.65 + float(sh_i) * 0.56
+		for bk in range(6):
+			var bcol: Color = book_cols[(sh_i * 2 + bk) % book_cols.size()]
+			var bh := 0.30 + float((sh_i + bk) % 3) * 0.04
+			_mi(fit, _box(Vector3(0.14, bh, 0.26)), _mat(bcol, 0.72), Vector3(bx - 0.62 + float(bk) * 0.24, sy, bz_back + 0.14))
 
-	# Hero centerpiece furniture by building type
+	# Hero Centerpiece Furniture by Building Type
 	var tlow := title.to_lower()
 	if "debt" in tlow or "mayor" in tlow or "hall" in tlow:
-		# Mahogany counting desk + open ledger + gold coin stacks + chair
-		_mi(fit, _box(Vector3(2.1, 0.12, 1.05)), timber, Vector3(0.2, 0.88, -half_d + 1.35))
-		for lx in [-0.88, 0.88]:
-			for lz in [-0.4, 0.4]:
-				_mi(fit, _box(Vector3(0.12, 0.82, 0.12)), timber, Vector3(0.2 + float(lx), 0.44, -half_d + 1.35 + float(lz)))
-		_mi(fit, _box(Vector3(0.62, 0.06, 0.42)), parchment, Vector3(0.1, 0.97, -half_d + 1.35))
-		_mi(fit, _cyl(0.08, 0.08, 0.16, 10), brass, Vector3(0.68, 1.02, -half_d + 1.28))
-		_mi(fit, _cyl(0.07, 0.07, 0.11, 10), brass, Vector3(0.84, 0.99, -half_d + 1.42))
+		# Carved Mahogany Counting Desk + Plum Velvet Runner + Open Ledger + Quill + Brass Scales + Gold Coin Stacks
+		_mi(fit, _box(Vector3(2.20, 0.12, 1.10)), walnut, Vector3(0.2, 0.88, -half_d + 1.40))
+		_mi(fit, _box(Vector3(0.78, 0.02, 1.18)), velvet_plum, Vector3(0.2, 0.95, -half_d + 1.40))
+		for lx in [-0.94, 0.94]:
+			for lz in [-0.42, 0.42]:
+				_mi(fit, _cyl(0.065, 0.048, 0.82, 12), walnut, Vector3(0.2 + float(lx), 0.44, -half_d + 1.40 + float(lz)))
+				_mi(fit, _sph(0.075, 0.10, 10), brass, Vector3(0.2 + float(lx), 0.16, -half_d + 1.40 + float(lz)))
+		# Open ledger + quill + inkwell + brass balance scale + coin stacks
+		_mi(fit, _box(Vector3(0.32, 0.04, 0.44)), parchment, Vector3(-0.04, 0.98, -half_d + 1.40), Vector3(0, 0, -8))
+		_mi(fit, _box(Vector3(0.32, 0.04, 0.44)), parchment, Vector3(0.26, 0.98, -half_d + 1.40), Vector3(0, 0, 8))
+		_mi(fit, _cyl(0.035, 0.045, 0.09, 10), iron, Vector3(0.55, 1.00, -half_d + 1.25))
+		_mi(fit, _cyl(0.008, 0.022, 0.30, 8), parchment, Vector3(0.58, 1.15, -half_d + 1.25), Vector3(0, 0, -24))
+		_mi(fit, _cyl(0.08, 0.08, 0.16, 12), brass, Vector3(0.80, 1.02, -half_d + 1.28))
+		_mi(fit, _cyl(0.07, 0.07, 0.11, 12), brass, Vector3(0.95, 0.99, -half_d + 1.44))
+		# Brass candlestick on left corner of desk
+		_mi(fit, _cyl(0.05, 0.09, 0.24, 12), brass, Vector3(-0.62, 1.06, -half_d + 1.22))
+		_mi(fit, _cyl(0.022, 0.024, 0.16, 8), parchment, Vector3(-0.62, 1.24, -half_d + 1.22))
+		_mi(fit, _sph(0.030, 0.065, 8), candle_glow, Vector3(-0.62, 1.36, -half_d + 1.22))
 	else:
-		# Quilted cottage bed + pillows + carved tea table
-		_mi(fit, _box(Vector3(1.85, 0.52, 1.35)), timber, Vector3(-half_w + 1.35, 0.32, 0.85))
-		_mi(fit, _box(Vector3(1.70, 0.22, 1.22)), _mat(wall_col.lightened(0.25), 0.88), Vector3(-half_w + 1.35, 0.66, 0.85))
-		_mi(fit, _box(Vector3(0.45, 0.16, 0.85)), parchment, Vector3(-half_w + 0.72, 0.82, 0.85))
-		# Round tea table + braided oval parlor rug + cast-iron pot-belly stove (bldg_05_farmhouse_interior.jpg)
-		_mi(fit, _cyl(1.45, 1.48, 0.025, 20), _mat(wall_col.darkened(0.22), 0.94), Vector3(0.2, 0.055, -0.35), Vector3.ZERO, Vector3(1.25, 1.0, 0.92))
-		_mi(fit, _cyl(0.62, 0.62, 0.08, 14), timber, Vector3(0.2, 0.82, -0.35))
-		_mi(fit, _cyl(0.10, 0.18, 0.76, 10), timber, Vector3(0.2, 0.42, -0.35))
-		_mi(fit, _sph(0.14, 0.22, 10), brass, Vector3(0.15, 0.96, -0.35))
-		var stove_iron := _mat(Color(0.16, 0.15, 0.17), 0.42, 0.72)
-		var stove_pos := Vector3(half_w - 0.95, 0.0, -half_d + 0.95)
-		_mi(fit, _cyl(0.32, 0.36, 0.95, 14), stove_iron, stove_pos + Vector3(0, 0.52, 0))
-		_mi(fit, _sph(0.34, 0.42, 12), stove_iron, stove_pos + Vector3(0, 0.62, 0))
-		_mi(fit, _cyl(0.11, 0.11, wall_h - 1.1, 10), stove_iron, stove_pos + Vector3(0, 1.0 + (wall_h - 1.1) * 0.5, 0)) # tall stovepipe
+		# Four-Poster Quilted Cottage Bed + Ruffled Pillows + Carved Tea Table with Rococo Porcelain Amphora!
+		var bed_x := -half_w + 1.45
+		var bed_z := 1.05
+		_mi(fit, _box(Vector3(1.88, 0.48, 1.38)), walnut, Vector3(bed_x, 0.30, bed_z))
+		_mi(fit, _box(Vector3(1.74, 0.24, 1.26)), _mat(wall_col.lightened(0.22), 0.88), Vector3(bed_x, 0.64, bed_z))
+		_mi(fit, _box(Vector3(0.55, 0.26, 1.28)), velvet_plum, Vector3(bed_x + 0.58, 0.66, bed_z)) # folded quilt runner
+		for pz in [-0.32, 0.32]:
+			_mi(fit, _sph(0.24, 0.20, 14), parchment, Vector3(bed_x - 0.60, 0.84, bed_z + float(pz)), Vector3.ZERO, Vector3(0.85, 0.72, 1.28))
+		for px in [-0.88, 0.88]:
+			for pz in [-0.64, 0.64]:
+				_mi(fit, _cyl(0.045, 0.055, 1.48, 10), walnut, Vector3(bed_x + float(px), 0.78, bed_z + float(pz)))
+				_mi(fit, _sph(0.065, 0.13, 10), brass, Vector3(bed_x + float(px), 1.55, bed_z + float(pz)))
+		# Carved Parlor Pedestal Table draped in velvet + Rococo Porcelain Vase centerpiece (prop_03_porcelain_urn.jpg!)
+		_mi(fit, _cyl(0.68, 0.68, 0.08, 20), walnut, Vector3(0.15, 0.82, -0.35))
+		_mi(fit, _cyl(0.71, 0.74, 0.05, 20), velvet_plum, Vector3(0.15, 0.85, -0.35))
+		_mi(fit, _cyl(0.10, 0.20, 0.74, 14), walnut, Vector3(0.15, 0.42, -0.35))
+		_mi(fit, _cyl(0.32, 0.36, 0.08, 14), brass, Vector3(0.15, 0.09, -0.35))
+		# Mini rococo porcelain vase + candlestick on tea table
+		var porc_m := _mat(Color(0.95, 0.91, 0.93), 0.15, 0.10)
+		_mi(fit, _sph(0.16, 0.30, 14), porc_m, Vector3(0.08, 1.06, -0.35))
+		_mi(fit, _cyl(0.07, 0.09, 0.14, 12), _mat(Color(0.74, 0.90, 0.84), 0.18), Vector3(0.08, 1.22, -0.35))
+		_mi(fit, _torus(0.08, 0.10, 12), brass, Vector3(0.08, 1.29, -0.35))
+		_mi(fit, _cyl(0.04, 0.07, 0.18, 10), brass, Vector3(0.42, 0.96, -0.22))
+		_mi(fit, _sph(0.028, 0.06, 8), candle_glow, Vector3(0.42, 1.12, -0.22))
 
-	# Framed wall painting / brass title plaque + 3 gilded smiling porcelain wall masks (munch_01_cottage_interior.jpg)
-	_mi(fit, _box(Vector3(1.85, 0.78, 0.08)), brass, Vector3(0.65, 2.15, -half_d + 0.18))
-	var mask_porc := _mat(Color(0.96, 0.94, 0.92), 0.25)
-	var rose_velvet := _mat(Color(0.62, 0.24, 0.36), 0.78)
+	# Framed Brass Title Plaque + 3 Gilded Smiling Porcelain Wall Masks + Tufted Cabriole-Leg Settee
+	_mi(fit, _box(Vector3(1.88, 0.80, 0.08)), brass, Vector3(0.65, 2.18, -half_d + 0.18))
+	_mi(fit, _box(Vector3(1.68, 0.62, 0.09)), _mat(Color(0.12, 0.08, 0.12), 0.68), Vector3(0.65, 2.18, -half_d + 0.20))
+	var mask_porc := _mat(Color(0.96, 0.94, 0.92), 0.22)
 	for mi_i in range(3):
 		var mx := 0.05 + float(mi_i) * 0.58
-		_mi(fit, _torus(0.16, 0.20, 12), brass, Vector3(mx, 1.48, -half_d + 0.18), Vector3(90, 0, 0))
-		_mi(fit, _sph(0.14, 0.22, 10), mask_porc, Vector3(mx, 1.48, -half_d + 0.20), Vector3.ZERO, Vector3(0.9, 1.15, 0.45))
-	# Tufted rose-velvet parlor settee along left-center wall
-	_mi(fit, _box(Vector3(1.85, 0.42, 0.72)), rose_velvet, Vector3(-0.35, 0.28, -half_d + 0.95))
-	_mi(fit, _box(Vector3(1.85, 0.62, 0.18)), rose_velvet, Vector3(-0.35, 0.66, -half_d + 0.65))
-	_mi(fit, _box(Vector3(1.92, 0.08, 0.20)), brass, Vector3(-0.35, 0.98, -half_d + 0.65))
-	_mi(fit, _box(Vector3(1.68, 0.62, 0.09)), _mat(Color(0.14, 0.10, 0.12), 0.7), Vector3(0.65, 2.15, -half_d + 0.20))
+		_mi(fit, _torus(0.16, 0.20, 14), brass, Vector3(mx, 1.48, -half_d + 0.18), Vector3(90, 0, 0))
+		_mi(fit, _sph(0.14, 0.22, 12), mask_porc, Vector3(mx, 1.48, -half_d + 0.20), Vector3.ZERO, Vector3(0.9, 1.15, 0.45))
+
+	# Tufted Velvet Parlor Settee with Bolster Pillows & Turned Brass Legs
+	var settee_m: Material = velvet_em if ("hall" in tlow or "mayor" in tlow) else velvet_plum
+	_mi(fit, _box(Vector3(1.88, 0.34, 0.74)), settee_m, Vector3(-0.35, 0.42, -half_d + 0.95))
+	_mi(fit, _box(Vector3(1.88, 0.60, 0.18)), settee_m, Vector3(-0.35, 0.78, -half_d + 0.66))
+	_mi(fit, _box(Vector3(1.94, 0.08, 0.20)), brass, Vector3(-0.35, 1.10, -half_d + 0.66))
+	for sx in [-0.82, 0.82]:
+		_mi(fit, _cyl(0.14, 0.14, 0.66, 12), rug_trim, Vector3(-0.35 + float(sx), 0.66, -half_d + 0.95), Vector3(90, 0, 0))
+		for sz in [-0.28, 0.28]:
+			_mi(fit, _cyl(0.038, 0.024, 0.26, 8), brass, Vector3(-0.35 + float(sx), 0.16, -half_d + 0.95 + float(sz)))
+
 	var plaque := Label3D.new()
 	plaque.text = title.to_upper()
 	plaque.font_size = 26
@@ -855,38 +926,172 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	plaque.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	plaque.modulate = Color(0.98, 0.88, 0.58)
 	plaque.outline_size = 4
-	plaque.position = Vector3(0.65, 2.15, -half_d + 0.26)
+	plaque.position = Vector3(0.65, 2.18, -half_d + 0.26)
 	fit.add_child(plaque)
 
-	# Interactive interior activities: Gilded Desire Chest + Shattered Memory Keepsake!
+	# Interactive interior activities: Carved Desire Chest + Bespoke 3D Shattered Memory Keepsake!
 	var mem_id := "munchkin_silver_ledger" if ("debt" in tlow or "mayor" in tlow or "hall" in tlow) else "munchkin_porcelain_mask"
 	add_interior_activities(fit, "cottage_%s" % tlow.replace(" ", "_"), mem_id, Vector3(half_w - 1.5, 0.08, 0.9), Vector3(-0.3, 0.08, -half_d + 1.8), false)
 
-	# Warm interior lighting
 	var lamp := OmniLight3D.new()
 	lamp.light_color = Color(1.0, 0.90, 0.70)
-	lamp.light_energy = 2.4
-	lamp.omni_range = 12.0
+	lamp.light_energy = 2.6
+	lamp.omni_range = 13.0
 	lamp.position = Vector3(0, wall_h - 1.05, 0)
 	fit.add_child(lamp)
 
 	var hearth_light := OmniLight3D.new()
 	hearth_light.light_color = Color(1.0, 0.58, 0.24)
-	hearth_light.light_energy = 1.8
-	hearth_light.omni_range = 7.0
+	hearth_light.light_energy = 1.9
+	hearth_light.omni_range = 7.5
 	hearth_light.position = Vector3(hx - 0.6, 0.75, -0.6)
 	fit.add_child(hearth_light)
 
 	return fit
 
-## Populates a building interior with an interactive Gilded Desire Chest (+15 Desire) & Shattered Memory Crystal (Codex Lore).
+## Phase P10.2: High-Fidelity Monochrome Kansas Farmhouse, Barn & Chicken Coop Interiors!
+static func build_kansas_interior(fit: Node3D, title: String) -> void:
+	var hw := 3.8
+	var hd := 3.4
+	var wh := 3.6
+	var plank_fl := make_pbr_mat("kansas_wood.jpg", Color(0.46, 0.46, 0.48), 0.85, 0.0, 0.45)
+	var plank_wall := make_pbr_mat("kansas_wood.jpg", Color(0.62, 0.62, 0.65), 0.88, 0.0, 0.38)
+	var timber := _mat(Color(0.28, 0.28, 0.30), 0.88)
+	var iron := _mat(Color(0.16, 0.16, 0.19), 0.42, 0.72)
+	var pewter := _mat(Color(0.72, 0.72, 0.75), 0.30, 0.80)
+	var linen := _mat(Color(0.84, 0.84, 0.86), 0.86)
+	var quilt := _mat(Color(0.56, 0.56, 0.59), 0.90)
+	var straw := _mat(Color(0.66, 0.66, 0.68), 0.94)
+	var glow_m := _mat(Color(0.95, 0.95, 0.98), 0.15, 0.0, Color(0.94, 0.94, 0.98), 2.1)
+
+	# Floor, 4 walls, rafters & framed Exit Door with iron strap hinges & pewter knob
+	_mi(fit, _box(Vector3(hw * 2.0, 0.08, hd * 2.0)), plank_fl, Vector3(0, 0.04, 0))
+	_mi(fit, _box(Vector3(hw * 2.0, wh, 0.14)), plank_wall, Vector3(0, wh * 0.5, -hd))
+	_mi(fit, _box(Vector3(0.14, wh, hd * 2.0)), plank_wall, Vector3(-hw, wh * 0.5, 0))
+	_mi(fit, _box(Vector3(0.14, wh, hd * 2.0)), plank_wall, Vector3(hw, wh * 0.5, 0))
+	_mi(fit, _box(Vector3(hw * 2.0, wh, 0.14)), plank_wall, Vector3(0, wh * 0.5, hd))
+	_mi(fit, _box(Vector3(hw * 2.0, 0.14, hd * 2.0)), timber, Vector3(0, wh, 0))
+	for rz in [-2.0, 0.0, 2.0]:
+		_mi(fit, _box(Vector3(hw * 2.0, 0.18, 0.20)), timber, Vector3(0, wh - 0.18, float(rz)))
+
+	# Framed Exit Door on +Z wall
+	_mi(fit, _box(Vector3(1.44, 2.28, 0.10)), timber, Vector3(0, 1.14, hd - 0.10))
+	_mi(fit, _box(Vector3(1.18, 2.12, 0.08)), plank_fl, Vector3(0, 1.08, hd - 0.14))
+	_mi(fit, _sph(0.055, 0.11, 10), pewter, Vector3(0.40, 1.02, hd - 0.20))
+	_mi(fit, _box(Vector3(0.36, 0.06, 0.04)), iron, Vector3(-0.40, 1.72, hd - 0.18))
+	_mi(fit, _box(Vector3(0.36, 0.06, 0.04)), iron, Vector3(-0.40, 0.52, hd - 0.18))
+	make_world_badge(fit, Vector3(0, 2.48, hd - 0.26), "✦  Exit %s (E)" % title, Color(0.96, 0.96, 1.0), 10.0)
+
+	# Hanging Prairie Glass Oil Lantern
+	_mi(fit, _cyl(0.015, 0.015, 0.55, 8), iron, Vector3(0, wh - 0.35, 0))
+	_mi(fit, _cyl(0.22, 0.28, 0.08, 14), iron, Vector3(0, wh - 0.62, 0))
+	_mi(fit, _sph(0.11, 0.22, 12), glow_m, Vector3(0, wh - 0.78, 0))
+	_mi(fit, _cyl(0.14, 0.12, 0.06, 12), iron, Vector3(0, wh - 0.92, 0))
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(0.95, 0.95, 1.0)
+	lamp.light_energy = 2.9
+	lamp.omni_range = 13.0
+	lamp.position = Vector3(0, wh - 0.85, 0)
+	fit.add_child(lamp)
+
+	var t := title.to_lower()
+	if "farm" in t:
+		# Braided oval prairie rug (layered concentric oval rings)
+		_mi(fit, _cyl(1.48, 1.50, 0.022, 24), timber, Vector3(0, 0.09, -0.1), Vector3.ZERO, Vector3(1.22, 1.0, 0.90))
+		_mi(fit, _cyl(1.26, 1.28, 0.026, 24), quilt, Vector3(0, 0.092, -0.1), Vector3.ZERO, Vector3(1.22, 1.0, 0.90))
+		_mi(fit, _cyl(0.94, 0.96, 0.030, 24), linen, Vector3(0, 0.094, -0.1), Vector3.ZERO, Vector3(1.22, 1.0, 0.90))
+
+		# Prairie Kitchen Hutch & Counter with ceramic pitcher, skillet & shelves
+		_mi(fit, _box(Vector3(2.3, 0.90, 0.86)), timber, Vector3(-2.35, 0.49, -2.65))
+		_mi(fit, _box(Vector3(2.38, 0.08, 0.92)), plank_wall, Vector3(-2.35, 0.96, -2.65))
+		_mi(fit, _box(Vector3(2.2, 1.15, 0.34)), timber, Vector3(-2.35, 1.85, -3.02))
+		for dx in [-2.95, -2.35, -1.75]:
+			_mi(fit, _cyl(0.14, 0.14, 0.03, 12), linen, Vector3(float(dx), 1.62, -2.86), Vector3(76, 0, 0))
+		_mi(fit, _sph(0.12, 0.22, 12), linen, Vector3(-2.80, 1.12, -2.55)) # ceramic water pitcher
+		_mi(fit, _cyl(0.18, 0.16, 0.05, 12), iron, Vector3(-1.85, 1.03, -2.55)) # cast-iron skillet
+
+		# Sculpted Cast-Iron Pot-Belly Woodstove + Stovepipe + Kettle + Glowing Grate
+		var sx := 2.55
+		var sz := -2.45
+		_mi(fit, _cyl(0.56, 0.60, 0.06, 16), iron, Vector3(sx, 0.11, sz)) # hearth pad
+		_mi(fit, _cyl(0.36, 0.42, 0.92, 18), iron, Vector3(sx, 0.62, sz))
+		_mi(fit, _sph(0.42, 0.56, 16), iron, Vector3(sx, 0.68, sz))
+		_mi(fit, _torus(0.36, 0.42, 16), pewter, Vector3(sx, 1.06, sz))
+		_mi(fit, _box(Vector3(0.26, 0.22, 0.08)), glow_m, Vector3(sx, 0.58, sz + 0.38)) # glowing firebox grate
+		_mi(fit, _cyl(0.11, 0.11, wh - 1.10, 12), iron, Vector3(sx, 1.10 + (wh - 1.10) * 0.5, sz))
+		_mi(fit, _sph(0.14, 0.20, 12), pewter, Vector3(sx - 0.12, 1.20, sz + 0.08)) # boiling iron tea kettle
+
+		# Dorothy's Iron-Frame Prairie Quilt Bed + Bolster Pillows
+		var bx := -2.70
+		var bz := 0.85
+		_mi(fit, _box(Vector3(1.18, 0.32, 1.98)), timber, Vector3(bx, 0.28, bz))
+		_mi(fit, _box(Vector3(1.10, 0.20, 1.90)), quilt, Vector3(bx, 0.54, bz))
+		_mi(fit, _sph(0.22, 0.18, 12), linen, Vector3(bx, 0.70, bz - 0.68), Vector3.ZERO, Vector3(1.8, 0.72, 0.85))
+		for px in [-0.56, 0.56]:
+			for pz in [-0.96, 0.96]:
+				_mi(fit, _cyl(0.028, 0.032, 1.12, 8), iron, Vector3(bx + float(px), 0.60, bz + float(pz)))
+				_mi(fit, _sph(0.046, 0.09, 8), pewter, Vector3(bx + float(px), 1.18, bz + float(pz)))
+
+		# Turned-Leg Prairie Dining Table + 2 Wooden Chairs + Oil Lamp
+		var tx := 2.35
+		var tz := 0.90
+		_mi(fit, _box(Vector3(1.50, 0.09, 1.15)), plank_wall, Vector3(tx, 0.78, tz))
+		for lx in [-0.64, 0.64]:
+			for lz in [-0.46, 0.46]:
+				_mi(fit, _cyl(0.045, 0.035, 0.74, 10), timber, Vector3(tx + float(lx), 0.40, tz + float(lz)))
+		for cz in [-0.82, 0.82]:
+			_mi(fit, _box(Vector3(0.46, 0.06, 0.44)), timber, Vector3(tx, 0.46, tz + float(cz)))
+			_mi(fit, _box(Vector3(0.46, 0.54, 0.06)), timber, Vector3(tx, 0.74, tz + float(cz) * 1.24))
+
+		make_world_badge(fit, Vector3(0, 2.75, -hd + 0.24), "✦  Gale Farmhouse Interior", Color(0.96, 0.96, 1.0), 12.0)
+		add_interior_activities(fit, "kansas_farmhouse", "kansas_locket", Vector3(1.4, 0.08, -1.2), Vector3(-1.1, 0.08, -1.2), true)
+	elif "barn" in t:
+		# Twine-Bound Stacked Hay Bales (rounded corners + hemp bindings)
+		for bp in [Vector3(-2.5, 0.40, -2.2), Vector3(-2.3, 1.12, -2.35), Vector3(2.4, 0.40, -2.2), Vector3(2.6, 1.08, -2.35)]:
+			_mi(fit, _box(Vector3(1.38, 0.66, 0.88)), straw, bp)
+			for tx in [-0.36, 0.36]:
+				_mi(fit, _box(Vector3(0.04, 0.70, 0.92)), timber, bp + Vector3(float(tx), 0, 0))
+		# Slatted Wooden Horse Stall + Hanging Iron Lantern & Bridle
+		_mi(fit, _box(Vector3(0.14, 1.45, 2.40)), timber, Vector3(-2.1, 0.78, 1.0))
+		for ry in [0.42, 0.82, 1.22]:
+			_mi(fit, _box(Vector3(1.45, 0.14, 0.10)), plank_wall, Vector3(-2.85, float(ry), -0.15))
+		# Spoked Wooden Farm Wagon Wheel leaning against back wall (obj_05_field_mouse_cart.jpg!)
+		var wheel_p := Vector3(0.0, 0.82, -hd + 0.32)
+		_mi(fit, _torus(0.68, 0.78, 20), timber, wheel_p, Vector3(90, 0, 0))
+		_mi(fit, _cyl(0.14, 0.14, 0.18, 12), iron, wheel_p, Vector3(90, 0, 0))
+		for si in range(8):
+			_mi(fit, _cyl(0.026, 0.026, 1.38, 8), timber, wheel_p, Vector3(0, 0, float(si) * 22.5))
+		# Uncle Henry's Tool Workbench + Grease Tin + Saw
+		_mi(fit, _box(Vector3(1.30, 0.10, 1.95)), plank_wall, Vector3(2.65, 0.92, 1.05))
+		for lx in [-0.54, 0.54]:
+			for lz in [-0.84, 0.84]:
+				_mi(fit, _cyl(0.05, 0.05, 0.86, 8), timber, Vector3(2.65 + float(lx), 0.46, 1.05 + float(lz)))
+		_mi(fit, _cyl(0.09, 0.09, 0.22, 12), pewter, Vector3(2.45, 1.08, 0.65)) # axle grease tin
+		_mi(fit, _sph(0.08, 0.16, 10), glow_m, Vector3(2.45, 1.12, 1.45)) # barn workbench oil lamp
+
+		make_world_badge(fit, Vector3(0, 2.75, -hd + 0.24), "✦  Gale Barn & Hayloft", Color(0.96, 0.96, 1.0), 12.0)
+		add_interior_activities(fit, "kansas_barn", "kansas_barn_diary", Vector3(1.4, 0.08, -0.7), Vector3(-1.2, 0.08, -0.9), true)
+	else:
+		# Chicken Coop Interior: Slatted Timber Nesting Boxes, Straw Beds, Speckled Eggs & Roosting Perch
+		_mi(fit, _box(Vector3(1.85, 0.72, 0.92)), timber, Vector3(-1.75, 0.40, -1.65))
+		for nx in [-2.25, -1.75, -1.25]:
+			_mi(fit, _cyl(0.22, 0.24, 0.12, 12), straw, Vector3(float(nx), 0.80, -1.60))
+			_mi(fit, _sph(0.055, 0.08, 8), linen, Vector3(float(nx) + 0.06, 0.88, -1.56))
+		_mi(fit, _cyl(0.05, 0.05, 1.95, 10), timber, Vector3(1.70, 0.62, -1.60), Vector3(0, 0, 90))
+		build_chicken_visual(fit, Vector3(-1.75, 0.82, -1.58), 20.0)
+		build_chicken_visual(fit, Vector3(1.55, 0.66, -1.58), -35.0)
+		build_chicken_visual(fit, Vector3(-0.6, 0.08, 0.6), 110.0)
+		make_world_badge(fit, Vector3(0, 2.40, -hd + 0.24), "✦  Chicken Coop Interior", Color(0.96, 0.96, 1.0), 10.0)
+
+## Phase P10.2: High-Fidelity Carved Walnut Desire Chest (prop_02_desire_chest.jpg) + 5 Bespoke 3D Shattered Memory Keepsakes!
 static func add_interior_activities(fit: Node3D, room_id: String, memory_id: String, chest_pos: Vector3, mem_pos: Vector3, monochrome: bool = false) -> void:
 	var pickup_script := preload("res://systems/interior_pickup.gd")
-	var gold_c := Color(0.75, 0.75, 0.78) if monochrome else Color(0.95, 0.78, 0.30)
-	var wood_c := Color(0.28, 0.28, 0.31) if monochrome else Color(0.32, 0.16, 0.14)
-	var rose_c := Color(0.92, 0.92, 0.96) if monochrome else Color(0.98, 0.32, 0.58)
+	var gold_c := Color(0.76, 0.76, 0.80) if monochrome else Color(0.94, 0.76, 0.30)
+	var wood_c := Color(0.28, 0.28, 0.31) if monochrome else Color(0.30, 0.15, 0.09)
+	var velvet_c := Color(0.22, 0.22, 0.25) if monochrome else Color(0.22, 0.06, 0.18)
+	var rose_c := Color(0.92, 0.92, 0.96) if monochrome else Color(0.98, 0.18, 0.40)
 
-	# 1) Curved-lid Ornate Gilded Desire Chest (vaulted barrel lid + brass bands + inner crimson velvet)
+	# 1) Carved Dark-Walnut & Antique-Brass Desire Chest brimming with 16+ Glowing Faceted Desire Crystals (prop_02_desire_chest.jpg!)
 	var chest := Area3D.new()
 	chest.set_script(pickup_script)
 	chest.name = "DesireChest"
@@ -903,24 +1108,46 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 	var cvis := Node3D.new()
 	cvis.name = "Visual"
 	chest.add_child(cvis)
-	var brass_m := _mat(gold_c, 0.20, 0.92, gold_c, 0.40)
-	_mi(cvis, _box(Vector3(0.90, 0.44, 0.56)), _mat(wood_c, 0.62), Vector3(0, 0.22, 0))
-	for bx in [-0.42, 0.0, 0.42]:
-		_mi(cvis, _box(Vector3(0.075, 0.47, 0.62)), brass_m, Vector3(float(bx), 0.235, 0))
-	_mi(cvis, _box(Vector3(0.97, 0.06, 0.63)), brass_m, Vector3(0, 0.45, 0))
-	# Glowing jewels inside chest
-	_mi(cvis, _sph(0.18, 0.14, 10), _mat(rose_c, 0.12, 0.3, rose_c, 1.8), Vector3(0, 0.44, 0))
+
+	var brass_m := _mat(gold_c, 0.22, 0.92, gold_c, 0.32)
+	var wal_m := _mat(wood_c, 0.56, 0.06)
+	var velv_m := _mat(velvet_c, 0.86)
+	var gem_m := _mat(rose_c, 0.08, 0.22, rose_c, 2.2)
+
+	# Draped crushed-velvet cloth runner + spilled ruby crystals around chest base!
+	_mi(cvis, _cyl(0.68, 0.74, 0.025, 20), velv_m, Vector3(0, 0.015, 0), Vector3.ZERO, Vector3(1.18, 1.0, 0.88))
+	for sp in [Vector3(-0.24, 0.05, 0.42), Vector3(0.05, 0.06, 0.46), Vector3(0.28, 0.04, 0.40)]:
+		_mi(cvis, _cyl(0.01, 0.045, 0.09, 6), gem_m, sp, Vector3(24, 18, -14))
+
+	# Carved walnut chest body + brass corner brackets + vertical filigree straps + keyhole escutcheon + side ring handles
+	_mi(cvis, _box(Vector3(0.94, 0.44, 0.58)), wal_m, Vector3(0, 0.24, 0))
+	for bx in [-0.45, -0.18, 0.18, 0.45]:
+		_mi(cvis, _box(Vector3(0.065, 0.47, 0.62)), brass_m, Vector3(float(bx), 0.25, 0))
+	_mi(cvis, _box(Vector3(0.99, 0.055, 0.64)), brass_m, Vector3(0, 0.46, 0))
+	_mi(cvis, _box(Vector3(0.99, 0.055, 0.64)), brass_m, Vector3(0, 0.04, 0))
+	_mi(cvis, _sph(0.10, 0.16, 12), brass_m, Vector3(0, 0.32, 0.305), Vector3.ZERO, Vector3(1.2, 1.1, 0.35)) # ornate keyhole escutcheon
+	for sx in [-1.0, 1.0]:
+		_mi(cvis, _torus(0.055, 0.072, 12), brass_m, Vector3(float(sx) * 0.49, 0.26, 0), Vector3(0, 0, 90)) # side ring handles
+
+	# Brimming bed of 16 faceted glowing crimson-rose Desire Crystal clusters inside the chest!
+	for gi in range(16):
+		var gx := lerpf(-0.34, 0.34, float(gi % 5) / 4.0) + sin(float(gi) * 2.3) * 0.05
+		var gz := lerpf(-0.18, 0.18, float(gi / 5) / 3.0) + cos(float(gi) * 1.9) * 0.04
+		var gh := 0.14 + float(gi % 3) * 0.06
+		_mi(cvis, _cyl(0.012, 0.062, gh, 6), gem_m, Vector3(gx, 0.46 + gh * 0.32, gz), Vector3(sin(float(gi)) * 24.0, float(gi) * 38.0, cos(float(gi)) * 22.0))
+
+	# Vaulted barrel lid with arched brass straps & central clasp
 	var lid := Node3D.new()
 	lid.name = "Lid"
-	lid.position = Vector3(0, 0.47, -0.28)
+	lid.position = Vector3(0, 0.48, -0.29)
 	cvis.add_child(lid)
-	_mi(lid, _cyl(0.26, 0.26, 0.88, 12), _mat(wood_c.lightened(0.08), 0.58), Vector3(0, 0.02, 0.28), Vector3(0, 0, 90))
-	for bx in [-0.42, 0.0, 0.42]:
-		_mi(lid, _cyl(0.295, 0.295, 0.075, 12), brass_m, Vector3(float(bx), 0.02, 0.28), Vector3(0, 0, 90))
-	_mi(lid, _box(Vector3(0.16, 0.16, 0.07)), brass_m, Vector3(0, 0.0, 0.59))
-	make_world_badge(chest, Vector3(0, 1.15, 0), "♦  Gilded Treasure Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
+	_mi(lid, _cyl(0.27, 0.27, 0.92, 16), _mat(wood_c.lightened(0.08), 0.52), Vector3(0, 0.02, 0.29), Vector3(0, 0, 90))
+	for bx in [-0.44, -0.18, 0.18, 0.44]:
+		_mi(lid, _cyl(0.30, 0.30, 0.065, 16), brass_m, Vector3(float(bx), 0.02, 0.29), Vector3(0, 0, 90))
+	_mi(lid, _box(Vector3(0.14, 0.18, 0.06)), brass_m, Vector3(0, 0.02, 0.60))
+	make_world_badge(chest, Vector3(0, 1.22, 0), "♦  Desire Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
 
-	# 2) Floating Shattered Memory Keepsake
+	# 2) Bespoke Sculpted 3D Shattered Memory Keepsake (mem_01 through mem_05!)
 	if memory_id != "":
 		var mem := Area3D.new()
 		mem.set_script(pickup_script)
@@ -938,10 +1165,60 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 		mvis.name = "Visual"
 		mvis.position = Vector3(0, 0.95, 0)
 		mem.add_child(mvis)
-		var crystal_m := _mat(rose_c, 0.14, 0.30, rose_c, 1.8)
-		_mi(mvis, _cyl(0.02, 0.18, 0.32, 6), crystal_m, Vector3(0, 0.16, 0))
-		_mi(mvis, _cyl(0.18, 0.02, 0.32, 6), crystal_m, Vector3(0, -0.16, 0))
+		_build_memory_keepsake_mesh(mvis, memory_id, monochrome)
 		make_world_badge(mem, Vector3(0, 1.65, 0), "✦  Shattered Memory", rose_c.lightened(0.20), 8.0)
+
+static func _build_memory_keepsake_mesh(parent: Node3D, memory_id: String, monochrome: bool) -> void:
+	var aura_c := Color(0.92, 0.92, 0.98) if monochrome else Color(1.0, 0.78, 0.38)
+	var aura_m := _mat(aura_c, 0.12, 0.30, aura_c, 1.55)
+	# Subtle floating golden-halo ring framing every bespoke 3D keepsake so it reads clearly!
+	_mi(parent, _torus(0.28, 0.305, 20), aura_m, Vector3.ZERO, Vector3(22, 0, 18))
+
+	match memory_id:
+		"kansas_barn_diary":
+			# mem_01_cyclone_ledger.jpg — Open 1899 Weather & Barometer Ledger + Inkwell
+			var leather := _mat(Color(0.26, 0.24, 0.23), 0.78)
+			var page := _mat(Color(0.86, 0.84, 0.80), 0.82, 0.0, Color(0.86, 0.84, 0.80), 0.25)
+			_mi(parent, _box(Vector3(0.46, 0.03, 0.34)), leather, Vector3(0, -0.02, 0), Vector3(16, 0, 0))
+			_mi(parent, _box(Vector3(0.21, 0.04, 0.31)), page, Vector3(-0.11, 0.02, 0), Vector3(16, 0, -10))
+			_mi(parent, _box(Vector3(0.21, 0.04, 0.31)), page, Vector3(0.11, 0.02, 0), Vector3(16, 0, 10))
+		"kansas_locket":
+			# mem_02_aunt_em_locket.jpg — Open Oval Tarnished Pewter Locket + Sepia Portrait
+			var pewter := _mat(Color(0.56, 0.56, 0.60), 0.34, 0.84, Color(0.75, 0.75, 0.80), 0.22)
+			var sepia := _mat(Color(0.72, 0.68, 0.62), 0.45, 0.0, Color(0.80, 0.76, 0.70), 0.35)
+			_mi(parent, _torus(0.12, 0.16, 18), pewter, Vector3(-0.12, 0, 0), Vector3(90, 24, 0), Vector3(0.82, 1.0, 1.15))
+			_mi(parent, _torus(0.12, 0.16, 18), pewter, Vector3(0.12, 0, 0), Vector3(90, -24, 0), Vector3(0.82, 1.0, 1.15))
+			_mi(parent, _cyl(0.12, 0.12, 0.025, 16), sepia, Vector3(0.12, 0, 0.01), Vector3(90, -24, 0), Vector3(0.82, 1.0, 1.15))
+			_mi(parent, _torus(0.03, 0.045, 10), pewter, Vector3(0.12, 0.20, 0), Vector3(90, 0, 0))
+		"munchkin_silver_ledger":
+			# mem_03_guild_ledger.jpg — Silver-Clasped Dark-Leather Registry + White Feather Quill
+			var leather := _mat(Color(0.18, 0.08, 0.18), 0.62)
+			var silver := _mat(Color(0.90, 0.94, 1.0), 0.16, 0.94, Color(0.86, 0.92, 1.0), 0.45)
+			var page := _mat(Color(0.96, 0.92, 0.84), 0.80, 0.0, Color(0.95, 0.90, 0.80), 0.22)
+			_mi(parent, _box(Vector3(0.46, 0.05, 0.34)), leather, Vector3(0, -0.02, 0), Vector3(18, 0, 0))
+			_mi(parent, _box(Vector3(0.20, 0.04, 0.30)), page, Vector3(-0.11, 0.02, 0), Vector3(18, 0, -10))
+			_mi(parent, _box(Vector3(0.20, 0.04, 0.30)), page, Vector3(0.11, 0.02, 0), Vector3(18, 0, 10))
+			_mi(parent, _cyl(0.008, 0.032, 0.38, 10), silver, Vector3(0.16, 0.18, -0.04), Vector3(0, 0, -28))
+		"munchkin_porcelain_mask":
+			# mem_04_porcelain_mask.jpg — Cracked Smiling Porcelain Mask with Brass Clockwork Gears!
+			var porc := _mat(Color(0.96, 0.92, 0.94), 0.16, 0.08, Color(0.95, 0.88, 0.92), 0.28)
+			var brass := _mat(Color(0.94, 0.74, 0.28), 0.22, 0.92, Color(0.96, 0.78, 0.30), 0.55)
+			_mi(parent, _sph(0.18, 0.44, 16), porc, Vector3.ZERO, Vector3.ZERO, Vector3(0.92, 1.15, 0.45))
+			_mi(parent, _torus(0.048, 0.068, 12), brass, Vector3(-0.06, 0.05, 0.075), Vector3(90, 0, 0))
+			_mi(parent, _torus(0.032, 0.046, 10), brass, Vector3(-0.02, -0.01, 0.08), Vector3(90, 0, 0))
+		"emerald_spectacles":
+			# mem_05_emerald_spectacles.jpg — Round Brass-Framed Green-Tinted Spectacles!
+			var brass := _mat(Color(0.92, 0.74, 0.30), 0.20, 0.92)
+			var lens := _mat(Color(0.18, 0.92, 0.48), 0.06, 0.18, Color(0.20, 0.96, 0.50), 1.45)
+			for sx in [-1.0, 1.0]:
+				_mi(parent, _torus(0.085, 0.105, 18), brass, Vector3(float(sx) * 0.115, 0, 0), Vector3(90, 0, 0))
+				_mi(parent, _cyl(0.084, 0.084, 0.016, 16), lens, Vector3(float(sx) * 0.115, 0, 0), Vector3(90, 0, 0))
+				_mi(parent, _cyl(0.012, 0.012, 0.28, 8), brass, Vector3(float(sx) * 0.215, 0, -0.14), Vector3(90, 0, 0))
+			_mi(parent, _cyl(0.012, 0.012, 0.08, 8), brass, Vector3(0, 0.02, 0), Vector3(0, 0, 90))
+		_:
+			var crystal_m := _mat(aura_c, 0.12, 0.28, aura_c, 1.8)
+			_mi(parent, _cyl(0.02, 0.18, 0.32, 6), crystal_m, Vector3(0, 0.16, 0))
+			_mi(parent, _cyl(0.18, 0.02, 0.32, 6), crystal_m, Vector3(0, -0.16, 0))
 
 static func make_gnarled_tree(at: Vector3, rng: RandomNumberGenerator, scale_mult: float = 1.0) -> Node3D:
 	var root := Node3D.new()
@@ -2310,24 +2587,133 @@ static func spawn_destructible_urn(parent: Node3D, at: Vector3) -> StaticBody3D:
 	urn.add_child(col)
 	return urn
 
-## Phase P12.1: Munchkinland Crystal Wind Chimes on scrolling wrought-iron hanger (prop_01_crystal_chimes.jpg).
-static func build_crystal_chimes(parent: Node3D) -> void:
-	var iron := _mat(Color(0.16, 0.15, 0.19), 0.45, 0.80)
-	var silver := _mat(Color(0.84, 0.88, 0.92), 0.18, 0.92)
-	var crystal := _mat(Color(0.76, 0.94, 1.0), 0.08, 0.20, Color(0.70, 0.92, 1.0), 1.45)
-	_mi(parent, _cyl(0.04, 0.055, 2.05, 8), iron, Vector3(-0.34, 1.02, 0))
-	_mi(parent, _box(Vector3(0.46, 0.04, 0.04)), iron, Vector3(-0.12, 2.02, 0), Vector3(0, 0, -10))
-	_mi(parent, _torus(0.26, 0.30, 14), iron, Vector3(0.08, 1.68, 0)) # chandelier crown ring
-	for ci in range(6):
-		var a := float(ci) / 6.0 * TAU
-		var px := 0.08 + cos(a) * 0.25
-		var pz := sin(a) * 0.25
-		var drop := 0.42 + float(ci % 3) * 0.14
-		_mi(parent, _cyl(0.008, 0.008, drop, 6), silver, Vector3(px, 1.68 - drop * 0.5, pz))
+## Phase P10.2: 2026 Sculpted Crystal Wind Chimes on vine-wrapped wrought-iron hanger (prop_01_crystal_chimes.jpg).
+static func build_crystal_chimes(parent: Node3D, monochrome: bool = false) -> Node3D:
+	var iron := _mat(Color(0.20, 0.20, 0.22) if monochrome else Color(0.14, 0.13, 0.17), 0.42, 0.84)
+	var silver := _mat(Color(0.84, 0.84, 0.86) if monochrome else Color(0.88, 0.92, 0.96), 0.16, 0.95)
+	var crystal_c := Color(0.92, 0.92, 0.96) if monochrome else Color(0.76, 0.94, 1.0)
+	var crystal := _mat(crystal_c, 0.06, 0.22, crystal_c, 1.75)
+
+	# Vine-wrapped wrought-iron shepherd's post + scrolled base + spear finial + curved crook
+	_mi(parent, _cyl(0.036, 0.052, 2.15, 12), iron, Vector3(-0.36, 1.08, 0))
+	_mi(parent, _cyl(0.008, 0.048, 0.18, 8), iron, Vector3(-0.36, 2.24, 0)) # Gothic spear finial
+	for sc in [0.22, 1.92]:
+		_mi(parent, _torus(0.08, 0.11, 12), iron, Vector3(-0.24, float(sc), 0), Vector3(90, 0, 0))
+		_mi(parent, _torus(0.08, 0.11, 12), iron, Vector3(-0.48, float(sc), 0), Vector3(90, 0, 0))
+	# Arched shepherd's crook arm
+	_mi(parent, _torus(0.22, 0.255, 16), iron, Vector3(-0.14, 2.04, 0), Vector3(90, 0, 0), Vector3(1.15, 1.0, 0.88))
+
+	# Swaying 2-tier silver-bell & crystal-prism chandelier assembly!
+	var sway := Node3D.new()
+	sway.name = "ChimeSway"
+	sway.position = Vector3(0.08, 2.10, 0)
+	parent.add_child(sway)
+	for ch_i in range(3):
+		var ca := float(ch_i) / 3.0 * TAU
+		_mi(sway, _cyl(0.007, 0.007, 0.42, 6), silver, Vector3(cos(ca) * 0.14, -0.20, sin(ca) * 0.14), Vector3(sin(ca) * 32.0, 0, -cos(ca) * 32.0))
+	_mi(sway, _torus(0.26, 0.30, 20), iron, Vector3(0, -0.38, 0))
+	_mi(sway, _torus(0.13, 0.155, 16), iron, Vector3(0, -0.78, 0)) # inner lower tier ring
+	# Outer ring: 8 alternating sculpted silver bells & glowing faceted crystal teardrops
+	for ci in range(8):
+		var a := float(ci) / 8.0 * TAU
+		var px := cos(a) * 0.28
+		var pz := sin(a) * 0.28
+		var drop := 0.38 + float(ci % 3) * 0.16
+		_mi(sway, _cyl(0.006, 0.006, drop, 6), silver, Vector3(px, -0.38 - drop * 0.5, pz))
 		if ci % 2 == 0:
-			_mi(parent, _cyl(0.025, 0.075, 0.14, 8), silver, Vector3(px, 1.68 - drop, pz)) # silver bell
+			_mi(sway, _cyl(0.022, 0.072, 0.135, 12), silver, Vector3(px, -0.38 - drop, pz)) # fluted silver bell
+			_mi(sway, _sph(0.022, 0.044, 8), silver, Vector3(px, -0.46 - drop, pz)) # bell clapper
 		else:
-			_mi(parent, _sph(0.048, 0.13, 8), crystal, Vector3(px, 1.68 - drop, pz)) # faceted crystal prism
+			_mi(sway, _cyl(0.006, 0.046, 0.11, 6), crystal, Vector3(px, -0.34 - drop, pz))
+			_mi(sway, _cyl(0.046, 0.006, 0.11, 6), crystal, Vector3(px, -0.45 - drop, pz))
+	# Central long master teardrop crystal prism
+	_mi(sway, _cyl(0.007, 0.007, 0.72, 6), silver, Vector3(0, -0.74, 0))
+	_mi(sway, _cyl(0.008, 0.068, 0.15, 6), crystal, Vector3(0, -1.08, 0))
+	_mi(sway, _cyl(0.068, 0.008, 0.15, 6), crystal, Vector3(0, -1.23, 0))
+	return sway
+
+## Phase P10.2: Unified 2026 High-Fidelity Whimsy Builder for ALL 7 Acts (shared by whimsy.gd & landing_square.gd).
+static func build_whimsy_visual(parent: Node3D, kind: String, palette: String = "candy") -> Dictionary:
+	var is_ks := (palette == "kansas")
+	var accent := Color(0.95, 0.34, 0.54)
+	var glow := Color(1.0, 0.56, 0.72)
+	match palette:
+		"kansas":
+			accent = Color(0.56, 0.56, 0.59)
+			glow = Color(0.84, 0.84, 0.88)
+		"winkie":
+			accent = Color(0.82, 0.28, 0.18)
+			glow = Color(1.0, 0.52, 0.22)
+		"emerald":
+			accent = Color(0.18, 0.82, 0.46)
+			glow = Color(0.42, 1.0, 0.64)
+		"glinda":
+			accent = Color(0.96, 0.54, 0.76)
+			glow = Color(1.0, 0.82, 0.92)
+
+	var gold_c := Color(0.76, 0.76, 0.80) if is_ks else Color(0.94, 0.78, 0.32)
+	var gold_m := _mat(gold_c, 0.22, 0.92, gold_c, 0.25)
+	var cream_m := _mat(Color(0.88, 0.88, 0.90) if is_ks else Color(0.97, 0.94, 0.88), 0.68)
+	var cap_m := _mat(accent, 0.46, 0.05, glow, 0.52)
+	var orb_m := _mat(glow, 0.08, 0.20, glow, 1.85)
+	var moss_m := _mat(Color(0.36, 0.36, 0.38) if is_ks else Color(0.24, 0.46, 0.22), 0.88)
+
+	match kind:
+		"chime":
+			var sw := build_crystal_chimes(parent, is_ks)
+			return {"sway": sw}
+		"bounce":
+			# Enchanted Storybook Spotted Toadstool Trampoline + Gills + Mossy Base + Baby Satellite Mushrooms!
+			var bob := Node3D.new()
+			bob.name = "BounceCap"
+			parent.add_child(bob)
+			_mi(parent, _cyl(0.62, 0.72, 0.10, 18), moss_m, Vector3(0, 0.05, 0))
+			_mi(bob, _cyl(0.22, 0.36, 0.54, 18), cream_m, Vector3(0, 0.28, 0))
+			_mi(bob, _torus(0.22, 0.29, 16), cream_m, Vector3(0, 0.40, 0)) # mushroom skirt ring
+			_mi(bob, _cyl(0.66, 0.42, 0.14, 20), cream_m, Vector3(0, 0.50, 0)) # ribbed gill underside
+			_mi(bob, _sph(0.78, 0.68, 22), cap_m, Vector3(0, 0.60, 0)) # plush velvety toadstool dome
+			for si in range(7):
+				var sa := float(si) / 7.0 * TAU
+				_mi(bob, _sph(0.115, 0.10, 10), orb_m, Vector3(cos(sa) * 0.48, 0.76, sin(sa) * 0.48))
+			_mi(bob, _sph(0.13, 0.10, 10), orb_m, Vector3(0, 0.92, 0))
+			# 2 tiny satellite baby toadstools flanking the mossy base
+			for bi in range(2):
+				var ba := float(bi) * 2.4 + 0.6
+				var bp := Vector3(cos(ba) * 0.66, 0.0, sin(ba) * 0.66)
+				_mi(parent, _cyl(0.06, 0.09, 0.20, 10), cream_m, bp + Vector3(0, 0.10, 0))
+				_mi(parent, _sph(0.18, 0.16, 12), cap_m, bp + Vector3(0, 0.22, 0))
+			return {"bob": bob}
+		"giggle":
+			# Floating 6-Petal Giggle-Bloom Fairy Lantern + Counter-Rotating Gilded Astrolabe Rings!
+			var spin := Node3D.new()
+			spin.name = "FairyLantern"
+			spin.position = Vector3(0, 0.82, 0)
+			parent.add_child(spin)
+			_mi(spin, _cyl(0.02, 0.20, 0.34, 6), orb_m, Vector3(0, 0.17, 0))
+			_mi(spin, _cyl(0.20, 0.02, 0.34, 6), orb_m, Vector3(0, -0.17, 0))
+			for pi in range(6):
+				var pa := float(pi) / 6.0 * TAU
+				_mi(spin, _sph(0.14, 0.32, 10), cap_m, Vector3(cos(pa) * 0.24, -0.06, sin(pa) * 0.24), Vector3(sin(pa) * 38.0, 0, -cos(pa) * 38.0), Vector3(0.85, 1.0, 0.45))
+			_mi(spin, _torus(0.36, 0.40, 20), gold_m, Vector3.ZERO, Vector3(32, 0, 22))
+			_mi(spin, _torus(0.46, 0.495, 20), gold_m, Vector3.ZERO, Vector3(-28, 45, -34))
+			return {"spin": spin}
+		_:
+			# "dance" — Fairy-Tale Gazebo Dance Ring with Gilded Mosaic Floor + 6 Lantern Bollards + Floating Motes!
+			_mi(parent, _torus(0.95, 1.24, 28), gold_m, Vector3(0, 0.08, 0))
+			_mi(parent, _cyl(0.98, 0.98, 0.04, 24), cap_m, Vector3(0, 0.05, 0))
+			var iron_m := _mat(Color(0.16, 0.15, 0.19), 0.45, 0.82)
+			var spin := Node3D.new()
+			spin.name = "DanceMotes"
+			spin.position = Vector3(0, 0.65, 0)
+			parent.add_child(spin)
+			for di in range(6):
+				var da := float(di) / 6.0 * TAU
+				var dx := cos(da) * 1.15
+				var dz := sin(da) * 1.15
+				_mi(parent, _cyl(0.035, 0.048, 0.62, 10), iron_m, Vector3(dx, 0.32, dz))
+				_mi(parent, _sph(0.075, 0.14, 10), orb_m, Vector3(dx, 0.68, dz))
+				_mi(spin, _sph(0.045, 0.09, 8), orb_m, Vector3(cos(da) * 0.78, sin(float(di) * 1.4) * 0.22, sin(da) * 0.78))
+			return {"spin": spin}
 
 ## Theatrical crimson-velvet parting curtain on gilded brass rod with pleated folds, rings & gold tassels.
 ## Returns {"root": Node3D, "left": Node3D, "right": Node3D} so callers can animate both drapes drawing back!

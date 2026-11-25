@@ -4,12 +4,16 @@ extends Node
 ## Hosts call setup() once in _ready after HUD exists; try_collect on E;
 ## prompt_if_near() for HUD. Never story-gated.
 
+const WorldKit := preload("res://systems/world_kit.gd")
+
 var points: int = 0
 var _near: Area3D = null
 var _label: Label = null
 var _hud: CanvasLayer = null
 var _host: Node3D = null
 var _palette: String = "candy"
+var _anim_entries: Array[Dictionary] = []
+var _anim_t: float = 0.0
 
 func reset_for_level() -> void:
 	points = 0
@@ -18,6 +22,41 @@ func reset_for_level() -> void:
 	_hud = null
 	_host = null
 	_palette = "candy"
+	_anim_entries.clear()
+
+func _process(delta: float) -> void:
+	if _anim_entries.is_empty():
+		return
+	_anim_t += delta
+	for i in range(_anim_entries.size() - 1, -1, -1):
+		var entry: Dictionary = _anim_entries[i]
+		var raw_area: Variant = entry.get("area")
+		if raw_area == null or not is_instance_valid(raw_area):
+			_anim_entries.remove_at(i)
+			continue
+		var area := raw_area as Node3D
+		if area == null or area.get_meta("taken") == true:
+			_anim_entries.remove_at(i)
+			continue
+		var phase_off: float = float(entry.get("off", 0.0))
+		var raw_spin: Variant = entry.get("spin")
+		if raw_spin != null and is_instance_valid(raw_spin):
+			var spin := raw_spin as Node3D
+			if spin:
+				spin.rotate_y(delta * 1.15)
+				spin.position.y = float(entry.get("base_y", 0.82)) + sin(_anim_t * 2.4 + phase_off) * 0.09
+		var raw_sway: Variant = entry.get("sway")
+		if raw_sway != null and is_instance_valid(raw_sway):
+			var sway := raw_sway as Node3D
+			if sway:
+				sway.rotation.z = sin(_anim_t * 1.9 + phase_off) * 0.09
+				sway.rotation.x = cos(_anim_t * 1.4 + phase_off) * 0.06
+		var raw_bob: Variant = entry.get("bob")
+		if raw_bob != null and is_instance_valid(raw_bob):
+			var bob := raw_bob as Node3D
+			if bob:
+				var s := 1.0 + sin(_anim_t * 2.8 + phase_off) * 0.035
+				bob.scale = Vector3(s, 2.0 - s, s)
 
 func setup(host: Node3D, hud: CanvasLayer, spots: Array, palette: String = "candy") -> void:
 	reset_for_level()
@@ -155,135 +194,16 @@ func _spawn(at: Vector3, kind: String, title: String) -> void:
 	col.shape = sph
 	area.add_child(col)
 	_host.add_child(area)
-	area.global_position = at + Vector3(0, 0.2, 0)
-	var mi := MeshInstance3D.new()
-	var mat := StandardMaterial3D.new()
-	mat.emission_enabled = true
-	var cols: Dictionary = _colors(kind)
-	mat.albedo_color = cols["a"]
-	mat.emission = cols["e"]
-	mat.emission_energy_multiplier = 0.7
-	match kind:
-		"bounce":
-			# Storybook Spotted Toadstool Trampoline (curved stem + domed cap + glowing spots!)
-			var stem := CylinderMesh.new()
-			stem.top_radius = 0.22
-			stem.bottom_radius = 0.34
-			stem.height = 0.52
-			mi.mesh = stem
-			mi.position = Vector3(0, 0.26, 0)
-			var cap := MeshInstance3D.new()
-			var csph := SphereMesh.new()
-			csph.radius = 0.72
-			csph.height = 0.65
-			cap.mesh = csph
-			cap.material_override = mat
-			cap.position = Vector3(0, 0.54, 0)
-			area.add_child(cap)
-			var spot_m := StandardMaterial3D.new()
-			spot_m.albedo_color = Color(0.98, 0.96, 0.92)
-			spot_m.emission_enabled = true
-			spot_m.emission = Color(1.0, 0.96, 0.88)
-			spot_m.emission_energy_multiplier = 0.9
-			for si in range(5):
-				var sa := float(si) / 5.0 * TAU
-				var sp := MeshInstance3D.new()
-				var ss := SphereMesh.new()
-				ss.radius = 0.11
-				ss.height = 0.12
-				sp.mesh = ss
-				sp.material_override = spot_m
-				sp.position = Vector3(cos(sa) * 0.44, 0.72, sin(sa) * 0.44)
-				area.add_child(sp)
-		"giggle":
-			# Floating Crystal Fairy-Lantern with Gilded Filigree Halo Ring (replaces bare sphere!)
-			var core := CylinderMesh.new()
-			core.top_radius = 0.02
-			core.bottom_radius = 0.22
-			core.height = 0.42
-			core.radial_segments = 6
-			mi.mesh = core
-			mi.position = Vector3(0, 0.95, 0)
-			var bot := MeshInstance3D.new()
-			var bc := CylinderMesh.new()
-			bc.top_radius = 0.22
-			bc.bottom_radius = 0.02
-			bc.height = 0.42
-			bc.radial_segments = 6
-			bot.mesh = bc
-			bot.material_override = mat
-			bot.position = Vector3(0, 0.54, 0)
-			area.add_child(bot)
-			var halo := MeshInstance3D.new()
-			var ht := TorusMesh.new()
-			ht.inner_radius = 0.34
-			ht.outer_radius = 0.39
-			halo.mesh = ht
-			halo.material_override = mat
-			halo.position = Vector3(0, 0.75, 0)
-			halo.rotation_degrees = Vector3(32, 0, 22)
-			area.add_child(halo)
-		"chime":
-			# Fanciful sculpted storybook hanging Wind-Chime Arch (shepherd hook + gilded ring + 5 staggered chime tubes + crystal star!)
-			var pole := CylinderMesh.new()
-			pole.top_radius = 0.035
-			pole.bottom_radius = 0.05
-			pole.height = 1.95
-			mi.mesh = pole
-			mi.position = Vector3(-0.35, 0.98, 0)
-			var hook := MeshInstance3D.new()
-			var hb := BoxMesh.new()
-			hb.size = Vector3(0.55, 0.06, 0.06)
-			hook.mesh = hb
-			hook.material_override = mat
-			hook.position = Vector3(-0.08, 1.92, 0)
-			area.add_child(hook)
-			var crown := MeshInstance3D.new()
-			var ct := TorusMesh.new()
-			ct.inner_radius = 0.20
-			ct.outer_radius = 0.25
-			crown.mesh = ct
-			crown.material_override = mat
-			crown.position = Vector3(0.12, 1.72, 0)
-			area.add_child(crown)
-			for ci in range(5):
-				var ang := float(ci) / 5.0 * TAU
-				var tube := MeshInstance3D.new()
-				var tc := CylinderMesh.new()
-				var th := 0.42 + float(ci) * 0.11
-				tc.top_radius = 0.025
-				tc.bottom_radius = 0.025
-				tc.height = th
-				tube.mesh = tc
-				tube.material_override = mat
-				tube.position = Vector3(0.12 + cos(ang) * 0.18, 1.70 - th * 0.5, sin(ang) * 0.18)
-				area.add_child(tube)
-			var star := MeshInstance3D.new()
-			var ss := SphereMesh.new()
-			ss.radius = 0.10
-			ss.height = 0.22
-			star.mesh = ss
-			star.material_override = mat
-			star.position = Vector3(0.12, 0.92, 0)
-			area.add_child(star)
-		_:
-			var tor := TorusMesh.new()
-			tor.inner_radius = 0.9
-			tor.outer_radius = 1.2
-			mi.mesh = tor
-			mi.position = Vector3(0, 0.15, 0)
-	mi.material_override = mat
-	area.add_child(mi)
-	var lab := Label3D.new()
-	lab.text = title
-	lab.font_size = 32
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(1, 0.9, 0.95)
-	lab.position = Vector3(0, 1.8, 0)
-	lab.visibility_range_end = 10.0
-	lab.visibility_range_end_margin = 2.5
-	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	area.add_child(lab)
+	area.global_position = at + Vector3(0, 0.05, 0)
+	var anim: Dictionary = WorldKit.build_whimsy_visual(area, kind, _palette)
+	if not anim.is_empty():
+		anim["area"] = area
+		anim["off"] = float(_anim_entries.size()) * 1.37
+		if anim.has("spin"):
+			anim["base_y"] = (anim["spin"] as Node3D).position.y
+		_anim_entries.append(anim)
+	var badge_col := Color(0.95, 0.95, 0.98) if _palette == "kansas" else Color(1.0, 0.90, 0.95)
+	WorldKit.make_world_badge(area, Vector3(0, 2.25 if kind == "chime" else 1.75, 0), "✦  %s" % title, badge_col, 10.0)
 	area.body_entered.connect(func(b: Node3D) -> void:
 		if b.is_in_group("player") or b.is_in_group("party"):
 			if area.get_meta("taken") != true:

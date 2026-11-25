@@ -47,6 +47,11 @@ func _on_body_entered(body: Node3D) -> void:
 		var lid := get_node_or_null("Visual/Lid") as Node3D
 		if lid:
 			var tw := create_tween()
-			tw.tween_property(lid, "rotation_degrees:x", -105.0, 0.35).set_trans(Tween.TRANS_BACK)
+			tw.tween_property(lid, "rotation_degrees:x", -105.0, 0.38).set_trans(Tween.TRANS_BACK)
+		var fx := get_node_or_null("/root/CombatFx")
+		if fx and fx.has_method("flash_sphere"):
+			fx.call("flash_sphere", self, global_position + Vector3(0, 0.65, 0), Color(1.0, 0.24, 0.48), 0.75, 0.45)
+			if fx.has_method("ring"):
+				fx.call("ring", self, global_position + Vector3(0, 0.15, 0), Color(1.0, 0.82, 0.32), 1.35, 0.48)
 		if dlg and dlg.has_method("say"):
 			dlg.say("Gilded Chest", "♦ Found +%d Desire Fragments! Spend them at The Tailor of Vices or check your Grimoire (J)." % reward_amount, true, 3.8)

@@ -1809,51 +1809,9 @@ func _spawn_whimsy(at: Vector3, kind: String, title: String) -> void:
 	col.shape = sph
 	area.add_child(col)
 	add_child(area)
-	area.global_position = at + Vector3(0, 0.2, 0)
-	var mi := MeshInstance3D.new()
-	var mat := StandardMaterial3D.new()
-	mat.emission_enabled = true
-	match kind:
-		"bounce":
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = 0.55
-			cyl.bottom_radius = 0.75
-			cyl.height = 0.55
-			mi.mesh = cyl
-			mat.albedo_color = Color(0.95, 0.35, 0.55)
-			mat.emission = Color(0.9, 0.3, 0.5)
-			mat.emission_energy_multiplier = 0.6
-			mi.position = Vector3(0, 0.3, 0)
-		"giggle":
-			var sphm := SphereMesh.new()
-			sphm.radius = 0.35
-			sphm.height = 0.7
-			mi.mesh = sphm
-			mat.albedo_color = Color(0.95, 0.85, 0.3)
-			mat.emission = Color(1.0, 0.9, 0.4)
-			mat.emission_energy_multiplier = 0.8
-			mi.position = Vector3(0, 0.6, 0)
-		"chime":
-			WorldKit.build_crystal_chimes(area)
-			mi.visible = false
-		_:
-			var tor := TorusMesh.new()
-			tor.inner_radius = 0.9
-			tor.outer_radius = 1.2
-			mi.mesh = tor
-			mat.albedo_color = Color(0.85, 0.55, 0.95)
-			mat.emission = Color(0.7, 0.4, 0.9)
-			mat.emission_energy_multiplier = 0.5
-			mi.position = Vector3(0, 0.15, 0)
-	mi.material_override = mat
-	area.add_child(mi)
-	var lab := Label3D.new()
-	lab.text = title
-	lab.font_size = 36
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(1, 0.9, 0.95)
-	lab.position = Vector3(0, 1.8, 0)
-	area.add_child(lab)
+	area.global_position = at + Vector3(0, 0.05, 0)
+	WorldKit.build_whimsy_visual(area, kind, "candy")
+	WorldKit.make_world_badge(area, Vector3(0, 2.25 if kind == "chime" else 1.75, 0), "✦  %s" % title, Color(1.0, 0.90, 0.96), 11.0)
 	area.body_entered.connect(func(b):
 		if b.is_in_group("player") or b.is_in_group("party"):
 			if not area.get_meta("taken"):
