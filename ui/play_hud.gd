@@ -542,11 +542,18 @@ func _sync_live_combat_chrome(delta: float) -> void:
 	var sm := get_node_or_null("/root/SaveManager")
 	var player := get_tree().get_first_node_in_group("player")
 	if _armament_dock and _armament_dock.visible:
+		var party_l := get_node_or_null("/root/Party")
+		var lid_str := str(party_l.call("leader_id")) if (party_l and party_l.has_method("leader_id")) else "dorothy"
+		var active_actor: Node = party_l.call("leader_body") if (party_l and party_l.has_method("leader_body")) else player
+		var slot_idx := int(active_actor.get("_armament_idx")) if (active_actor and "_armament_cd" in active_actor and "_armament_idx" in active_actor) else 0
+		if _armament_dock.has_method("set_leader_kit"):
+			_armament_dock.call("set_leader_kit", lid_str, slot_idx)
 		var cd_ratio := 0.0
 		var rap_on := false
-		if player:
-			var cd_val := float(player.get("_armament_cd")) if "_armament_cd" in player else 0.0
+		if active_actor:
+			var cd_val := float(active_actor.get("_armament_cd")) if "_armament_cd" in active_actor else 0.0
 			cd_ratio = clampf(cd_val / 0.85, 0.0, 1.0)
+		if player:
 			rap_on = (float(player.get("_rapture_t")) if "_rapture_t" in player else 0.0) > 0.0
 		var can_rap := sm != null and (float(sm.allure) >= 35.0 or int(sm.hp) <= 2)
 		_armament_dock.call("update_live_state", cd_ratio, can_rap, rap_on)
@@ -943,7 +950,7 @@ func _build_vitality_ribbon() -> void:
 	_armament_dock = ArmamentDock.new()
 	_armament_dock.name = "ArmamentDock"
 	_armament_dock.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_armament_dock.offset_left = -264.0
+	_armament_dock.offset_left = -326.0
 	_armament_dock.offset_right = -18.0
 	_armament_dock.offset_top = -112.0
 	_armament_dock.offset_bottom = -14.0

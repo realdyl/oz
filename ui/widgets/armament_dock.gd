@@ -8,12 +8,42 @@ extends Control
 const CircleShader := preload("res://ui/shaders/circle_medallion.gdshader")
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 
-const SLOTS := [
-	{"idx": 0, "num": "1", "name": "Lace Whip", "icon": "res://assets/art/icons/arm_whip.png"},
-	{"idx": 1, "num": "2", "name": "Silk Bindings", "icon": "res://assets/art/icons/arm_ribbon.png"},
-	{"idx": 2, "num": "3", "name": "Hypnotic Perfume", "icon": "res://assets/art/icons/arm_atomizer.png"},
-	{"idx": 3, "num": "4", "name": "Gilded Chain", "icon": "res://assets/art/icons/arm_chain.png"},
-]
+const PARTY_KITS := {
+	"dorothy": [
+		{"idx": 0, "num": "1", "name": "Lace Whip", "icon": "res://assets/art/icons/arm_whip.png"},
+		{"idx": 1, "num": "2", "name": "Silk Bindings", "icon": "res://assets/art/icons/arm_ribbon.png"},
+		{"idx": 2, "num": "3", "name": "Hypnotic Perfume", "icon": "res://assets/art/icons/arm_atomizer.png"},
+		{"idx": 3, "num": "4", "name": "Gilded Chain", "icon": "res://assets/art/icons/arm_chain.png"},
+		{"idx": 4, "num": "5", "name": "Silver Heel-Click", "icon": "res://assets/art/icons/arm_heel_click.png"},
+	],
+	"scarecrow": [
+		{"idx": 0, "num": "1", "name": "Murder of Crows", "icon": "res://assets/art/icons/shop/scarecrow_obsidian.png"},
+		{"idx": 1, "num": "2", "name": "Straw Decoy", "icon": "res://assets/art/icons/shop/scarecrow_classic.png"},
+		{"idx": 2, "num": "3", "name": "Lantern Spark", "icon": "res://assets/art/icons/mem_aunt_em_locket.png"},
+		{"idx": 3, "num": "4", "name": "Harvest Gust", "icon": "res://assets/art/icons/arm_ribbon.png"},
+	],
+	"tinman": [
+		{"idx": 0, "num": "1", "name": "Timber Shockwave", "icon": "res://assets/art/icons/shop/tinman_royal.png"},
+		{"idx": 1, "num": "2", "name": "Oil-Slick Slide", "icon": "res://assets/art/icons/arm_chain.png"},
+		{"idx": 2, "num": "3", "name": "Steam Overdrive", "icon": "res://assets/art/icons/mem_aunt_em_locket.png"},
+		{"idx": 3, "num": "4", "name": "Heart-Chime Ward", "icon": "res://assets/art/icons/silver_shoes.png"},
+	],
+	"lion": [
+		{"idx": 0, "num": "1", "name": "Apex Pounce", "icon": "res://assets/art/icons/shop/lion_primal.png"},
+		{"idx": 1, "num": "2", "name": "Mane-Flare Courage", "icon": "res://assets/art/icons/mem_aunt_em_locket.png"},
+		{"idx": 2, "num": "3", "name": "Earthshaker Slam", "icon": "res://assets/art/icons/arm_whip.png"},
+		{"idx": 3, "num": "4", "name": "Velvet Stalk", "icon": "res://assets/art/icons/arm_atomizer.png"},
+	],
+	"toto": [
+		{"idx": 0, "num": "1", "name": "Golden Scent Trail", "icon": "res://assets/art/icons/shop/toto_spiked.png"},
+		{"idx": 1, "num": "2", "name": "Ankle-Nip Trip", "icon": "res://assets/art/icons/arm_whip.png"},
+		{"idx": 2, "num": "3", "name": "Prairie Dig", "icon": "res://assets/art/icons/mem_aunt_em_locket.png"},
+		{"idx": 3, "num": "4", "name": "Curtain-Pull Dash", "icon": "res://assets/art/icons/silver_shoes.png"},
+	],
+}
+
+var current_leader: String = "dorothy"
+var _medallions_hb: HBoxContainer = null
 
 var active_idx: int = 0
 var rapture_ready: bool = false
@@ -30,11 +60,11 @@ func _is_headless() -> bool:
 	return n == "headless" or n == "Dummy"
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(246, 98)
-	size = Vector2(246, 98)
+	custom_minimum_size = Vector2(304, 98)
+	size = Vector2(304, 98)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_dock()
-	set_active_slot(0)
+	set_leader_kit("dorothy", 0)
 
 func _load_tex(res_path: String) -> Texture2D:
 	if _tex_cache.has(res_path):
@@ -98,23 +128,33 @@ func _build_dock() -> void:
 	_active_name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_hb.add_child(_active_name_lbl)
 
-	# Bottom row: 4 Circular Brass Medallion Slots (ref_03_gameplay_hud.jpg)
-	var medallions_hb := HBoxContainer.new()
-	medallions_hb.alignment = BoxContainer.ALIGNMENT_END
-	medallions_hb.add_theme_constant_override("separation", 10)
-	medallions_hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root_vb.add_child(medallions_hb)
+	# Bottom row: Circular Brass Medallion Slots (auto-rebuilds for active character!)
+	_medallions_hb = HBoxContainer.new()
+	_medallions_hb.alignment = BoxContainer.ALIGNMENT_END
+	_medallions_hb.add_theme_constant_override("separation", 8)
+	_medallions_hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root_vb.add_child(_medallions_hb)
+	_rebuild_medallions()
 
-	for s in SLOTS:
+func _active_slots() -> Array:
+	return PARTY_KITS.get(current_leader, PARTY_KITS["dorothy"])
+
+func _rebuild_medallions() -> void:
+	if _medallions_hb == null:
+		return
+	for c in _medallions_hb.get_children():
+		c.queue_free()
+	_slots_ui.clear()
+	for s in _active_slots():
 		var col := VBoxContainer.new()
 		col.alignment = BoxContainer.ALIGNMENT_CENTER
 		col.add_theme_constant_override("separation", 2)
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		medallions_hb.add_child(col)
+		_medallions_hb.add_child(col)
 
 		var holder := Control.new()
-		holder.custom_minimum_size = Vector2(46, 46)
-		holder.pivot_offset = Vector2(23, 23)
+		holder.custom_minimum_size = Vector2(44, 44)
+		holder.pivot_offset = Vector2(22, 22)
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(holder)
 
@@ -144,10 +184,26 @@ func _build_dock() -> void:
 
 		_slots_ui.append({"holder": holder, "tex": tr, "mat": mat, "num": num_lbl, "name": s["name"]})
 
+func set_leader_kit(leader_id: String, slot_idx: int = 0) -> void:
+	var clean := leader_id.to_lower()
+	if not PARTY_KITS.has(clean):
+		clean = "dorothy"
+	if clean != current_leader or _slots_ui.is_empty():
+		current_leader = clean
+		_rebuild_medallions()
+	set_active_slot(slot_idx)
+
 func set_active_by_name(arm_name: String) -> void:
 	var ln := arm_name.to_lower()
+	var slots := _active_slots()
+	for i in range(slots.size()):
+		if str(slots[i]["name"]).to_lower() in ln or ln in str(slots[i]["name"]).to_lower():
+			set_active_slot(i)
+			return
 	var idx := 0
-	if "silk" in ln or "ribbon" in ln or "bind" in ln:
+	if "heel" in ln or "click" in ln:
+		idx = 4
+	elif "silk" in ln or "ribbon" in ln or "bind" in ln:
 		idx = 1
 	elif "perfume" in ln or "atomizer" in ln or "mist" in ln:
 		idx = 2
@@ -156,9 +212,10 @@ func set_active_by_name(arm_name: String) -> void:
 	set_active_slot(idx)
 
 func set_active_slot(idx: int) -> void:
-	active_idx = clampi(idx, 0, SLOTS.size() - 1)
-	if _active_name_lbl:
-		_active_name_lbl.text = "[C] %s  ·  [Z/X]" % str(SLOTS[active_idx]["name"]).to_upper()
+	var slots := _active_slots()
+	active_idx = clampi(idx, 0, maxi(0, slots.size() - 1))
+	if _active_name_lbl and active_idx < slots.size():
+		_active_name_lbl.text = "[C] %s  ·  [Z/X]" % str(slots[active_idx]["name"]).to_upper()
 	for i in range(_slots_ui.size()):
 		var ui: Dictionary = _slots_ui[i]
 		var is_sel := (i == active_idx)
@@ -167,7 +224,7 @@ func set_active_slot(idx: int) -> void:
 		var num_lbl: Label = ui["num"]
 		var mat: ShaderMaterial = ui["mat"]
 		tr.modulate = Color(1, 1, 1, 1.0) if is_sel else Color(0.72, 0.68, 0.76, 0.88)
-		num_lbl.text = "[C]" if is_sel else str(SLOTS[i]["num"])
+		num_lbl.text = "[C]" if is_sel else str(slots[i]["num"])
 		num_lbl.add_theme_color_override("font_color", Color(0.98, 0.84, 0.48) if is_sel else Color(0.72, 0.65, 0.58))
 		if mat:
 			mat.set_shader_parameter("is_active", 1.0 if is_sel else 0.0)

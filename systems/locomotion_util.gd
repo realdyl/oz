@@ -6,6 +6,27 @@ extends Node
 
 const DEFAULT_STEP := 1.15
 const STEP_COOLDOWN_MS := 110
+const DOUBLE_TAP_WINDOW_MS := 340
+
+var double_tap_sprinting: bool = false
+var _last_fwd_tap_ms: int = -9999
+
+func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("move_forward"):
+		var now := Time.get_ticks_msec()
+		if now - _last_fwd_tap_ms <= DOUBLE_TAP_WINDOW_MS:
+			double_tap_sprinting = true
+			var hud := get_tree().get_first_node_in_group("hud") if get_tree() else null
+			if hud and hud.has_method("show_toast"):
+				hud.call("show_toast", "✦ SPRINTING (Double-Tap ↑)", 1.2)
+		_last_fwd_tap_ms = now
+	if double_tap_sprinting:
+		var mv := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+		if mv.length() < 0.08:
+			double_tap_sprinting = false
+
+func is_sprinting() -> bool:
+	return double_tap_sprinting or Input.is_action_pressed("blink") or Input.is_key_pressed(KEY_SHIFT)
 
 func try_step(body: CharacterBody3D, dir: Vector3, step_height: float = DEFAULT_STEP) -> bool:
 	if body == null or not body.is_on_floor() or dir.length() < 0.05:
@@ -59,7 +80,7 @@ func _head_clear(space: PhysicsDirectSpaceState3D, rid: RID, x: float, land_y: f
 	))
 	return blocked.is_empty()
 
-func steer(body: CharacterBody3D, wish: Vector3, probe_dist: float = 1.15) -> Vector3:
+func steer(body: CharacterBody3D, wish: Vector3, probe_dist: float = 1.65) -> Vector3:
 	if body == null or wish.length() < 0.05:
 		return Vector3.ZERO
 	var d: Vector3 = wish.normalized()
@@ -71,20 +92,60 @@ func steer(body: CharacterBody3D, wish: Vector3, probe_dist: float = 1.15) -> Ve
 	if space == null:
 		return d
 	var rid: RID = body.get_rid()
-	var origin: Vector3 = body.global_position + Vector3(0, 0.55, 0)
-	if not _blocked_tall(space, rid, origin, d, probe_dist, body.global_position.y):
+	var origin: Vector3 = body.global_position + Vector3(0, 0.62, 0)
+	var now_ms := Time.get_ticks_msec()
+
+	# Anti-stuck stall recovery: if trying to move for >450ms with <0.16m displacement, depenetrate & commit to open flank!
+	var prev_check_ms := int(body.get_meta("_stuck_ms", 0))
+	if prev_check_ms == 0:
+		body.set_meta("_stuck_ms", now_ms)
+		body.set_meta("_stuck_pos", body.global_position)
+	elif now_ms - prev_check_ms >= 460:
+		var old_p: Vector3 = body.get_meta("_stuck_pos", body.global_position)
+		var moved_2d := Vector2(body.global_position.x - old_p.x, body.global_position.z - old_p.z).length()
+		body.set_meta("_stuck_ms", now_ms)
+		body.set_meta("_stuck_pos", body.global_position)
+		if moved_2d < 0.16:
+			# Cast 8 radial escape rays to push cleanly out of any cottage/wall corner!
+			for esc_i in range(8):
+				var ea := float(esc_i) / 8.0 * TAU
+				var edir := Vector3(cos(ea), 0.0, sin(ea))
+				if not _blocked_tall(space, rid, origin, edir, 2.2, body.global_position.y):
+					body.global_position += edir * 0.48
+					var fsign := 1.0 if edir.cross(d).y >= 0.0 else -1.0
+					body.set_meta("_flank_sign", fsign)
+					body.set_meta("_flank_until_ms", now_ms + 1600)
+					return edir
+
+	# 3-Whisker forward clearance check (center + ±28 deg shoulder whiskers so wide cottages are detected early!)
+	var left_w := Vector3(d.x * cos(0.48) - d.z * sin(0.48), 0.0, d.x * sin(0.48) + d.z * cos(0.48)).normalized()
+	var right_w := Vector3(d.x * cos(-0.48) - d.z * sin(-0.48), 0.0, d.x * sin(-0.48) + d.z * cos(-0.48)).normalized()
+	var center_blocked := _blocked_tall(space, rid, origin, d, probe_dist, body.global_position.y)
+	var lw_blocked := _blocked_tall(space, rid, origin, left_w, probe_dist * 0.78, body.global_position.y)
+	var rw_blocked := _blocked_tall(space, rid, origin, right_w, probe_dist * 0.78, body.global_position.y)
+	if not center_blocked and not lw_blocked and not rw_blocked and now_ms > int(body.get_meta("_flank_until_ms", 0)):
 		return d
+
+	# Commit to a consistent flank side around buildings so AI never ping-pongs left/right against cottage walls!
+	var pref_sign := float(body.get_meta("_flank_sign", 0.0))
+	if now_ms > int(body.get_meta("_flank_until_ms", 0)) or pref_sign == 0.0:
+		pref_sign = -1.0 if lw_blocked and not rw_blocked else (1.0 if rw_blocked and not lw_blocked else 1.0)
+
 	var best: Vector3 = Vector3.ZERO
 	var best_score: float = -1.0e9
-	for ang_deg in [25.0, -25.0, 45.0, -45.0, 70.0, -70.0, 90.0, -90.0, 120.0, -120.0]:
+	for ang_deg in [28.0, -28.0, 52.0, -52.0, 78.0, -78.0, 102.0, -102.0, 135.0, -135.0]:
 		var ang: float = deg_to_rad(float(ang_deg))
 		var side: Vector3 = Vector3(d.x * cos(ang) - d.z * sin(ang), 0.0, d.x * sin(ang) + d.z * cos(ang)).normalized()
-		if _blocked_tall(space, rid, origin, side, probe_dist * 0.9, body.global_position.y):
+		if _blocked_tall(space, rid, origin, side, probe_dist * 1.05, body.global_position.y):
 			continue
-		var score: float = side.dot(d) * 2.0 - absf(float(ang_deg)) * 0.01
+		var same_flank := 0.55 if (signf(float(ang_deg)) == pref_sign) else 0.0
+		var score: float = side.dot(d) * 1.8 + same_flank - absf(float(ang_deg)) * 0.008
 		if score > best_score:
 			best_score = score
 			best = side
+			if absf(float(ang_deg)) >= 45.0:
+				body.set_meta("_flank_sign", signf(float(ang_deg)))
+				body.set_meta("_flank_until_ms", now_ms + 1150)
 	if best.length() > 0.01:
 		return best
 	return Vector3.ZERO

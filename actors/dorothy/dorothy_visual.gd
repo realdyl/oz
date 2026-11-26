@@ -33,6 +33,10 @@ var _eyelid_l: Node3D
 var _eyelid_r: Node3D
 var _brow_l: Node3D
 var _brow_r: Node3D
+var _mouth_rig: Node3D
+var _atomizer_prop: Node3D
+var _viseme_id: int = 0
+var _viseme_open: float = 0.0
 var _braid_l_joints: Array[Node3D] = []
 var _braid_r_joints: Array[Node3D] = []
 
@@ -132,6 +136,40 @@ func play_heel_click() -> void:
 	_heel_click_t = HEEL_CLICK_DUR
 	_still_t = 0.0
 
+func set_viseme(viseme_id: int, open_amt: float) -> void:
+	_viseme_id = viseme_id
+	_viseme_open = clampf(open_amt, 0.0, 1.0)
+	if _mouth_rig:
+		var cav := _mouth_rig.get_node_or_null("MouthCavity") as Node3D
+		var teeth := _mouth_rig.get_node_or_null("TeethHint") as Node3D
+		var u_l := _mouth_rig.get_node_or_null("UpperLip") as Node3D
+		var l_l := _mouth_rig.get_node_or_null("LowerLip") as Node3D
+		if _viseme_open <= 0.04 or _viseme_id == 0:
+			if cav: cav.visible = false
+			if teeth: teeth.visible = false
+			if u_l:
+				u_l.position = Vector3(0, 0.004, 0)
+				u_l.scale = Vector3.ONE
+			if l_l:
+				l_l.position = Vector3(0, -0.004, 0)
+				l_l.scale = Vector3(1.65, 0.58, 0.80)
+			return
+		var w_mul := 1.08 if _viseme_id == 1 else (0.60 if _viseme_id == 2 else (1.28 if _viseme_id == 3 else 0.98))
+		var drop := (0.016 if _viseme_id == 1 else (0.012 if _viseme_id == 2 else 0.010)) * _viseme_open
+		var pucker := -0.006 * _viseme_open if _viseme_id == 2 else 0.0
+		if cav:
+			cav.visible = true
+			cav.scale = Vector3(1.35 * w_mul, maxf(0.25, 1.25 * _viseme_open), 0.6)
+			cav.position = Vector3(0, -drop * 0.45, 0.003 + pucker * 0.5)
+		if teeth:
+			teeth.visible = (_viseme_id in [1, 3, 4] and _viseme_open > 0.24)
+		if u_l:
+			u_l.position = Vector3(0, 0.004 + _viseme_open * 0.002, pucker)
+			u_l.scale = Vector3(w_mul, 1.0, 1.0)
+		if l_l:
+			l_l.position = Vector3(0, -0.004 - drop, pucker)
+			l_l.scale = Vector3(1.65 * w_mul, 0.56, 0.80 + absf(pucker) * 18.0)
+
 func play_interact() -> void:
 	_interact_t = INTERACT_DUR
 	_still_t = 0.0
@@ -164,9 +202,9 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 	if _eye_blink_t > 0.0:
 		_eye_blink_t = maxf(_eye_blink_t - delta, 0.0)
 
-	_speed_amt = clampf(horizontal_speed / 5.0, 0.0, 1.55) if not sleeping else 0.0
+	_speed_amt = clampf(horizontal_speed / 5.0, 0.0, 1.88) if not sleeping else 0.0
 	if _speed_amt > 0.08:
-		_phase += delta * (8.8 + _speed_amt * 5.8)
+		_phase += delta * (8.6 + _speed_amt * 6.4)
 		_still_t = 0.0
 	else:
 		_phase = move_toward(_phase, 0.0, delta * 5.0)
@@ -303,12 +341,24 @@ func _apply_pose(delta: float = 0.016) -> void:
 				_leg_l.rotation = Vector3(0.28 * snap_v, 0.0, -0.06 * snap_v)
 			_skirt_flare = maxf(_skirt_flare, 0.38 * carc)
 		elif _cast_kind == 2:
-			# Hypnotic Perfume: graceful 360° ballerina pirouette
-			_hip.rotation.y = cu * TAU
-			_hip.position.y = 0.80 + carc * 0.08
-			_torso.rotation = Vector3(-0.14 * carc, 0.0, 0.12 * carc)
-			_arm_l.rotation = Vector3(-0.95 * carc, 0.0, -0.85 * carc)
-			_arm_r.rotation = Vector3(-0.95 * carc, 0.0, 0.85 * carc)
+			# 2026 Hypnotic Perfume: Holds sculpted Cut-Crystal Atomizer forward in left hand, squeezes bulb & graceful half-turn!
+			if _atomizer_prop:
+				_atomizer_prop.visible = true
+			var squeeze := smoothstep(0.0, 0.25, cu) * (1.0 - smoothstep(0.80, 1.0, cu))
+			_hip.rotation.y = sin(cu * PI) * 0.48
+			_hip.position.y = 0.80 + carc * 0.045
+			_torso.rotation = Vector3(-0.14 * squeeze, -0.22 * squeeze, 0.08 * squeeze)
+			# Left arm raises crystal atomizer bottle cleanly at chest/face level forward!
+			_arm_l.rotation = Vector3(-1.38 * squeeze, 0.35 * squeeze, 0.22 * squeeze)
+			_set_forearm(_arm_l, -0.62 * squeeze)
+			# Right arm reaches across to squeeze the golden silk bulb!
+			_arm_r.rotation = Vector3(-1.24 * squeeze, 0.72 * squeeze, -0.28 * squeeze)
+			_set_forearm(_arm_r, -0.78 * squeeze)
+			_skirt_flare = maxf(_skirt_flare, 0.26 * carc)
+		elif _cast_kind == 4:
+			# Silver Heel-Click cast redirects cleanly to aerial heel-click flourish!
+			_heel_click_t = maxf(_heel_click_t, _cast_t)
+			_cast_t = 0.0
 		else:
 			# Silk Bindings / Gilded Chain: sweeping twin-arm arcane tether gesture
 			_hip.rotation.y = 0.0
@@ -333,45 +383,59 @@ func _apply_pose(delta: float = 0.016) -> void:
 		_update_secondary_physics(delta, 1.15)
 		return
 
-	# Priority 5: Whimsical Silver-Shoe Heel-Click Flourish!
+	# Priority 5: Iconic Aerial Silver-Shoe Heel-Click Flourish (heels visibly angle & tap together!)
 	if _heel_click_t > 0.0:
+		if _atomizer_prop:
+			_atomizer_prop.visible = false
 		var hu := 1.0 - (_heel_click_t / HEEL_CLICK_DUR)
 		var rise_h := sin(hu * PI)
-		var click_tap := absf(sin(hu * PI * 3.0)) * rise_h
-		_hip.position.y = 0.80 + rise_h * 0.065
-		_hip.rotation.y = sin(hu * TAU) * 0.10
-		_torso.rotation = Vector3(-0.06 * rise_h, 0.0, sin(hu * TAU) * 0.06)
-		_leg_l.rotation = Vector3(-0.10 * rise_h, 0.0, 0.16 * click_tap - 0.06 * rise_h)
-		_leg_r.rotation = Vector3(-0.10 * rise_h, 0.0, -0.16 * click_tap + 0.06 * rise_h)
-		_set_calf(_leg_l, 0.18 * rise_h)
-		_set_calf(_leg_r, 0.18 * rise_h)
-		_arm_l.rotation = Vector3(-0.22 * rise_h, 0.0, -0.34 * rise_h)
-		_arm_r.rotation = Vector3(-0.22 * rise_h, 0.0, 0.34 * rise_h)
+		var click_tap := pow(absf(sin(hu * PI * 3.0)), 1.6) * rise_h
+		_hip.position.y = 0.80 + rise_h * 0.16
+		_hip.rotation.y = sin(hu * TAU) * 0.12
+		_torso.rotation = Vector3(-0.10 * rise_h, 0.0, sin(hu * TAU) * 0.09)
+		# Angle thighs slightly outward & calves inward so Silver Heels physically click together at centerline!
+		_leg_l.rotation = Vector3(-0.18 * rise_h, 0.18 * rise_h, -0.26 * rise_h + 0.34 * click_tap)
+		_leg_r.rotation = Vector3(-0.18 * rise_h, -0.18 * rise_h, 0.26 * rise_h - 0.34 * click_tap)
+		_set_calf(_leg_l, 0.38 * rise_h)
+		_set_calf(_leg_r, 0.38 * rise_h)
+		_arm_l.rotation = Vector3(-0.48 * rise_h, 0.0, -0.78 * rise_h)
+		_arm_r.rotation = Vector3(-0.48 * rise_h, 0.0, 0.78 * rise_h)
+		_skirt_flare = maxf(_skirt_flare, 0.34 * rise_h)
 		if _head:
-			_head.rotation = Vector3(0.08 * rise_h, sin(hu * PI) * 0.14, 0.05 * rise_h)
-		_update_secondary_physics(delta, 0.65)
+			_head.rotation = Vector3(0.12 * rise_h, sin(hu * PI) * 0.16, 0.06 * rise_h)
+		_update_secondary_physics(delta, 0.95)
 		return
+	if _atomizer_prop and (_cast_t <= 0.0 or _cast_kind != 2):
+		_atomizer_prop.visible = false
 
-	# Standard Feminine Walk / Sprint / Breathing Idle + Landing Cushion
+	# Hyper-Natural Walk vs Athletic Sprint Biomechanics (Double-Tap ↑ / Space / Shift!)
 	var squash_drop := _land_squash * 0.11
-	_hip.rotation.y = sin(_phase) * 0.085 * _speed_amt
-	_torso.rotation.x = -0.15 * clampf(_speed_amt - 0.25, 0.0, 1.1) + _land_squash * 0.18
-	_torso.rotation.y = -sin(_phase) * 0.095 * _speed_amt
-	_torso.rotation.z = sin(_phase) * 0.048 * _speed_amt - _turn_rate * 0.025
+	var run_blend := clampf((_speed_amt - 1.05) / 0.65, 0.0, 1.0)
+	_hip.rotation.y = sin(_phase) * (0.085 + 0.055 * run_blend) * _speed_amt
+	_torso.rotation.x = lerpf(-0.12 * clampf(_speed_amt - 0.25, 0.0, 1.0), -0.28, run_blend) + _land_squash * 0.18
+	_torso.rotation.y = -sin(_phase) * (0.095 + 0.065 * run_blend) * _speed_amt
+	_torso.rotation.z = sin(_phase) * 0.052 * _speed_amt - _turn_rate * 0.028
 
-	var swing := sin(_phase) * 0.66 * _speed_amt
-	var swing_a := sin(_phase + PI) * 0.56 * _speed_amt
+	var stride_amp := lerpf(0.62, 0.88, run_blend)
+	var swing := sin(_phase) * stride_amp * minf(_speed_amt, 1.35)
+	var swing_a := sin(_phase + PI) * lerpf(0.54, 0.84, run_blend) * minf(_speed_amt, 1.35)
+	# High-knee drive forward + deep sprinter heel-recovery kick-back on trailing leg!
 	_leg_l.rotation.x = swing - _land_squash * 0.35
 	_leg_r.rotation.x = -swing - _land_squash * 0.35
-	_set_calf(_leg_l, maxf(-swing, 0.0) * 0.82 + 0.06 * _speed_amt + _land_squash * 0.65)
-	_set_calf(_leg_r, maxf(swing, 0.0) * 0.82 + 0.06 * _speed_amt + _land_squash * 0.65)
+	var calf_fold_mul := lerpf(0.82, 1.28, run_blend)
+	_set_calf(_leg_l, maxf(-swing, 0.0) * calf_fold_mul + (0.06 + 0.16 * run_blend) * _speed_amt + _land_squash * 0.65)
+	_set_calf(_leg_r, maxf(swing, 0.0) * calf_fold_mul + (0.06 + 0.16 * run_blend) * _speed_amt + _land_squash * 0.65)
 
-	_arm_l.rotation.x = -swing_a * 0.90
-	_arm_r.rotation.x = swing_a * 0.90
-	_arm_l.rotation.z = -0.10 - 0.06 * _speed_amt
-	_arm_r.rotation.z = 0.10 + 0.06 * _speed_amt
-	_set_forearm(_arm_l, -0.24 - maxf(-swing_a, 0.0) * 0.48)
-	_set_forearm(_arm_r, -0.24 - maxf(swing_a, 0.0) * 0.48)
+	# Pumping bent sprinter elbows when running vs graceful relaxed swing when walking!
+	_arm_l.rotation.x = -swing_a * lerpf(0.88, 1.15, run_blend) - 0.18 * run_blend
+	_arm_r.rotation.x = swing_a * lerpf(0.88, 1.15, run_blend) - 0.18 * run_blend
+	_arm_l.rotation.z = -0.10 - 0.08 * _speed_amt
+	_arm_r.rotation.z = 0.10 + 0.08 * _speed_amt
+	var elbow_base := lerpf(-0.24, -0.92, run_blend)
+	_set_forearm(_arm_l, elbow_base - maxf(-swing_a, 0.0) * 0.48)
+	_set_forearm(_arm_r, elbow_base - maxf(swing_a, 0.0) * 0.48)
+	if run_blend > 0.15:
+		_skirt_flare = maxf(_skirt_flare, 0.24 * run_blend)
 
 	var breath := sin(_idle_t * 2.5) * 0.012
 	var still_blend := 1.0 - clampf(_speed_amt, 0.0, 1.0)
@@ -857,10 +921,25 @@ func _build() -> void:
 			var fy := 0.132 - float(fi % 2) * 0.007
 			_mi(_head, _sphere(0.0028, 6, 6), freckle_mat, Vector3(fx, fy, -0.114 + float(fi) * 0.005))
 
-	# Sculpted Cupid's-Bow Upper Lip & Full Lower Lip
+	# Articulated Viseme MouthRig: Cupid's-Bow Upper Lip, Full Lower Lip, Oral Cavity & Ivory Teeth ("oos" & "ahs"!)
+	_mouth_rig = Node3D.new()
+	_mouth_rig.name = "MouthRig"
+	_mouth_rig.position = Vector3(0, 0.093, -0.113)
+	_head.add_child(_mouth_rig)
+	var cav_d := _mi(_mouth_rig, _sphere(0.012, 10, 8), _mat(Color(0.16, 0.03, 0.05), 0.85), Vector3(0, -0.002, 0.004), Vector3(1.3, 0.2, 0.5))
+	cav_d.name = "MouthCavity"
+	cav_d.visible = false
+	var teeth_d := _mi(_mouth_rig, _capsule(0.003, 0.018, 6), sclera, Vector3(0, 0.003, -0.001), Vector3.ONE, Vector3(0, 0, 90))
+	teeth_d.name = "TeethHint"
+	teeth_d.visible = false
+	var u_holder := Node3D.new()
+	u_holder.name = "UpperLip"
+	u_holder.position = Vector3(0, 0.004, 0)
+	_mouth_rig.add_child(u_holder)
 	for sx in [-1.0, 1.0]:
-		_mi(_head, _sphere(0.011, 12, 8), lip_upper, Vector3(float(sx) * 0.009, 0.097, -0.114), Vector3(1.35, 0.52, 0.75), Vector3(0, 0, float(sx) * -10.0))
-	_mi(_head, _sphere(0.0135, 14, 10), lip_lower, Vector3(0, 0.089, -0.113), Vector3(1.65, 0.58, 0.80))
+		_mi(u_holder, _sphere(0.011, 12, 8), lip_upper, Vector3(float(sx) * 0.009, 0.0, -0.001), Vector3(1.35, 0.52, 0.75), Vector3(0, 0, float(sx) * -10.0))
+	var l_lip_d := _mi(_mouth_rig, _sphere(0.0135, 14, 10), lip_lower, Vector3(0, -0.004, 0.0), Vector3(1.65, 0.58, 0.80))
+	l_lip_d.name = "LowerLip"
 
 	# Expressive Almond Eyes: Sclera + Dual-Tone Iris + Obsidian Pupil + Twin Catchlights + Upper Lash + Animated Eyelids + Brows!
 	for sx in [-1.0, 1.0]:
@@ -1006,9 +1085,23 @@ func _make_arm(
 		var fl: float = finger_lens[fi]
 		_mi(hand, _capsule(0.0052, fl, 8), skin, Vector3(fx, -0.034 - fl * 0.32, -0.003), Vector3.ONE, Vector3(10, 0, 0))
 
-	# Held 2026 Sculpted Continuous Braided Bullwhip in Dorothy's right hand (ZERO floating segments!)
+	# Held 2026 Sculpted Continuous Braided Bullwhip (Right Hand) & Cut-Crystal Perfume Atomizer (Left Hand)!
 	if not left and not is_kansas_plain and not greyscale:
 		_build_sculpted_whip(hand, trim_metal)
+	elif left and not is_kansas_plain and not greyscale:
+		_atomizer_prop = Node3D.new()
+		_atomizer_prop.name = "PerfumeAtomizer"
+		_atomizer_prop.position = Vector3(-0.012, -0.032, -0.028)
+		_atomizer_prop.rotation_degrees = Vector3(78.0, 0.0, 0.0)
+		_atomizer_prop.visible = false
+		hand.add_child(_atomizer_prop)
+		var glass_m := _mat(Color(0.84, 0.32, 0.92), 0.08, 0.25, Color(0.88, 0.36, 0.96), 1.8)
+		var bulb_m := _mat(Color(0.72, 0.12, 0.36), 0.42, 0.10)
+		_mi(_atomizer_prop, _sphere(0.042, 12, 10), glass_m, Vector3(0, 0.0, 0), Vector3(1.0, 1.15, 0.85)) # faceted amethyst crystal flacon
+		_mi(_atomizer_prop, _cyl(0.012, 0.016, 0.038, 12), trim_metal, Vector3(0, 0.052, 0)) # brass nozzle collar
+		_mi(_atomizer_prop, _cyl(0.005, 0.005, 0.045, 8), trim_metal, Vector3(0, 0.068, -0.022), Vector3(90, 0, 0)) # spray nozzle
+		_mi(_atomizer_prop, _capsule(0.004, 0.065, 8), trim_metal, Vector3(0.035, 0.058, 0.0), Vector3.ONE, Vector3(0, 0, -55)) # silk cord
+		_mi(_atomizer_prop, _sphere(0.026, 12, 10), bulb_m, Vector3(0.068, 0.032, 0.0), Vector3(1.25, 0.9, 0.9)) # squeeze bulb
 	return root
 
 func _build_sculpted_whip(hand: Node3D, trim_metal: Material) -> void:

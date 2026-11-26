@@ -35,6 +35,7 @@ var uncle_henry: Node3D
 var farmhouse: Node3D
 var _wind_clothes: Array = []
 var _windmill_rotor: Node3D = null
+var _wizard_balloon: Node3D = null
 var _wind_t: float = 0.0
 var fade: ColorRect
 var compass: Label
@@ -120,6 +121,10 @@ func _process(delta: float) -> void:
 			cl.rotation.x = sin(_wind_t * 2.4 + float(ci) * 0.9) * 0.22
 	if _windmill_rotor and is_instance_valid(_windmill_rotor):
 		_windmill_rotor.rotate_z(delta * 1.4)
+	if _wizard_balloon and is_instance_valid(_wizard_balloon):
+		_wizard_balloon.position.y = 20.5 + sin(_wind_t * 0.72) * 0.68
+		_wizard_balloon.rotation.y = sin(_wind_t * 0.28) * 0.22
+		_wizard_balloon.rotation.z = sin(_wind_t * 0.55) * 0.035
 	if phase == Phase.LANDING:
 		_landing_t += delta
 		if fade:
@@ -277,28 +282,9 @@ func _build_world() -> void:
 	# Fence posts
 	for x in [-14.0, -8.0, 4.0, 10.0, 16.0]:
 		_add_box(Vector3(x, 0.7, 12), Vector3(0.25, 1.4, 0.25), Color(0.38, 0.36, 0.34), "Fence")
-	# Distant balloon silhouette — Wizard's exit only (not Dorothy's ride). Ambient flavor.
-	var balloon := MeshInstance3D.new()
-	balloon.name = "WizardBalloonFar"
-	var sph := SphereMesh.new()
-	sph.radius = 1.8
-	sph.height = 3.6
-	balloon.mesh = sph
-	var bm := StandardMaterial3D.new()
-	bm.albedo_color = Color(0.55, 0.55, 0.58)
-	bm.emission_enabled = true
-	bm.emission = Color(0.5, 0.5, 0.52)
-	bm.emission_energy_multiplier = 0.15
-	balloon.material_override = bm
-	add_child(balloon)
-	balloon.global_position = Vector3(28, 22, -30)
-	var basket_m := MeshInstance3D.new()
-	var boxm := BoxMesh.new()
-	boxm.size = Vector3(1.2, 0.8, 1.2)
-	basket_m.mesh = boxm
-	basket_m.material_override = bm
-	balloon.add_child(basket_m)
-	basket_m.position = Vector3(0, -2.6, 0)
+	# Distant Victorian Silk Hot-Air Balloon silhouette — Wizard's Omaha balloon drifting high over the horizon!
+	_wizard_balloon = WorldKit.build_hot_air_balloon(self, Vector3(26.0, 20.5, -28.0), true, 1.45)
+	_wizard_balloon.name = "WizardBalloonFar"
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(0.85, 0.85, 0.88)
 	sun.light_energy = 0.85

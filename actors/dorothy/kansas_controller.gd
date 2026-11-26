@@ -139,8 +139,8 @@ func _physics_process(delta: float) -> void:
 
 	var wish := Vector3.ZERO
 	var spd := move_speed
-	if Input.is_key_pressed(KEY_SHIFT):
-		spd *= run_multiplier
+	if Locomotion.is_sprinting():
+		spd *= 1.82
 	# Move only when not RMB-orbiting
 	if not orbiting:
 		var input := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")

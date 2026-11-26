@@ -40,6 +40,7 @@ var _air_vy: float = 0.0
 var _on_floor: bool = true
 var _land_squash: float = 0.0
 var _turn_rate: float = 0.0
+var _viseme_open: float = 0.0
 var cowering: bool = true
 var sleeping: bool = false
 
@@ -84,6 +85,12 @@ func play_flourish() -> void:
 	_flourish_t = FLOURISH_DUR
 	_still_t = 0.0
 
+func set_viseme(viseme_id: int, open_amt: float) -> void:
+	_viseme_open = clampf(open_amt, 0.0, 1.0)
+	if _jaw:
+		var mul := 0.42 if viseme_id == 1 else (0.28 if viseme_id == 2 else 0.24)
+		_jaw.rotation.x = _viseme_open * mul
+
 func set_cowering(on: bool) -> void:
 	cowering = on
 	_apply_pose(0.016)
@@ -112,9 +119,9 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 	if _eye_blink_t > 0.0:
 		_eye_blink_t = maxf(_eye_blink_t - delta, 0.0)
 
-	_speed_amt = clampf(horizontal_speed / 5.5, 0.0, 1.45) if not sleeping else 0.0
+	_speed_amt = clampf(horizontal_speed / 5.5, 0.0, 1.85) if not sleeping else 0.0
 	if _speed_amt > 0.08:
-		_phase += delta * (9.2 + _speed_amt * 6.0)
+		_phase += delta * (9.0 + _speed_amt * 6.5)
 		_still_t = 0.0
 	else:
 		_phase = move_toward(_phase, 0.0, delta * 4.5)
@@ -227,17 +234,27 @@ func _apply_pose(_delta: float = 0.016) -> void:
 	var swing := sin(_phase) * 0.58 * _speed_amt
 	var still_blend := 1.0 - clampf(_speed_amt, 0.0, 1.0)
 
-	_leg_fl.rotation.x = swing - _land_squash * 0.28
-	_leg_fr.rotation.x = -swing - _land_squash * 0.28
-	_leg_bl.rotation.x = -swing + _land_squash * 0.24
-	_leg_br.rotation.x = swing + _land_squash * 0.24
-	_set_lower(_leg_fl, maxf(-swing, 0.0) * 0.72 + _land_squash * 0.50)
-	_set_lower(_leg_fr, maxf(swing, 0.0) * 0.72 + _land_squash * 0.50)
-	_set_lower(_leg_bl, maxf(swing, 0.0) * 0.55)
-	_set_lower(_leg_br, maxf(-swing, 0.0) * 0.55)
+	# Quadrupedal Feline Walk/Trot vs Full Rotary Bounding Gallop when Sprinting!
+	var run_blend := clampf((_speed_amt - 1.05) / 0.65, 0.0, 1.0)
+	var trot_fl := swing
+	var trot_fr := -swing
+	var trot_bl := -swing
+	var trot_br := swing
+	var gal_fl := sin(_phase) * 0.92
+	var gal_fr := sin(_phase + 0.32) * 0.92
+	var gal_bl := -sin(_phase) * 0.98
+	var gal_br := -sin(_phase + 0.32) * 0.98
+	_leg_fl.rotation.x = lerpf(trot_fl, gal_fl, run_blend) - _land_squash * 0.28
+	_leg_fr.rotation.x = lerpf(trot_fr, gal_fr, run_blend) - _land_squash * 0.28
+	_leg_bl.rotation.x = lerpf(trot_bl, gal_bl, run_blend) + _land_squash * 0.24
+	_leg_br.rotation.x = lerpf(trot_br, gal_br, run_blend) + _land_squash * 0.24
+	_set_lower(_leg_fl, maxf(-_leg_fl.rotation.x, 0.0) * 0.78 + _land_squash * 0.50)
+	_set_lower(_leg_fr, maxf(-_leg_fr.rotation.x, 0.0) * 0.78 + _land_squash * 0.50)
+	_set_lower(_leg_bl, maxf(_leg_bl.rotation.x, 0.0) * 0.65)
+	_set_lower(_leg_br, maxf(_leg_br.rotation.x, 0.0) * 0.65)
 
-	_body.position = Vector3(0, 0.58 - squash + absf(sin(_phase)) * 0.042 * _speed_amt + sin(_idle_t * 2.2) * 0.012 * still_blend, 0)
-	_body.rotation.x = (0.26 if cowering else 0.0) + sin(_phase * 2.0) * 0.045 * _speed_amt
+	_body.position = Vector3(0, 0.58 - squash + absf(sin(_phase)) * lerpf(0.042, 0.105, run_blend) * minf(_speed_amt, 1.35) + sin(_idle_t * 2.2) * 0.012 * still_blend, 0)
+	_body.rotation.x = (0.26 if cowering else 0.0) + lerpf(sin(_phase * 2.0) * 0.045 * _speed_amt, cos(_phase) * 0.16, run_blend)
 
 	if _head:
 		_head.scale = Vector3.ONE
@@ -247,7 +264,7 @@ func _apply_pose(_delta: float = 0.016) -> void:
 			0.0
 		)
 	if _jaw:
-		_jaw.rotation.x = absf(sin(_idle_t * 2.2)) * 0.06 * (0.4 + _speed_amt * 0.6)
+		_jaw.rotation.x = _viseme_open * 0.36 if _viseme_open > 0.03 else absf(sin(_idle_t * 2.2)) * 0.06 * (0.4 + _speed_amt * 0.6)
 	if _ear_l and _ear_r:
 		var cow_ear := 0.36 if cowering else 0.0
 		_ear_l.rotation.z = cow_ear + sin(_idle_t * 3.1) * 0.05 * still_blend

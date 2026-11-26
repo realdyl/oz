@@ -17,7 +17,7 @@ const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
 
 const PLAY_BOUND_X := 48.0
-const PLAY_BOUND_Z := 56.0
+const PLAY_BOUND_Z := 76.0
 ## North Emerald exit sits *outside* the gatehouse arch on the open YBR (never inside a solid block).
 const YBR_EMERALD_GATE := Vector3(0.0, 0.08, -50.0)
 
@@ -41,6 +41,7 @@ var bucket: Area3D
 var beat: Beat = Beat.ENTER
 var court_kills: int = 0
 var court_need: int = 5
+var _wave2_spawned: bool = false
 var west_hp: int = 120
 var west_grounded: bool = false
 var has_water: bool = false
@@ -97,6 +98,8 @@ func _process(_delta: float) -> void:
 	var actor := _lead()
 	if actor == null:
 		return
+	if not _wave2_spawned and actor.global_position.z <= 22.0 and beat == Beat.CLEAR_COURT:
+		_spawn_wave2_sky_stalkers()
 	_near_bucket = bucket != null and bucket.monitoring and actor.global_position.distance_to(bucket.global_position) < 2.4
 	_near_west = west != null and is_instance_valid(west) and not melt_done \
 		and actor.global_position.distance_to(west.global_position) < 3.2
@@ -128,22 +131,21 @@ func _lead() -> CharacterBody3D:
 	return player
 
 func _build_world() -> void:
-	# Dark iron ground + north pad so the YBR can leave the castle
-	_add_box(Vector3(0, -0.2, 0), Vector3(100, 0.4, 90), Color(0.12, 0.1, 0.11), "Ground")
+	# Expanded Scorched Winkie Iron Road approach (+Z south) + Castle Courtyard + North Emerald Gate!
+	_add_box(Vector3(0, -0.2, 16), Vector3(104, 0.4, 136), Color(0.12, 0.1, 0.11), "Ground")
 	_add_box(Vector3(0, -0.2, -48), Vector3(80, 0.4, 50), Color(0.12, 0.1, 0.11), "GroundNorth")
 	_add_box(Vector3(0, 0.02, 0), Vector3(36, 0.06, 28), Color(0.18, 0.14, 0.13), "Courtyard")
-	# Continuous Yellow Brick Road through the court → open north gate → Emerald (next level).
-	# Never seal this corridor with a solid block building.
+	# Continuous Yellow Brick Road from South Winkie Approach (z=+72) → Courtyard → North Emerald Gate!
+	_add_box(Vector3(0, 0.05, 48), Vector3(5.4, 0.1, 56), Color(0.90, 0.76, 0.19), "YellowBrickRoadSouth")
 	_add_box(Vector3(0, 0.05, 4), Vector3(5.4, 0.1, 36), Color(0.92, 0.78, 0.2), "YellowBrickRoad")
 	_add_box(Vector3(0, 0.05, -30), Vector3(5.6, 0.1, 28), Color(0.92, 0.78, 0.2), "YellowBrickRoadN")
 	_add_box(Vector3(0, 0.05, -50), Vector3(5.8, 0.12, 16), Color(0.95, 0.82, 0.22), "YellowBrickRoadGate")
 	# Outer walls — north wall has a WALKABLE gate gap on the YBR (x≈0).
-	# Align north castle walls cleanly flush with the GatePillar line (z = -36) so no giant slabs jut into the courtyard!
 	_add_box(Vector3(-27, 4, -36), Vector3(38, 9, 3), Color(0.10, 0.08, 0.09), "WallN_L")
 	_add_box(Vector3(27, 4, -36), Vector3(38, 9, 3), Color(0.10, 0.08, 0.09), "WallN_R")
-	_add_box(Vector3(0, 4, 42), Vector3(96, 9, 3), Color(0.10, 0.08, 0.09), "WallS")
-	_add_box(Vector3(-48, 4, 3), Vector3(3, 9, 80), Color(0.10, 0.08, 0.09), "WallW")
-	_add_box(Vector3(48, 4, 3), Vector3(3, 9, 80), Color(0.10, 0.08, 0.09), "WallE")
+	_add_box(Vector3(0, 4, 78), Vector3(98, 9, 3), Color(0.10, 0.08, 0.09), "WallS")
+	_add_box(Vector3(-48, 4, 21), Vector3(3, 9, 116), Color(0.10, 0.08, 0.09), "WallW")
+	_add_box(Vector3(48, 4, 21), Vector3(3, 9, 116), Color(0.10, 0.08, 0.09), "WallE")
 	# Keep towers (offset off the brick)
 	for xz in [Vector3(-22, 0, -22), Vector3(22, 0, -22), Vector3(-22, 0, 18), Vector3(22, 0, 18)]:
 		_add_box(xz + Vector3(0, 6, 0), Vector3(5, 12, 5), Color(0.14, 0.1, 0.11), "Tower")
@@ -261,23 +263,23 @@ func _spawn_party() -> void:
 	add_child(hud)
 	player = PLAYER_SCENE.instantiate()
 	add_child(player)
-	player.global_position = Vector3(0, 0.08, 16)
+	# Peaceful outer road spawn at z = +58 so player walks progressively into the Winkie Siege!
+	player.global_position = Vector3(0, 0.08, 58)
 	if player.has_method("empower_shoes"):
 		player.empower_shoes()
-	# Full party free for Act 3 prototype (vault: all kits vs West).
 	scarecrow = SCARECROW_SCENE.instantiate()
 	add_child(scarecrow)
-	scarecrow.global_position = Vector3(-2.5, 0.08, 18)
+	scarecrow.global_position = Vector3(-2.5, 0.08, 60.5)
 	if scarecrow.has_method("free_from_pole"):
 		scarecrow.free_from_pole()
 	lion = LION_SCENE.instantiate()
 	add_child(lion)
-	lion.global_position = Vector3(2.5, 0.08, 18)
+	lion.global_position = Vector3(2.5, 0.08, 60.5)
 	if lion.has_method("calm_and_join"):
 		lion.calm_and_join()
 	tinman = TINMAN_SCENE.instantiate()
 	add_child(tinman)
-	tinman.global_position = Vector3(0, 0.08, 19.5)
+	tinman.global_position = Vector3(0, 0.08, 62.0)
 	if tinman.has_method("oil_and_free"):
 		tinman.oil_and_free()
 	var party := get_node_or_null("/root/Party")
@@ -291,23 +293,52 @@ func _spawn_party() -> void:
 				party.call("set_present", id, true)
 
 func _spawn_court_guards() -> void:
-	# 1) 2 Armored Lollipop Guild Marshals guarding the Wicked Witch's Iron Courtyard!
-	var marshal_spots := [Vector3(-6.5, 0.08, 4.0), Vector3(6.5, 0.08, 4.0)]
-	for mi_idx in marshal_spots.size():
-		var mar: CharacterBody3D = PUPPET_SCENE.instantiate()
-		mar.name = "LollipopGuildMarshal_%d" % (mi_idx + 1)
-		mar.tint = Color(0.62, 0.12, 0.16) # crimson & gunmetal Marshal armor
-		mar.armored = true
-		mar.health = 60
-		mar.scale = Vector3(1.28, 1.28, 1.28)
-		mar.set_meta("wave", "winkie")
-		add_child(mar)
-		if mar.has_method("set_play_bounds"):
-			mar.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
-		mar.global_position = marshal_spots[mi_idx]
+	# Stage 1 (Outer Winkie Road z=+34): Only 2 Vanguard guards greet you down the road (zero instant swarm!)
+	var vanguard_marshal: CharacterBody3D = PUPPET_SCENE.instantiate()
+	vanguard_marshal.name = "LollipopGuildMarshal_1"
+	vanguard_marshal.tint = Color(0.62, 0.12, 0.16)
+	vanguard_marshal.armored = true
+	vanguard_marshal.health = 55
+	vanguard_marshal.scale = Vector3(1.28, 1.28, 1.28)
+	vanguard_marshal.notice_range = 18.0
+	vanguard_marshal.hunt_range = 24.0
+	vanguard_marshal.set_meta("wave", "winkie")
+	add_child(vanguard_marshal)
+	if vanguard_marshal.has_method("set_play_bounds"):
+		vanguard_marshal.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
+	vanguard_marshal.global_position = Vector3(-3.2, 0.08, 34.0)
 
-	# 2) 3 Swooping Winged Monkeys (Sky-Stalkers) patrolling overhead!
-	var monkey_anchors := [Vector3(-8.0, 0.0, -4.0), Vector3(8.0, 0.0, -4.0), Vector3(0.0, 0.0, 2.0)]
+	var vanguard_guard: CharacterBody3D = PUPPET_SCENE.instantiate()
+	vanguard_guard.name = "WinkieVanguard_1"
+	vanguard_guard.tint = Color(0.35, 0.32, 0.38)
+	vanguard_guard.notice_range = 18.0
+	vanguard_guard.hunt_range = 24.0
+	vanguard_guard.set_meta("wave", "winkie")
+	add_child(vanguard_guard)
+	if vanguard_guard.has_method("set_play_bounds"):
+		vanguard_guard.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
+	vanguard_guard.global_position = Vector3(3.2, 0.08, 34.0)
+
+func _spawn_wave2_sky_stalkers() -> void:
+	if _wave2_spawned:
+		return
+	_wave2_spawned = true
+	if hud and hud.has_method("show_toast"):
+		hud.call("show_toast", "✦ COURTYARD SIEGE — Winged Monkeys & Guild Marshal!", 3.0)
+	# Stage 2 (Inner Courtyard z=+6..-4): 1 Senior Guild Marshal + 2 Swooping Winged Monkeys!
+	var mar2: CharacterBody3D = PUPPET_SCENE.instantiate()
+	mar2.name = "LollipopGuildMarshal_2"
+	mar2.tint = Color(0.66, 0.10, 0.18)
+	mar2.armored = true
+	mar2.health = 60
+	mar2.scale = Vector3(1.30, 1.30, 1.30)
+	mar2.set_meta("wave", "winkie")
+	add_child(mar2)
+	if mar2.has_method("set_play_bounds"):
+		mar2.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
+	mar2.global_position = Vector3(0.0, 0.08, 6.0)
+
+	var monkey_anchors := [Vector3(-8.0, 0.0, 2.0), Vector3(8.0, 0.0, 2.0)]
 	for mk_i in monkey_anchors.size():
 		var wm := CharacterBody3D.new()
 		wm.name = "WingedMonkey_%d" % (mk_i + 1)
@@ -317,7 +348,7 @@ func _spawn_court_guards() -> void:
 		if wm.has_method("set_play_bounds"):
 			wm.call("set_play_bounds", PLAY_BOUND_X, PLAY_BOUND_Z)
 		if wm.has_method("setup_patrol"):
-			wm.call("setup_patrol", monkey_anchors[mk_i], 8.5 + float(mk_i) * 1.5, 2.5 + float(mk_i) * 0.45)
+			wm.call("setup_patrol", monkey_anchors[mk_i], 8.5 + float(mk_i) * 1.5, 2.6 + float(mk_i) * 0.45)
 
 func _spawn_west() -> void:
 	west = CharacterBody3D.new()
@@ -328,16 +359,8 @@ func _spawn_west() -> void:
 	add_child(west)
 	west.global_position = Vector3(0, 0.08, -10)
 	WorldKit.build_west_witch_visual(west)
-	var lab := Label3D.new()
-	lab.name = "WestLabel"
-	lab.text = "WITCH OF THE WEST"
-	lab.font_size = 34
-	lab.pixel_size = 0.007
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.95, 0.40, 0.35)
-	lab.outline_size = 8
-	west.add_child(lab)
-	lab.position = Vector3(0, 2.85, 0)
+	var badge := WorldKit.make_world_badge(west, Vector3(0, 2.72, 0), "✦  WITCH OF THE WEST", Color(0.98, 0.44, 0.38), 14.0)
+	badge.name = "WestLabel"
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.45
@@ -347,6 +370,8 @@ func _spawn_west() -> void:
 	west.add_child(col)
 	if west.has_method("setup"):
 		west.call("setup", self)
+	# Keep Witch visible high over the inner sanctum (-16) but dormant until outer waves clear!
+	west.global_position = Vector3(0, 3.2, -16)
 
 func _spawn_cistern() -> void:
 	cistern = Node3D.new()
@@ -375,8 +400,10 @@ func on_enemy_down(who: Node) -> void:
 	var wave := str(who.get_meta("wave")) if who.has_meta("wave") else ""
 	if wave == "winkie" and beat == Beat.CLEAR_COURT:
 		court_kills += 1
-		hud.set_objective("Winkie court — clear the guards. %d/%d" % [court_kills, court_need])
-		if court_kills >= court_need or _count_winkie() <= 0:
+		hud.set_objective("Advance north & defeat the Witch's vanguard (%d/%d)" % [court_kills, court_need])
+		if not _wave2_spawned and _count_winkie() <= 0:
+			_spawn_wave2_sky_stalkers()
+		elif court_kills >= court_need or (_wave2_spawned and _count_winkie() <= 0):
 			_set_beat(Beat.FACE_WEST)
 
 func _count_winkie() -> int:

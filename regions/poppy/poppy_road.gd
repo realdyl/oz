@@ -560,28 +560,21 @@ func _set_beat(next: Beat) -> void:
 func _ensure_west_gate_label() -> void:
 	if has_node("WestGateLab"):
 		return
-	var lab := Label3D.new()
-	lab.name = "WestGateLab"
-	lab.text = "YBR → WEST CASTLE\n(FINAL STEP · E)"
-	lab.font_size = 44
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.modulate = Color(0.95, 0.75, 0.25)
-	add_child(lab)
-	lab.global_position = WEST_GATE + Vector3(0, 4.0, 0)
+	var badge := WorldKit.make_world_badge(self, WEST_GATE + Vector3(0, 3.6, 0), "✦  WINKIE CASTLE GATE  [E]", Color(0.98, 0.78, 0.32), 12.0)
+	badge.name = "WestGateLab"
 
 func _ensure_asleep_marker(node_name: String, pos: Vector3, text: String, col: Color) -> void:
-	var lab: Label3D
+	var clean := text.replace("\n", " · ")
 	if has_node(node_name):
-		lab = get_node(node_name) as Label3D
-	else:
-		lab = Label3D.new()
-		lab.name = node_name
-		add_child(lab)
-		lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.text = text
-	lab.font_size = 34
-	lab.modulate = col
-	lab.global_position = pos + Vector3(0, 3.0, 0)
+		var existing := get_node(node_name) as Node3D
+		if existing:
+			existing.global_position = pos + Vector3(0, 2.65, 0)
+			for c in existing.get_children():
+				if c is Label3D:
+					(c as Label3D).text = clean
+		return
+	var badge := WorldKit.make_world_badge(self, pos + Vector3(0, 2.65, 0), "✦  " + clean, col, 11.0)
+	badge.name = node_name
 
 func _ensure_cart_label() -> void:
 	if cart == null:

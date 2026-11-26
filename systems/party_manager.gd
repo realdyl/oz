@@ -30,6 +30,9 @@ var _dlg_prev_cam: Camera3D = null
 var _dlg_target_pos: Vector3 = Vector3.ZERO
 var _dlg_target_look: Vector3 = Vector3.ZERO
 var _dlg_sway_t: float = 0.0
+var active_dialogue_speaker: Node3D = null
+var active_dialogue_listener: Node3D = null
+var _dlg_parted_bodies: Dictionary = {} # Node3D -> Vector3 (saved pre-part position)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -45,7 +48,7 @@ func reset_party() -> void:
 	last_fail = ""
 	exit_dialogue_shot()
 
-## Spyro-style cinematic shot / reverse-shot dialogue camera (consistent 180-degree axis framing!)
+## Spyro-style cinematic shot / reverse-shot dialogue camera (ZERO companion occlusion!)
 func enter_dialogue_shot(speaker_node: Node3D, listener_node: Node3D, is_reverse: bool = false) -> void:
 	if DisplayServer.get_name() in ["headless", "Dummy"]:
 		return
@@ -54,25 +57,62 @@ func enter_dialogue_shot(speaker_node: Node3D, listener_node: Node3D, is_reverse
 	var scene_root := get_tree().current_scene
 	if scene_root == null:
 		return
+	active_dialogue_speaker = speaker_node
+	active_dialogue_listener = listener_node
+
 	var sp := speaker_node.global_position
-	var lp := listener_node.global_position if (listener_node and is_instance_valid(listener_node)) else (sp + Vector3(0, 0, 2.8))
+	var lp := listener_node.global_position if (listener_node and is_instance_valid(listener_node)) else (sp + Vector3(0, 0, 2.6))
 	var axis := sp - lp
 	axis.y = 0.0
 	var dist := axis.length()
 	var dir := axis.normalized() if dist > 0.15 else Vector3.FORWARD
-	# Consistent screen-direction perpendicular (keeps left/right orientation grounded like Spyro!)
-	var side := Vector3(-dir.z, 0.0, dir.x) * (-1.0 if is_reverse else 1.0)
-	var cam_back := clampf(dist * 0.72 + 1.25, 2.2, 4.4)
-	var cam_side := clampf(dist * 0.42 + 0.95, 1.35, 2.4)
-	_dlg_target_pos = lp - dir * (cam_back - dist * 0.5) + side * cam_side + Vector3(0.0, 1.52, 0.0)
-	_dlg_target_pos.y = maxf(_dlg_target_pos.y, minf(sp.y, lp.y) + 1.15)
-	_dlg_target_look = sp.lerp(lp, 0.24) + Vector3(0.0, 1.24, 0.0)
+	var perp := Vector3(-dir.z, 0.0, dir.x)
+	var side := perp * (-1.0 if is_reverse else 1.0)
 
-	# Gently turn listener's visual toward speaker for natural eye contact
-	if listener_node and is_instance_valid(listener_node):
+	# Tight unobstructed Spyro medium-close framing INSIDE the conversation circle (1.85m from speaker!)
+	# so neither Tin Man, Scarecrow, nor pillars ever stand between lens and speaker!
+	_dlg_target_pos = sp - dir * 1.75 + side * 0.92 + Vector3(0.0, 1.44, 0.0)
+	_dlg_target_pos.y = maxf(_dlg_target_pos.y, sp.y + 1.18)
+	_dlg_target_look = sp + Vector3(0.0, 1.30, 0.0) + side * 0.08
+
+	# Politely part all non-speaking / non-listening party companions out of the camera frustum!
+	var bystander_idx := 0
+	for id_k in _members.keys():
+		var m_body := _members[id_k] as Node3D
+		if m_body == null or not is_instance_valid(m_body):
+			continue
+		if m_body == speaker_node or m_body == listener_node:
+			continue
+		# Check distance from m_body to camera->speaker sightline
+		var seg := sp - _dlg_target_pos
+		seg.y = 0.0
+		var seg_len := maxf(seg.length(), 0.2)
+		var seg_dir := seg / seg_len
+		var rel := m_body.global_position - _dlg_target_pos
+		rel.y = 0.0
+		var proj := clampf(rel.dot(seg_dir), -0.8, seg_len + 0.8)
+		var closest := _dlg_target_pos + seg_dir * proj
+		var clear_d := Vector2(m_body.global_position.x - closest.x, m_body.global_position.z - closest.z).length()
+		if clear_d < 2.25 or m_body.global_position.distance_to(_dlg_target_pos) < 1.95:
+			if not _dlg_parted_bodies.has(m_body):
+				_dlg_parted_bodies[m_body] = m_body.global_position
+			var flank_sign := -1.0 if (bystander_idx % 2 == 0) else 1.0
+			var safe_spot := sp.lerp(lp, 0.5) + perp * (flank_sign * (2.65 + float(bystander_idx) * 0.45)) - dir * 0.65
+			safe_spot.y = m_body.global_position.y
+			m_body.global_position = safe_spot
+			if m_body is CharacterBody3D:
+				(m_body as CharacterBody3D).velocity = Vector3.ZERO
+		bystander_idx += 1
+
+	# Gently turn both speaker & listener toward each other for natural eye contact
+	if listener_node and is_instance_valid(listener_node) and dist > 0.2:
 		var lvis := listener_node.get_node_or_null("Visual") as Node3D
-		if lvis and dist > 0.2:
+		if lvis:
 			lvis.rotation.y = atan2(-dir.x, -dir.z)
+	if speaker_node and is_instance_valid(speaker_node) and dist > 0.2:
+		var svis := speaker_node.get_node_or_null("Visual") as Node3D
+		if svis:
+			svis.rotation.y = atan2(dir.x, dir.z)
 
 	if _dlg_cam == null or not is_instance_valid(_dlg_cam):
 		var vp := get_viewport()
@@ -80,8 +120,8 @@ func enter_dialogue_shot(speaker_node: Node3D, listener_node: Node3D, is_reverse
 			_dlg_prev_cam = vp.get_camera_3d()
 		_dlg_cam = Camera3D.new()
 		_dlg_cam.name = "SpyroDialogueCamera"
-		_dlg_cam.fov = 44.0
-		_dlg_cam.near = 0.1
+		_dlg_cam.fov = 42.0
+		_dlg_cam.near = 0.08
 		_dlg_cam.far = 420.0
 		scene_root.add_child(_dlg_cam)
 		if _dlg_prev_cam and is_instance_valid(_dlg_prev_cam):
@@ -96,6 +136,9 @@ func enter_dialogue_shot(speaker_node: Node3D, listener_node: Node3D, is_reverse
 
 func exit_dialogue_shot() -> void:
 	_dlg_active = false
+	active_dialogue_speaker = null
+	active_dialogue_listener = null
+	_dlg_parted_bodies.clear()
 	if _dlg_prev_cam and is_instance_valid(_dlg_prev_cam):
 		_dlg_prev_cam.current = true
 	_dlg_prev_cam = null

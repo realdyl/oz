@@ -28,6 +28,9 @@ var _parts: Dictionary = {}
 var _phase: float = 0.0
 var _wag_t: float = 0.0
 var _follow_offset := Vector3(1.15, 0.0, 0.75)
+var _armament_idx: int = 0
+var _armament_cd: float = 0.0
+const TOTO_ARMS := ["Golden Scent Trail", "Ankle-Nip Trip", "Prairie Dig", "Curtain-Pull Dash"]
 
 func _ready() -> void:
 	name = "TotoCompanion"
@@ -349,7 +352,16 @@ static func animate_parts(parts: Dictionary, spd: float, wag_t: float, phase: fl
 		return
 
 	body_root.rotation.x = 0.0
-	if spd > 0.2:
+	if spd > 7.2:
+		# Hyper-natural Terrier Rotary Bounding Gallop (front legs reach together, hind legs push together, spine flexes!)
+		var g_sin := sin(phase)
+		fl.rotation.x = g_sin * 0.86
+		fr.rotation.x = sin(phase + 0.35) * 0.86
+		bl.rotation.x = -g_sin * 0.92
+		br.rotation.x = -sin(phase + 0.35) * 0.92
+		body_root.rotation.x = cos(phase) * 0.18
+		body_root.position.y = 0.27 + absf(g_sin) * 0.075
+	elif spd > 0.2:
 		var sw := sin(phase) * 0.58
 		fl.rotation.x = sw
 		br.rotation.x = sw
@@ -363,23 +375,87 @@ static func animate_parts(parts: Dictionary, spd: float, wag_t: float, phase: fl
 		br.rotation.x = 0.0
 		body_root.position.y = 0.26 + sin(wag_t * 3.0) * 0.008
 
-	tail.rotation.z = sin(wag_t * (12.0 if spd > 0.2 else 6.8)) * 0.46
-	head.rotation = Vector3(sin(wag_t * 2.4) * 0.06, sin(wag_t * 1.1) * 0.12 if spd <= 0.2 else 0.0, sin(wag_t * 0.8) * 0.08 if spd <= 0.2 else 0.0)
+	tail.rotation.z = sin(wag_t * (14.0 if spd > 0.2 else 6.8)) * (0.22 if spd > 7.2 else 0.46)
+	head.rotation = Vector3(-0.14 if spd > 7.2 else sin(wag_t * 2.4) * 0.06, sin(wag_t * 1.1) * 0.12 if spd <= 0.2 else 0.0, sin(wag_t * 0.8) * 0.08 if spd <= 0.2 else 0.0)
 	if ear_l and ear_r:
-		ear_l.rotation.z = sin(wag_t * 3.6) * 0.08
-		ear_r.rotation.z = -sin(wag_t * 3.1) * 0.08
+		var pin := 0.28 if spd > 7.2 else 0.0
+		ear_l.rotation.z = pin + sin(wag_t * 3.6) * 0.08
+		ear_r.rotation.z = -pin - sin(wag_t * 3.1) * 0.08
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if not leading:
+	if not leading or not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_V:
+	var kc: int = (event as InputEventKey).keycode
+	if kc == KEY_V:
 		play_flourish()
+	elif kc in [KEY_Z, KEY_X, KEY_C]:
+		get_viewport().set_input_as_handled()
+		if kc == KEY_Z:
+			_armament_idx = (_armament_idx + TOTO_ARMS.size() - 1) % TOTO_ARMS.size()
+			var h1 := get_tree().get_first_node_in_group("hud")
+			if h1 and h1.has_method("set_active_armament"): h1.call("set_active_armament", TOTO_ARMS[_armament_idx])
+		elif kc == KEY_X:
+			_armament_idx = (_armament_idx + 1) % TOTO_ARMS.size()
+			var h2 := get_tree().get_first_node_in_group("hud")
+			if h2 and h2.has_method("set_active_armament"): h2.call("set_active_armament", TOTO_ARMS[_armament_idx])
+		elif kc == KEY_C and _armament_cd <= 0.0:
+			_use_toto_armament()
+
+func _use_toto_armament() -> void:
+	_armament_cd = 0.85
+	play_bark()
+	var vis := get_node_or_null("Visual") as Node3D
+	var fwd := -vis.global_transform.basis.z if vis else Vector3.FORWARD
+	fwd.y = 0.0
+	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
+	match _armament_idx:
+		0: # Golden Scent Trail — glowing golden ribbon pointing straight to nearest secret/monument/urn!
+			var best_t: Node3D = null
+			var best_d := 999.0
+			for grp in ["synergy_puzzles", "destructibles", "whimsies"]:
+				for n in get_tree().get_nodes_in_group(grp):
+					if n is Node3D and is_instance_valid(n):
+						var d := global_position.distance_to((n as Node3D).global_position)
+						if d > 0.5 and d < best_d:
+							best_d = d
+							best_t = n as Node3D
+			var dest_p := best_t.global_position if best_t else (global_position + fwd * 8.0)
+			CombatFx.gilded_chain(self, global_position + Vector3(0, 0.3, 0), dest_p + Vector3(0, 0.5, 0))
+			CombatFx.label(self, global_position + Vector3(0, 0.9, 0), "✦ GOLDEN SCENT TRAIL!", Color(1.0, 0.88, 0.36))
+		1: # Ankle-Nip Trip — rapid terrier dash that trips foes & shatters vases!
+			velocity = Vector3(fwd.x * 16.5, 3.2, fwd.z * 16.5)
+			CombatFx.label(self, global_position + Vector3(0, 0.9, 0), "✦ ANKLE-NIP!", Color(1.0, 0.72, 0.34))
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position + fwd * 1.8) <= 3.6 and dp.has_method("take_damage"):
+					dp.call("take_damage", 18, global_position, {})
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position + fwd * 1.8) <= 3.8:
+					if e.has_method("apply_bind"): e.call("apply_bind", 3.0)
+					if e.has_method("take_damage"): e.call("take_damage", 10, global_position, {"knockback": 5.0})
+		2: # Prairie Dig — unearths +4 Desire Fragments & enchants nearby vases!
+			play_flourish()
+			var sm_t := get_node_or_null("/root/SaveManager")
+			if sm_t and sm_t.has_method("add_desire"):
+				sm_t.add_desire(4, "Toto Prairie Dig")
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 5.5 and dp.has_method("apply_perfume_bonus"):
+					dp.call("apply_perfume_bonus")
+			CombatFx.ring(self, global_position, Color(1.0, 0.86, 0.38), 2.4, 0.36)
+			CombatFx.label(self, global_position + Vector3(0, 0.9, 0), "♦ +4 PRAIRIE DIG!", Color(1.0, 0.88, 0.42))
+		3: # Curtain-Pull Dash — fearless dart that frightens foes!
+			velocity = Vector3(fwd.x * 18.0, 2.5, fwd.z * 18.0)
+			CombatFx.ring(self, global_position, Color(0.88, 0.96, 1.0), 3.4, 0.34)
+			CombatFx.label(self, global_position + Vector3(0, 0.9, 0), "✦ CURTAIN-PULL DASH!", Color(0.90, 0.98, 1.0))
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 4.5:
+					if e.has_method("apply_fear"): e.call("apply_fear", 2.4, global_position)
 
 func _physics_process(delta: float) -> void:
 	_wag_t += delta
 	bark_timer = maxf(bark_timer - delta, 0.0)
 	_bark_anim_t = maxf(_bark_anim_t - delta, 0.0)
 	_flourish_t = maxf(_flourish_t - delta, 0.0)
+	_armament_cd = maxf(_armament_cd - delta, 0.0)
 
 	_eye_blink_cd -= delta
 	if _eye_blink_cd <= 0.0:
@@ -411,7 +487,8 @@ func _physics_process(delta: float) -> void:
 				move_dir.y = 0.0
 				if move_dir.length() > 0.01:
 					move_dir = move_dir.normalized()
-		var sprint_mult := 1.75 if Input.is_action_pressed("blink") else 1.0
+		var loco_s := get_node_or_null("/root/Locomotion")
+		var sprint_mult := 1.80 if (loco_s and loco_s.has_method("is_sprinting") and bool(loco_s.call("is_sprinting"))) else 1.0
 		var target_spd := move_speed * sprint_mult
 		if move_dir.length() > 0.05:
 			var loco := get_node_or_null("/root/Locomotion")

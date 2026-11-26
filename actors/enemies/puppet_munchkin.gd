@@ -104,6 +104,26 @@ func march_from_afar(toward: Vector3, bearing_rad: float, distance: float = 24.0
 		spawn.x = clampf(spawn.x, -bound_half_x + 1.2, bound_half_x - 1.2)
 		spawn.z = clampf(spawn.z, -bound_half_z + 1.2, bound_half_z - 1.2)
 	global_position = spawn
+	# Ensure march spawn NEVER lands inside a cottage or solid prop collider!
+	var world_sp := get_world_3d()
+	if world_sp and world_sp.direct_space_state:
+		var sp_state := world_sp.direct_space_state
+		for try_i in range(8):
+			var hit_in := sp_state.intersect_ray(PhysicsRayQueryParameters3D.create(
+				global_position + Vector3(0, 4.5, 0),
+				global_position + Vector3(0, 0.25, 0),
+				1,
+				[get_rid()]
+			))
+			if hit_in.is_empty() or float(hit_in.position.y) < 0.65:
+				break
+			var rot_a := float(try_i + 1) * 0.55
+			var alt_dir := Vector3(dir.x * cos(rot_a) - dir.z * sin(rot_a), 0.0, dir.x * sin(rot_a) + dir.z * cos(rot_a))
+			global_position = Vector3(
+				clampf(toward.x + alt_dir.x * max_d, -bound_half_x + 1.5, bound_half_x - 1.5),
+				0.08,
+				clampf(toward.z + alt_dir.z * max_d, -bound_half_z + 1.5, bound_half_z - 1.5)
+			)
 	# Face the approach path (toward the rally).
 	var in_dir := toward - global_position
 	in_dir.y = 0.0
@@ -421,10 +441,10 @@ func _set_state(next: State) -> void:
 	state_time = 0.0
 
 func _run_sneak(delta: float) -> void:
-	# Always walk toward the current Lead — never stand still on the rim waiting to be found.
+	# Always walk toward the current Lead — steering cleanly around cottages & hills!
 	var to := _flat_to_target()
 	var dist := to.length()
-	if dist < 0.05 or target == null:
+	if dist < 0.08 or target == null:
 		velocity.x = move_toward(velocity.x, 0.0, 6.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, 6.0 * delta)
 		return
@@ -435,14 +455,13 @@ func _run_sneak(delta: float) -> void:
 	var spd: float = sneak_speed * t_frac
 	if dist < 2.6 and _activate_t < activation_delay * 0.85:
 		spd *= 0.55
-	# Far march = purposeful approach so the fight comes to you.
 	if dist > 28.0:
 		spd = maxf(spd, sneak_speed * 2.1)
 	elif dist > 16.0:
-		spd = maxf(spd, sneak_speed * 1.7)
+		spd = maxf(spd, sneak_speed * 1.75)
 	elif dist > 8.0:
-		spd = maxf(spd, sneak_speed * 1.25)
-	var steered: Vector3 = Locomotion.steer(self, dir, 1.25)
+		spd = maxf(spd, sneak_speed * 1.3)
+	var steered: Vector3 = Locomotion.steer(self, dir, 2.0)
 	if steered.length() > 0.05:
 		velocity.x = steered.x * spd
 		velocity.z = steered.z * spd

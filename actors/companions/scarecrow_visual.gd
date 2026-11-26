@@ -22,6 +22,9 @@ var _leg_r: Node3D
 var _arm_l: Node3D
 var _arm_r: Node3D
 var _key_piv: Node3D
+var _jaw_piv: Node3D
+var _viseme_open: float = 0.0
+var _viseme_id: int = 0
 
 var _phase: float = 0.0
 var _idle_t: float = 0.0
@@ -78,6 +81,14 @@ func play_flourish() -> void:
 	_flourish_t = FLOURISH_DUR
 	_still_t = 0.0
 
+func set_viseme(viseme_id: int, open_amt: float) -> void:
+	_viseme_id = viseme_id
+	_viseme_open = clampf(open_amt, 0.0, 1.0)
+	if _jaw_piv:
+		var w := 0.72 if viseme_id == 2 else (1.22 if viseme_id == 3 else 1.0)
+		_jaw_piv.position.y = -0.018 * _viseme_open
+		_jaw_piv.scale = Vector3(w, 1.0 + _viseme_open * 0.35, 1.0)
+
 func set_airborne(vel_y: float, floor_flag: bool, turn_vel: float = 0.0) -> void:
 	if not _on_floor and floor_flag and _air_vy < -3.5:
 		_land_squash = clampf(-_air_vy / 15.0, 0.12, 0.42)
@@ -90,9 +101,9 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 	_caw_t = maxf(_caw_t - delta, 0.0)
 	_flourish_t = maxf(_flourish_t - delta, 0.0)
 	_land_squash = move_toward(_land_squash, 0.0, delta * 3.0)
-	_speed_amt = clampf(horizontal_speed / 4.5, 0.0, 1.45)
+	_speed_amt = clampf(horizontal_speed / 4.5, 0.0, 1.85)
 	if _speed_amt > 0.08:
-		_phase += delta * (7.8 + _speed_amt * 5.6)
+		_phase += delta * (7.6 + _speed_amt * 6.2)
 		_still_t = 0.0
 	else:
 		_phase = move_toward(_phase, 0.0, delta * 4.5)
@@ -157,29 +168,32 @@ func _apply_pose(delta: float = 0.016) -> void:
 		_update_secondary_physics(delta, 0.55)
 		return
 
-	# Jaunty, loose-limbed Scarecrow stride + breathing idle
+	# Jaunty Walk vs Long-Legged Springy Loping Sprint Biomechanics!
 	var squash := _land_squash * 0.12
-	var swing := sin(_phase) * 0.64 * _speed_amt
-	var swing_a := sin(_phase + PI) * 0.60 * _speed_amt
+	var run_blend := clampf((_speed_amt - 1.05) / 0.65, 0.0, 1.0)
+	var eff_s := minf(_speed_amt, 1.35)
+	var swing := sin(_phase) * lerpf(0.62, 0.94, run_blend) * eff_s
+	var swing_a := sin(_phase + PI) * lerpf(0.58, 0.90, run_blend) * eff_s
 	var still_blend := 1.0 - clampf(_speed_amt, 0.0, 1.0)
 
-	_hip.rotation = Vector3(0.0, sin(_phase) * 0.10 * _speed_amt, sin(_phase) * 0.04 * _speed_amt)
-	_hip.position.y = 0.82 - squash + absf(sin(_phase)) * 0.042 * _speed_amt + sin(_idle_t * 2.1) * 0.012 * still_blend
+	_hip.rotation = Vector3(0.0, sin(_phase) * (0.10 + 0.06 * run_blend) * eff_s, sin(_phase) * 0.05 * eff_s)
+	_hip.position.y = 0.82 - squash + absf(sin(_phase)) * lerpf(0.042, 0.088, run_blend) * eff_s + sin(_idle_t * 2.1) * 0.012 * still_blend
 	_torso.rotation = Vector3(
-		-0.14 * clampf(_speed_amt - 0.2, 0.0, 1.0) + _land_squash * 0.22,
-		-sin(_phase) * 0.11 * _speed_amt,
-		sin(_phase) * 0.07 * _speed_amt - _turn_rate * 0.028
+		lerpf(-0.12 * clampf(_speed_amt - 0.2, 0.0, 1.0), -0.26, run_blend) + _land_squash * 0.22,
+		-sin(_phase) * (0.11 + 0.06 * run_blend) * eff_s,
+		sin(_phase) * 0.07 * eff_s - _turn_rate * 0.028
 	)
 
 	_leg_l.rotation = Vector3(swing - _land_squash * 0.32, 0.0, -0.04)
 	_leg_r.rotation = Vector3(-swing - _land_squash * 0.32, 0.0, 0.04)
-	_set_calf(_leg_l, maxf(-swing, 0.0) * 0.85 + 0.08 * _speed_amt + _land_squash * 0.65)
-	_set_calf(_leg_r, maxf(swing, 0.0) * 0.85 + 0.08 * _speed_amt + _land_squash * 0.65)
+	_set_calf(_leg_l, maxf(-swing, 0.0) * lerpf(0.85, 1.25, run_blend) + 0.08 * eff_s + _land_squash * 0.65)
+	_set_calf(_leg_r, maxf(swing, 0.0) * lerpf(0.85, 1.25, run_blend) + 0.08 * eff_s + _land_squash * 0.65)
 
-	_arm_l.rotation = Vector3(-swing_a * 0.95, 0.0, -0.24 - 0.08 * _speed_amt + sin(_idle_t * 2.0) * 0.04 * still_blend)
-	_arm_r.rotation = Vector3(swing_a * 0.55 - 0.12 * still_blend, 0.0, 0.22 + 0.06 * _speed_amt)
-	_set_forearm(_arm_l, -0.28 - maxf(-swing_a, 0.0) * 0.45)
-	_set_forearm(_arm_r, -0.34 - maxf(swing_a, 0.0) * 0.28)
+	_arm_l.rotation = Vector3(-swing_a * 1.05, 0.0, -0.24 - 0.12 * eff_s + sin(_idle_t * 2.0) * 0.04 * still_blend)
+	_arm_r.rotation = Vector3(swing_a * 0.72 - 0.12 * still_blend, 0.0, 0.22 + 0.08 * eff_s)
+	var elb_sc := lerpf(-0.28, -0.88, run_blend)
+	_set_forearm(_arm_l, elb_sc - maxf(-swing_a, 0.0) * 0.45)
+	_set_forearm(_arm_r, elb_sc - maxf(swing_a, 0.0) * 0.28)
 
 	if _head:
 		_head.rotation = Vector3(
@@ -434,14 +448,17 @@ func _build() -> void:
 	# Stitched triangular nose hollow
 	_mi(_head, _cyl(0.004, 0.026, 0.042, 3), stitch_mat, Vector3(0, 0.102, -0.142), Vector3(1.0, 1.0, 0.35))
 
-	# Curved multi-stitch grin (7 curved mouth segments + vertical cross-stitches!)
+	# Articulated Stitched Burlap Mouth & Jaw Rig (animates when Scarecrow speaks!)
+	_jaw_piv = Node3D.new()
+	_jaw_piv.name = "JawPivot"
+	_head.add_child(_jaw_piv)
 	for mi_i in range(-3, 4):
 		var t := float(mi_i) / 3.0
 		var mx := t * 0.088
 		var my := 0.048 + t * t * 0.028
 		var mz := -0.134 + absf(t) * 0.026
-		_mi(_head, _cap(0.0045, 0.032, 6), stitch_mat, Vector3(mx, my, mz), Vector3.ONE, Vector3(0, t * -26.0, 90.0 - t * 22.0))
-		_mi(_head, _cap(0.0038, 0.030, 6), stitch_mat, Vector3(mx, my, mz - 0.003), Vector3.ONE, Vector3(0, t * -26.0, t * 14.0))
+		_mi(_jaw_piv, _cap(0.0045, 0.032, 6), stitch_mat, Vector3(mx, my, mz), Vector3.ONE, Vector3(0, t * -26.0, 90.0 - t * 22.0))
+		_mi(_jaw_piv, _cap(0.0038, 0.030, 6), stitch_mat, Vector3(mx, my, mz - 0.003), Vector3.ONE, Vector3(0, t * -26.0, t * 14.0))
 
 	# Straw tufts bursting from both sides of head under hat brim
 	for sx in [-1.0, 1.0]:

@@ -372,25 +372,77 @@ static func make_building_crest_sign(parent: Node3D, local_pos: Vector3, title: 
 	board.add_child(lab)
 	return board
 
-## Tier 3: Compact diegetic storybook world badge (replaces raw floating white text on props).
-static func make_world_badge(parent: Node3D, local_pos: Vector3, text: String, accent: Color = Color(0.96, 0.84, 0.48), max_dist: float = 10.5) -> Node3D:
+## Tier 3: Futurized 2026 Smoked-Obsidian & Gold-Filigree Floating Pill Plaque.
+## Uses depth-free layered billboard pill backing + tight proximity fade so text NEVER clips into walls ("Exit Chicker").
+static func make_world_badge(parent: Node3D, local_pos: Vector3, text: String, accent: Color = Color(0.96, 0.84, 0.48), max_dist: float = 8.8) -> Node3D:
 	var holder := Node3D.new()
 	holder.name = "WorldBadge"
 	holder.position = local_pos
 	parent.add_child(holder)
 
+	var clean_txt := text.strip_edges()
+	var lines := clean_txt.split("\n")
+	var max_chars := 6
+	for ln in lines:
+		max_chars = maxi(max_chars, ln.length())
+	var fade_end := clampf(max_dist, 4.5, 9.5)
+	var fade_margin := 2.2
+	var pill_w := clampf(float(max_chars) * 0.039 + 0.24, 0.62, 2.75)
+	var pill_h := float(lines.size()) * 0.125 + 0.10
+
+	# Layer 1: Hairline Antique-Gold / Accent Outer Pill Rim
+	var rim_mi := MeshInstance3D.new()
+	var rim_q := QuadMesh.new()
+	rim_q.size = Vector2(pill_w + 0.028, pill_h + 0.028)
+	rim_mi.mesh = rim_q
+	var rim_mat := StandardMaterial3D.new()
+	rim_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rim_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rim_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	rim_mat.no_depth_test = true
+	rim_mat.render_priority = 4
+	rim_mat.albedo_color = Color(accent.r, accent.g, accent.b, 0.68)
+	rim_mi.material_override = rim_mat
+	rim_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	rim_mi.visibility_range_end = fade_end
+	rim_mi.visibility_range_end_margin = fade_margin
+	rim_mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	holder.add_child(rim_mi)
+
+	# Layer 2: Smoked Obsidian-Velvet Inner Glass Backdrop
+	var bg_mi := MeshInstance3D.new()
+	var bg_q := QuadMesh.new()
+	bg_q.size = Vector2(pill_w, pill_h)
+	bg_mi.mesh = bg_q
+	var bg_mat := StandardMaterial3D.new()
+	bg_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bg_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	bg_mat.no_depth_test = true
+	bg_mat.render_priority = 5
+	bg_mat.albedo_color = Color(0.055, 0.028, 0.082, 0.84)
+	bg_mi.material_override = bg_mat
+	bg_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bg_mi.visibility_range_end = fade_end
+	bg_mi.visibility_range_end_margin = fade_margin
+	bg_mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	holder.add_child(bg_mi)
+
+	# Layer 3: Crisp High-DPI 2026 Micro-Tracked Typography
 	var lab := Label3D.new()
 	lab.set_meta("styled_plaque", true)
-	lab.text = text
-	lab.font_size = 28
-	lab.pixel_size = 0.0050
+	lab.text = clean_txt
+	lab.font_size = 23
+	lab.pixel_size = 0.0034
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.no_depth_test = true
+	lab.render_priority = 6
 	lab.shaded = false
-	lab.modulate = accent.lerp(Color(0.99, 0.95, 0.85), 0.55)
-	lab.outline_size = 9
-	lab.outline_modulate = Color(0.09, 0.06, 0.08, 0.96)
-	lab.visibility_range_end = max_dist
-	lab.visibility_range_end_margin = 2.8
+	lab.modulate = accent.lerp(Color(0.99, 0.96, 0.88), 0.58)
+	lab.outline_size = 6
+	lab.outline_modulate = Color(0.05, 0.02, 0.06, 0.96)
+	lab.visibility_range_end = fade_end
+	lab.visibility_range_end_margin = fade_margin
 	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	holder.add_child(lab)
 	return holder
@@ -819,18 +871,7 @@ static func build_rich_interior(parent: Node3D, half_w: float, half_d: float, wa
 	_mi(fit, _sph(0.065, 0.13, 12), brass, Vector3(0.42, 1.05, front_z - 0.10))
 	_mi(fit, _box(Vector3(0.38, 0.06, 0.04)), iron, Vector3(-0.42, 1.75, front_z - 0.08))
 	_mi(fit, _box(Vector3(0.38, 0.06, 0.04)), iron, Vector3(-0.42, 0.55, front_z - 0.08))
-	var exit_plaque := Label3D.new()
-	exit_plaque.set_meta("styled_plaque", true)
-	exit_plaque.text = "EXIT (E)"
-	exit_plaque.font_size = 24
-	exit_plaque.pixel_size = 0.0045
-	exit_plaque.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	exit_plaque.shaded = false
-	exit_plaque.modulate = Color(0.98, 0.88, 0.58)
-	exit_plaque.outline_size = 5
-	exit_plaque.position = Vector3(0, door_h + 0.32, front_z - 0.12)
-	exit_plaque.rotation_degrees.y = 180.0
-	fit.add_child(exit_plaque)
+	make_world_badge(fit, Vector3(0, door_h + 0.28, front_z - 0.36), "✦  EXIT %s  [E]" % title.to_upper(), Color(0.98, 0.88, 0.58), 7.5)
 
 	_mi(fit, _box(Vector3(fw, 0.95, 0.12)), wainscot, Vector3(0, 0.52, -half_d + 0.16))
 	_mi(fit, _box(Vector3(0.12, 0.95, fd)), wainscot, Vector3(-half_w + 0.16, 0.52, 0))
@@ -1028,7 +1069,7 @@ static func build_kansas_interior(fit: Node3D, title: String) -> void:
 	_mi(fit, _sph(0.055, 0.11, 10), pewter, Vector3(0.40, 1.02, hd - 0.20))
 	_mi(fit, _box(Vector3(0.36, 0.06, 0.04)), iron, Vector3(-0.40, 1.72, hd - 0.18))
 	_mi(fit, _box(Vector3(0.36, 0.06, 0.04)), iron, Vector3(-0.40, 0.52, hd - 0.18))
-	make_world_badge(fit, Vector3(0, 2.48, hd - 0.26), "✦  Exit %s (E)" % title, Color(0.96, 0.96, 1.0), 10.0)
+	make_world_badge(fit, Vector3(0, 2.42, hd - 0.46), "✦  EXIT %s  [E]" % title.to_upper(), Color(0.96, 0.96, 1.0), 7.5)
 
 	# Hanging Prairie Glass Oil Lantern
 	_mi(fit, _cyl(0.015, 0.015, 0.55, 8), iron, Vector3(0, wh - 0.35, 0))
@@ -1193,7 +1234,7 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 	for bx in [-0.44, -0.18, 0.18, 0.44]:
 		_mi(lid, _cyl(0.30, 0.30, 0.065, 16), brass_m, Vector3(float(bx), 0.02, 0.29), Vector3(0, 0, 90))
 	_mi(lid, _box(Vector3(0.14, 0.18, 0.06)), brass_m, Vector3(0, 0.02, 0.60))
-	make_world_badge(chest, Vector3(0, 1.22, 0), "♦  Desire Chest (+15 Desire)", gold_c.lightened(0.15), 8.0)
+	make_world_badge(chest, Vector3(0, 1.22, 0), "♦  GILDED CACHE  ·  +15 DESIRE", gold_c.lightened(0.15), 7.2)
 
 	# 2) Bespoke Sculpted 3D Shattered Memory Keepsake (mem_01 through mem_05!)
 	if memory_id != "":
@@ -1214,7 +1255,7 @@ static func add_interior_activities(fit: Node3D, room_id: String, memory_id: Str
 		mvis.position = Vector3(0, 0.95, 0)
 		mem.add_child(mvis)
 		_build_memory_keepsake_mesh(mvis, memory_id, monochrome)
-		make_world_badge(mem, Vector3(0, 1.65, 0), "✦  Shattered Memory", rose_c.lightened(0.20), 8.0)
+		make_world_badge(mem, Vector3(0, 1.65, 0), "✦  SHATTERED MEMORY  [E]", rose_c.lightened(0.20), 7.2)
 
 static func _build_memory_keepsake_mesh(parent: Node3D, memory_id: String, monochrome: bool) -> void:
 	var aura_c := Color(0.92, 0.92, 0.98) if monochrome else Color(1.0, 0.78, 0.38)
@@ -1432,8 +1473,87 @@ static func _build_npc_face(
 			_mi(parent, _sph(0.006, 0.012, 8), pupil, Vector3(ex, ey, zf * 0.128), Vector3.ZERO, Vector3(1.0, 1.0, 0.25))
 			_mi(parent, _sph(0.0035, 0.007, 6), glint, Vector3(ex - s * 0.004, ey + 0.005, zf * 0.131))
 		_mi(parent, _cyl(0.004, 0.004, 0.038, 8), brow_mat, Vector3(ex, ey + 0.026, zf * 0.116), Vector3(0, 0, 90.0 + s * 10.0))
-	# Cupid's-bow lips
-	_mi(parent, _sph(0.014, 0.014, 12), lip, Vector3(0, head_y - 0.056, zf * 0.120), Vector3.ZERO, Vector3(1.85, 0.62, 0.75))
+	# Articulated Viseme MouthRig (Cupid's-bow UpperLip, LowerLip, Oral Cavity & Teeth Hint — animates real "oos" & "ahs"!)
+	var m_rig := Node3D.new()
+	m_rig.name = "MouthRig"
+	m_rig.position = Vector3(0, head_y - 0.056, zf * 0.118)
+	m_rig.set_meta("zf", zf)
+	parent.add_child(m_rig)
+	var cav_m := _mat(Color(0.14, 0.03, 0.05) if not monochrome else Color(0.08, 0.08, 0.10), 0.85)
+	var teeth_m := _mat(Color(0.96, 0.95, 0.92), 0.25)
+	var cav := _mi(m_rig, _sph(0.013, 0.018, 10), cav_m, Vector3(0, -0.002, -zf * 0.003), Vector3.ZERO, Vector3(1.3, 0.1, 0.5))
+	cav.name = "MouthCavity"
+	cav.visible = false
+	var teeth := _mi(m_rig, _box(Vector3(0.020, 0.005, 0.006)), teeth_m, Vector3(0, 0.004, zf * 0.001))
+	teeth.name = "TeethHint"
+	teeth.visible = false
+	var u_lip := _mi(m_rig, _sph(0.012, 0.011, 12), lip, Vector3(0, 0.0035, zf * 0.003), Vector3.ZERO, Vector3(1.85, 0.52, 0.75))
+	u_lip.name = "UpperLip"
+	var l_lip := _mi(m_rig, _sph(0.0125, 0.012, 12), lip, Vector3(0, -0.0035, zf * 0.003), Vector3.ZERO, Vector3(1.75, 0.56, 0.78))
+	l_lip.name = "LowerLip"
+
+## Universal Viseme Applicator for NPCs & Playable Characters:
+## viseme_id: 0 = Closed (M/B/P), 1 = Wide AH/AA, 2 = Round OO/OH/W, 3 = Wide EE/IH/S, 4 = Mid EH/UH
+static func apply_viseme_to_actor(actor: Node3D, viseme_id: int, open_amt: float) -> void:
+	if actor == null or not is_instance_valid(actor):
+		return
+	var body_vis := actor.get_node_or_null("Visual/Body")
+	if body_vis and body_vis.has_method("set_viseme"):
+		body_vis.call("set_viseme", viseme_id, open_amt)
+		return
+	if actor.has_method("set_viseme"):
+		actor.call("set_viseme", viseme_id, open_amt)
+		return
+	var rig := actor.find_child("MouthRig", true, false) as Node3D
+	if rig == null:
+		return
+	var cav := rig.get_node_or_null("MouthCavity") as Node3D
+	var teeth := rig.get_node_or_null("TeethHint") as Node3D
+	var u_lip := rig.get_node_or_null("UpperLip") as Node3D
+	var l_lip := rig.get_node_or_null("LowerLip") as Node3D
+	var zf := float(rig.get_meta("zf", -1.0))
+	var amt := clampf(open_amt, 0.0, 1.0)
+	if amt <= 0.04 or viseme_id == 0:
+		if cav:
+			cav.visible = false
+		if teeth:
+			teeth.visible = false
+		if u_lip:
+			u_lip.position = Vector3(0, 0.0035, zf * 0.003)
+			u_lip.scale = Vector3(1.85, 0.52, 0.75)
+		if l_lip:
+			l_lip.position = Vector3(0, -0.0035, zf * 0.003)
+			l_lip.scale = Vector3(1.75, 0.56, 0.78)
+		return
+	var width_mul := 1.0
+	var drop_y := 0.012 * amt
+	var pucker_z := 0.0
+	match viseme_id:
+		1: # Wide "AH" / "AA"
+			width_mul = 1.08
+			drop_y = 0.017 * amt
+		2: # Rounded pursed "OO" / "OH" / "W"
+			width_mul = 0.62
+			drop_y = 0.013 * amt
+			pucker_z = 0.006 * amt * zf
+		3: # Wide "EE" / "S" smile-enunciation
+			width_mul = 1.28
+			drop_y = 0.009 * amt
+		_: # Mid conversational vowel
+			width_mul = 0.98
+			drop_y = 0.012 * amt
+	if cav:
+		cav.visible = true
+		cav.scale = Vector3(1.45 * width_mul, maxf(0.25, 1.35 * amt), 0.65)
+		cav.position = Vector3(0, -drop_y * 0.45, pucker_z * 0.5)
+	if teeth:
+		teeth.visible = (viseme_id in [1, 3, 4] and amt > 0.25)
+	if u_lip:
+		u_lip.position = Vector3(0, 0.004 + amt * 0.002, zf * 0.003 + pucker_z)
+		u_lip.scale = Vector3(1.85 * width_mul, 0.50, 0.75 + absf(pucker_z) * 20.0)
+	if l_lip:
+		l_lip.position = Vector3(0, -0.004 - drop_y, zf * 0.003 + pucker_z)
+		l_lip.scale = Vector3(1.75 * width_mul, 0.56, 0.78 + absf(pucker_z) * 20.0)
 
 static func _build_npc_hand(parent: Node3D, pos: Vector3, skin: Material, side: float) -> void:
 	_mi(parent, _sph(0.028, 0.056, 10), skin, pos, Vector3.ZERO, Vector3(0.88, 1.08, 0.56))
@@ -3187,3 +3307,115 @@ static func dress_glinda_court(parent: Node3D, glinda_pos: Vector3, home_pad: Ve
 		var aa := float(ai) * PI * 0.5
 		_mi(altar, _cyl(0.14, 0.18, 2.8, 10), marble, Vector3(cos(aa) * 3.5, 1.4, sin(aa) * 3.5))
 		_mi(altar, _sph(0.24, 0.36, 10), star_glow, Vector3(cos(aa) * 3.5, 2.95, sin(aa) * 3.5))
+
+## Phase P10.4: Intricate 1900 Victorian Silk Hot-Air Balloon ("STATE OF OMAHA · OZ").
+## Replaces primitive sphere+box placeholder with a 16-gore fluted tear-drop silk envelope,
+## horizontal meridian bands, scalloped bunting & silk tassels, 12 taut rigging cables,
+## brass load-ring + twin copper burner with glowing flame, woven wicker gondola & 6 sandbags!
+static func build_hot_air_balloon(parent: Node3D, pos: Vector3, monochrome: bool = false, scale_mul: float = 1.0) -> Node3D:
+	var root := Node3D.new()
+	root.name = "VictorianHotAirBalloon"
+	root.position = pos
+	root.scale = Vector3.ONE * scale_mul
+	parent.add_child(root)
+
+	var silk_a := _mat(Color(0.64, 0.64, 0.67) if monochrome else Color(0.14, 0.56, 0.38), 0.48, 0.06)
+	var silk_b := _mat(Color(0.80, 0.80, 0.83) if monochrome else Color(0.96, 0.91, 0.78), 0.52, 0.04)
+	var velvet := _mat(Color(0.36, 0.36, 0.40) if monochrome else Color(0.56, 0.12, 0.24), 0.72, 0.05)
+	var brass := _mat(Color(0.74, 0.74, 0.78) if monochrome else Color(0.92, 0.76, 0.30), 0.24, 0.90)
+	var rope_m := _mat(Color(0.34, 0.34, 0.37) if monochrome else Color(0.58, 0.46, 0.28), 0.88)
+	var wicker := _mat(Color(0.44, 0.44, 0.47) if monochrome else Color(0.54, 0.36, 0.19), 0.86)
+	var wicker_dk := _mat(Color(0.28, 0.28, 0.31) if monochrome else Color(0.34, 0.21, 0.11), 0.90)
+	var sandbag_m := _mat(Color(0.62, 0.62, 0.65) if monochrome else Color(0.76, 0.68, 0.52), 0.92)
+	var flame_c := Color(0.92, 0.92, 0.96) if monochrome else Color(1.0, 0.68, 0.22)
+	var flame_m := _mat(flame_c, 0.10, 0.0, flame_c, 0.95 if monochrome else 2.8)
+
+	# 1. Upper Crown Envelope + Tapered Lower Silk Throat + Brass Apex Valve
+	_mi(root, _sph(2.35, 4.55, 24), silk_a, Vector3(0, 2.35, 0))
+	_mi(root, _cyl(2.12, 0.86, 2.05, 24), silk_b, Vector3(0, 0.42, 0))
+	_mi(root, _cyl(0.86, 0.62, 0.55, 20), velvet, Vector3(0, -0.78, 0))
+	_mi(root, _cyl(0.38, 0.56, 0.22, 16), brass, Vector3(0, 4.65, 0))
+	_mi(root, _sph(0.16, 0.34, 12), brass, Vector3(0, 4.86, 0))
+
+	# 2. 16 Sculpted Longitudinal Fluted Gore Ribs + Alternating Cream/Emerald Panels & Tassels
+	for gi in range(16):
+		var a := float(gi) / 16.0 * TAU
+		var ca := cos(a)
+		var sa := sin(a)
+		var gore_m: Material = silk_b if (gi % 2 == 0) else velvet
+		# Curved gore seam rib hugging the spherical crown
+		var rib_piv := Node3D.new()
+		rib_piv.rotation.y = -a
+		root.add_child(rib_piv)
+		_mi(rib_piv, _sph(0.34, 4.48, 14), gore_m, Vector3(2.16, 2.35, 0), Vector3.ZERO, Vector3(0.42, 1.0, 0.78))
+		_mi(rib_piv, _cyl(0.032, 0.032, 2.10, 8), brass, Vector3(1.48, 0.42, 0), Vector3(0, 0, -31.0))
+		# Scalloped Equator Bunting Swag + Hanging Gold Silk Tassel
+		_mi(root, _torus(0.24, 0.30, 12), velvet if (gi % 2 == 0) else brass, Vector3(ca * 2.32, 2.15, sa * 2.32), Vector3(0, rad_to_deg(-a) + 90.0, 180.0), Vector3(1.0, 0.65, 0.45))
+		_mi(root, _cyl(0.018, 0.055, 0.26, 8), brass, Vector3(ca * 2.36, 1.88, sa * 2.36))
+
+	# 3. Horizontal Gilded Meridian Bands + 4 Cardinal Brass Crest Escutcheons
+	_mi(root, _torus(2.33, 2.41, 28), brass, Vector3(0, 2.35, 0))
+	_mi(root, _torus(1.98, 2.05, 24), velvet, Vector3(0, 3.45, 0))
+	_mi(root, _torus(1.96, 2.03, 24), brass, Vector3(0, 1.25, 0))
+	_mi(root, _torus(0.62, 0.68, 20), brass, Vector3(0, -1.04, 0))
+	for ci in range(4):
+		var ca2 := float(ci) * PI * 0.5
+		_mi(root, _box(Vector3(0.78, 0.34, 0.08)), brass, Vector3(cos(ca2) * 2.39, 2.35, sin(ca2) * 2.39), Vector3(0, -rad_to_deg(ca2) + 90.0, 0))
+
+	# 4. Brass Load-Ring + Twin Coiled Copper Burners & Glowing Buoyant Flame
+	_mi(root, _torus(0.48, 0.54, 18), brass, Vector3(0, -1.58, 0))
+	for bx in [-0.16, 0.16]:
+		_mi(root, _cyl(0.09, 0.11, 0.28, 12), brass, Vector3(float(bx), -1.48, 0))
+		_mi(root, _sph(0.13, 0.38, 10), flame_m, Vector3(float(bx), -1.22, 0))
+	if not monochrome:
+		var bl := OmniLight3D.new()
+		bl.light_color = Color(1.0, 0.72, 0.30)
+		bl.light_energy = 1.8
+		bl.omni_range = 8.5
+		bl.position = Vector3(0, -1.15, 0)
+		root.add_child(bl)
+
+	# 5. 12 Taut Diagonal Rigging Cables (Envelope Equator -> Throat -> Gondola)
+	for ri in range(12):
+		var ra := float(ri) / 12.0 * TAU
+		var top_p := Vector3(cos(ra) * 2.28, 1.95, sin(ra) * 2.28)
+		var mid_p := Vector3(cos(ra) * 0.52, -1.58, sin(ra) * 0.52)
+		var span := top_p - mid_p
+		var rope_len := span.length()
+		var rope := _mi(root, _cyl(0.016, 0.016, rope_len, 6), rope_m, (top_p + mid_p) * 0.5)
+		var up_dir := span.normalized()
+		var side_axis := up_dir.cross(Vector3.UP)
+		if side_axis.length_squared() < 0.001:
+			side_axis = Vector3.RIGHT
+		side_axis = side_axis.normalized()
+		rope.basis = Basis(side_axis, up_dir, side_axis.cross(up_dir).normalized())
+
+	# 6. Woven Diamond-Wicker Gondola Basket + Velvet Rim Bolster + 4 Corner Uprights + 6 Sandbags
+	var gy := -2.85
+	_mi(root, _box(Vector3(1.36, 0.10, 1.36)), wicker_dk, Vector3(0, gy - 0.42, 0))
+	for wall_spec in [
+		[Vector3(0, gy, -0.64), Vector3(1.36, 0.86, 0.09)],
+		[Vector3(0, gy, 0.64), Vector3(1.36, 0.86, 0.09)],
+		[Vector3(-0.64, gy, 0), Vector3(0.09, 0.86, 1.20)],
+		[Vector3(0.64, gy, 0), Vector3(0.09, 0.86, 1.20)],
+	]:
+		_mi(root, _box(wall_spec[1]), wicker, wall_spec[0])
+	# Horizontal woven wicker ribs & padded velvet gunwale bolster
+	for wy in [-0.28, 0.0, 0.28]:
+		_mi(root, _box(Vector3(1.42, 0.05, 1.42)), wicker_dk, Vector3(0, gy + float(wy), 0))
+	_mi(root, _box(Vector3(1.50, 0.11, 1.50)), velvet, Vector3(0, gy + 0.45, 0))
+	for sx in [-0.58, 0.58]:
+		for sz in [-0.58, 0.58]:
+			_mi(root, _cyl(0.026, 0.030, 1.32, 8), brass, Vector3(float(sx), gy + 1.05, float(sz)))
+	# Brass spyglass & barometer on gondola rail + 6 hanging canvas ballast sandbags
+	_mi(root, _cyl(0.025, 0.040, 0.38, 10), brass, Vector3(0.52, gy + 0.58, 0.64), Vector3(58, 20, 0))
+	var bag_offsets := [
+		Vector3(-0.74, gy + 0.14, -0.36), Vector3(-0.74, gy + 0.14, 0.36),
+		Vector3(0.74, gy + 0.14, -0.36), Vector3(0.74, gy + 0.14, 0.36),
+		Vector3(0.0, gy + 0.14, -0.74), Vector3(0.0, gy + 0.14, 0.74),
+	]
+	for bp in bag_offsets:
+		_mi(root, _cyl(0.012, 0.012, 0.26, 6), rope_m, bp + Vector3(0, 0.20, 0))
+		_mi(root, _sph(0.11, 0.26, 10), sandbag_m, bp)
+		_mi(root, _torus(0.045, 0.062, 8), rope_m, bp + Vector3(0, 0.10, 0))
+	return root

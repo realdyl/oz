@@ -25,7 +25,8 @@ var _orbit_radius: float = 8.5
 var _hover_y: float = 2.6
 var _anchor: Vector3 = Vector3(0, 0, -2)
 var _play_bound_x: float = 44.0
-var _play_bound_z: float = 52.0
+var _play_bound_z: float = 76.0
+var aggro_range: float = 24.0
 
 var _visual: Node3D
 var _wing_l: Node3D
@@ -147,12 +148,16 @@ func _physics_process(delta: float) -> void:
 		global_position.y = lerpf(global_position.y, _hover_y + 1.2, delta * 3.0)
 		return
 
-	_dive_cd -= delta
-	if not _diving and _dive_cd <= 0.0 and target and _confuse_t <= 0.0:
+	# Wait until party enters aggro_range (24m) before diving so player is NEVER swarmed at level start!
+	var dist_to_tgt := global_position.distance_to(target.global_position) if target else 999.0
+	if dist_to_tgt <= aggro_range:
+		_dive_cd -= delta
+	if not _diving and _dive_cd <= 0.0 and target and dist_to_tgt <= aggro_range and _confuse_t <= 0.0:
 		_diving = true
 		_dive_target = target.global_position + Vector3(0, 0.85, 0)
-		_dive_cd = randf_range(3.2, 5.0)
-		CombatFx.label(self, global_position + Vector3(0, 1.3, 0), "✦ SWOOP!", Color(1.0, 0.58, 0.22))
+		_dive_cd = randf_range(3.6, 5.4)
+		if CombatFx and CombatFx.has_method("label"):
+			CombatFx.label(self, global_position + Vector3(0, 1.3, 0), "✦ SWOOP!", Color(1.0, 0.58, 0.22))
 
 	if _diving:
 		var to_d := _dive_target - global_position
@@ -171,7 +176,7 @@ func _physics_process(delta: float) -> void:
 				_visual.rotation.y = atan2(-to_d.x, -to_d.z)
 	else:
 		_orbit_angle += delta * (0.95 if _confuse_t <= 0.0 else -1.4)
-		var center := target.global_position if target else _anchor
+		var center := target.global_position if (target and dist_to_tgt <= aggro_range) else _anchor
 		var desired := Vector3(
 			clampf(center.x + cos(_orbit_angle) * _orbit_radius, -_play_bound_x, _play_bound_x),
 			_hover_y + sin(_flap_t * 0.4) * 0.35,

@@ -108,21 +108,32 @@ func _process(delta: float) -> void:
 	# Auto-open CHOICE when player reaches the pad during REVEAL.
 	if beat == Beat.REVEAL and _near_home:
 		_set_beat(Beat.CHOICE)
+		if player and player.has_method("select_armament_by_name"):
+			player.call("select_armament_by_name", "Silver Heel-Click")
 	if Input.is_action_just_pressed("interact"):
 		if _near_glinda and beat == Beat.MEET_GLINDA:
 			_advance_glinda()
 		elif beat == Beat.REVEAL and _near_glinda:
 			_set_beat(Beat.CHOICE)
-		elif _near_home and beat == Beat.CHOICE:
-			_set_beat(Beat.HEELS)
-			_heel_click(actor)
-		elif _near_home and beat == Beat.HEELS:
-			_heel_click(actor)
+		elif _near_home and beat in [Beat.CHOICE, Beat.HEELS]:
+			if player and player.has_method("select_armament_by_name"):
+				player.call("select_armament_by_name", "Silver Heel-Click")
+			hud.set_prompt("Select Silver Heel-Click [Z/X] and press [C] 3 times to click your heels!")
 		else:
 			var w := get_node_or_null("/root/Whimsy")
 			if w and w.has_method("try_collect"):
 				w.call("try_collect", actor)
 	_update_prompt()
+
+## Triggered directly when Dorothy presses [C] with Silver Heel-Click equipped!
+func on_dorothy_heel_click(actor: Node3D) -> void:
+	if _going_home:
+		return
+	var pad_live: bool = beat in [Beat.REVEAL, Beat.CHOICE, Beat.HEELS]
+	if pad_live and actor and actor.global_position.distance_to(ROAD_HOME_PAD) < 6.2:
+		if beat != Beat.HEELS:
+			_set_beat(Beat.HEELS)
+		_heel_click(actor)
 
 func _heel_click(_actor: Node3D) -> void:
 	_heel_clicks += 1
@@ -131,19 +142,19 @@ func _heel_click(_actor: Node3D) -> void:
 	if _heel_clicks == 1:
 		if d and d.has_method("say"):
 			d.say("Dorothy", "Take me home to Aunt Em!", true, 2.0)
-		hud.set_prompt("Heel click 1 of 3 — E again")
+		hud.set_prompt("✦ Heel click 1 of 3 — press [C] again!")
 	elif _heel_clicks == 2:
 		if d and d.has_method("say"):
-			d.say("Dorothy", "Home — Kansas — Aunt Em!", true, 1.8)
-		hud.set_prompt("Heel click 2 of 3 — E once more")
+			d.say("Dorothy", "There is no place like home — Aunt Em!", true, 1.8)
+		hud.set_prompt("✦ Heel click 2 of 3 — press [C] once more!")
 	else:
 		if d and d.has_method("say"):
-			d.say("Narrator", "The Silver Shoes flash. The Yellow Brick Road becomes the road home.", true, 2.5)
-		hud.set_prompt("Heel click 3 of 3 — the shoes take you…")
+			d.say("Narrator", "The Silver Shoes flash thrice in starlight. The Yellow Brick Road becomes the road home.", true, 2.5)
+		hud.set_prompt("✦ Heel click 3 of 3 — the Silver Shoes carry you home!")
 		_go_homecoming("The Silver Shoes carry her — the hourglass turns toward Kansas…")
 		return
 	if left > 0:
-		hud.set_objective("FINAL STEP: Click your heels — E on the Road Home pad (%d/3)" % _heel_clicks)
+		hud.set_objective("FINAL STEP: Click your Silver Heels with [C] on the Road Home pad (%d/3)" % _heel_clicks)
 
 func _lead() -> CharacterBody3D:
 	var party := get_node_or_null("/root/Party")
@@ -196,7 +207,7 @@ func _build_world() -> void:
 	WorldKit.dress_glinda_court(self, GLINDA_POS, ROAD_HOME_PAD)
 	WorldKit.scatter_swaying_grass(self, Vector3(0, 0, 12), 34.0, 130, 5.2)
 	WorldKit.add_horizon_hills(self, PLAY_BOUND_X + 4.0, PLAY_BOUND_Z + 4.0, Color(0.46, 0.28, 0.42))
-	WorldKit.make_world_badge(self, ROAD_HOME_PAD + Vector3(0, 3.6, 0), "✦  Road Home — Click Heels ×3 (E)", Color(1.0, 0.80, 0.94), 16.0)
+	WorldKit.make_world_badge(self, ROAD_HOME_PAD + Vector3(0, 3.6, 0), "✦  Road Home — Click Heels ×3 [C]", Color(1.0, 0.80, 0.94), 16.0)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.9, 0.95)
 	sun.light_energy = 1.1
@@ -276,13 +287,21 @@ func _spawn_party() -> void:
 	lion = LION_SCENE.instantiate()
 	add_child(lion)
 	lion.global_position = YBR_SPAWN + Vector3(2.2, 0, 2.8)
-	if lion.has_method("calm"):
-		lion.calm()
+	if lion.has_method("calm_and_join"):
+		lion.calm_and_join()
 	tinman = TINMAN_SCENE.instantiate()
 	add_child(tinman)
 	tinman.global_position = YBR_SPAWN + Vector3(0, 0, 3.5)
 	if tinman.has_method("oil_and_free"):
 		tinman.oil_and_free()
+	var party := get_node_or_null("/root/Party")
+	if party:
+		if party.has_method("unlock"):
+			for id in [&"scarecrow", &"lion", &"tinman"]:
+				party.call("unlock", id)
+		if party.has_method("set_present"):
+			for id in [&"dorothy", &"scarecrow", &"lion", &"tinman"]:
+				party.call("set_present", id, true)
 
 func _spawn_glinda() -> void:
 	glinda = CharacterBody3D.new()
@@ -359,14 +378,16 @@ func _set_beat(next: Beat) -> void:
 			hud.set_objective("Speak with Glinda (E) — she holds the truth of the Shoes.")
 			hud.set_prompt("E advances Glinda's counsel")
 		Beat.REVEAL:
-			hud.set_objective("The Shoes were always home. Follow the YBR south to the glowing Road Home pad.")
-			hud.set_prompt("YBR south · pink pad + tall marker · FINAL STEP")
+			hud.set_objective("The Shoes were always home. Follow the YBR south to the Road Home pad & equip Silver Heel-Click [Z/X].")
+			hud.set_prompt("YBR south · Road Home pad · [Z/X] Silver Heel-Click → [C] ×3")
+			if player and player.has_method("select_armament_by_name"):
+				player.call("select_armament_by_name", "Silver Heel-Click")
 		Beat.CHOICE:
-			hud.set_objective("FINAL STEP (L5): Stand on the Road Home pad — E to click your heels (3×).")
-			hud.set_prompt("E on Road Home pad · heel clicks → Kansas")
+			hud.set_objective("FINAL STEP: Stand on the Road Home pad — press [C] (Silver Heel-Click) 3 times!")
+			hud.set_prompt("[C] Click Silver Heels (0/3) · [Z/X] toggle C ability")
 			_heel_clicks = 0
 		Beat.HEELS:
-			hud.set_objective("FINAL STEP: Click your heels — E on the pad (%d/3)" % _heel_clicks)
+			hud.set_objective("FINAL STEP: Click your Silver Heels — press [C] on the pad (%d/3)" % _heel_clicks)
 		Beat.DONE:
 			hud.set_objective("The shoes carry you home…")
 			hud.set_prompt("Hourglass → Kansas homecoming")

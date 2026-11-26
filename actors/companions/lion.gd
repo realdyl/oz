@@ -19,6 +19,9 @@ var hiding: bool = true
 var calmed: bool = false
 var kit_lock: float = 0.0
 var _prev_vis_yaw: float = 0.0
+var _armament_idx: int = 0
+var _armament_cd: float = 0.0
+const LION_ARMS := ["Apex Pounce", "Mane-Flare Courage", "Earthshaker Slam", "Velvet Stalk"]
 ## Asleep in poppies / safe park — do not trail Lead.
 var parked: bool = false
 var park_pos: Vector3 = Vector3.ZERO
@@ -78,6 +81,7 @@ func calm_and_join() -> void:
 func _physics_process(delta: float) -> void:
 	roar_timer = maxf(roar_timer - delta, 0.0)
 	kit_lock = maxf(kit_lock - delta, 0.0)
+	_armament_cd = maxf(_armament_cd - delta, 0.0)
 	if parked:
 		global_position = Vector3(park_pos.x, global_position.y, park_pos.z)
 		velocity.x = 0.0
@@ -175,7 +179,7 @@ func _move_as_lead(delta: float) -> void:
 		if wish.length() > 0.01:
 			wish = wish.normalized()
 			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(-wish.x, -wish.z), 12.0 * delta)
-	var cur_speed := move_speed * (1.75 if Input.is_action_pressed("blink") else 1.0)
+	var cur_speed := move_speed * (1.82 if Locomotion.is_sprinting() else 1.0)
 	if wish.length() > 0.05:
 		var steered: Vector3 = Locomotion.steer(self, wish)
 		if steered.length() < 0.05:
@@ -258,9 +262,68 @@ func _roar() -> void:
 			collider.take_damage(roar_damage, global_position, {"knockback": 11.0})
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if leading and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_V:
+	if not leading or parked or not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var kc: int = (event as InputEventKey).keycode
+	if kc == KEY_V:
 		if body and body.has_method("play_flourish"):
 			body.call("play_flourish")
+	elif kc in [KEY_Z, KEY_X, KEY_C]:
+		get_viewport().set_input_as_handled()
+		if kc == KEY_Z:
+			_armament_idx = (_armament_idx + LION_ARMS.size() - 1) % LION_ARMS.size()
+			var h1 := get_tree().get_first_node_in_group("hud")
+			if h1 and h1.has_method("set_active_armament"): h1.call("set_active_armament", LION_ARMS[_armament_idx])
+		elif kc == KEY_X:
+			_armament_idx = (_armament_idx + 1) % LION_ARMS.size()
+			var h2 := get_tree().get_first_node_in_group("hud")
+			if h2 and h2.has_method("set_active_armament"): h2.call("set_active_armament", LION_ARMS[_armament_idx])
+		elif kc == KEY_C and _armament_cd <= 0.0:
+			_use_lion_armament()
+
+func _use_lion_armament() -> void:
+	_armament_cd = 0.85
+	var fwd := -visual.global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
+	match _armament_idx:
+		0: # Apex Pounce — golden predatory leap that shatters vases & slams foes!
+			velocity = Vector3(fwd.x * 15.5, 6.2, fwd.z * 15.5)
+			if body and body.has_method("play_roar"): body.call("play_roar")
+			CombatFx.ring(self, global_position, Color(1.0, 0.78, 0.24), 3.6, 0.36)
+			CombatFx.label(self, global_position + Vector3(0, 1.3, 0), "✦ APEX POUNCE!", Color(1.0, 0.82, 0.30))
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position + fwd * 2.2) <= 4.8 and dp.has_method("take_damage"):
+					dp.call("take_damage", 20, global_position, {})
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position + fwd * 2.2) <= 4.8:
+					if e.has_method("take_damage"): e.call("take_damage", 16, global_position, {"knockback": 10.0})
+		1: # Mane-Flare Courage — golden war-mane aura + style surge!
+			if body and body.has_method("play_flourish"): body.call("play_flourish")
+			var sm_l := get_node_or_null("/root/SaveManager")
+			if sm_l and sm_l.has_method("register_style_action"):
+				sm_l.call("register_style_action", 28.0, "Mane-Flare Courage")
+			CombatFx.flash_sphere(self, global_position + Vector3(0, 0.9, 0), Color(1.0, 0.80, 0.26), 2.2, 0.38)
+			CombatFx.label(self, global_position + Vector3(0, 1.4, 0), "✦ MANE-FLARE COURAGE!", Color(1.0, 0.86, 0.34))
+		2: # Earthshaker Slam — radial brick-cracking shockwave!
+			if body and body.has_method("play_roar"): body.call("play_roar")
+			CombatFx.ring(self, global_position, Color(1.0, 0.56, 0.18), 5.6, 0.45)
+			CombatFx.label(self, global_position + Vector3(0, 1.4, 0), "✦ EARTHSHAKER SLAM!", Color(1.0, 0.68, 0.24))
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 5.6 and dp.has_method("take_damage"):
+					dp.call("take_damage", 22, global_position, {})
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 5.6:
+					if e.has_method("apply_fear"): e.call("apply_fear", 2.8, global_position)
+					if e.has_method("take_damage"): e.call("take_damage", 14, global_position, {"knockback": 12.0})
+		3: # Velvet Stalk — gilds nearby vases/whimsies & grants brief stealth surge!
+			velocity.x = fwd.x * 11.0
+			velocity.z = fwd.z * 11.0
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 6.5 and dp.has_method("apply_perfume_bonus"):
+					dp.call("apply_perfume_bonus")
+			CombatFx.ring(self, global_position, Color(0.86, 0.48, 0.96), 3.2, 0.38)
+			CombatFx.label(self, global_position + Vector3(0, 1.3, 0), "✦ VELVET STALK!", Color(0.94, 0.62, 1.0))
 
 func _anim(delta: float) -> void:
 	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)

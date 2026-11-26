@@ -35,6 +35,7 @@ var _air_vy: float = 0.0
 var _on_floor: bool = true
 var _land_squash: float = 0.0
 var _turn_rate: float = 0.0
+var _viseme_open: float = 0.0
 var rusted: bool = false
 
 const SWING_DUR := 0.44
@@ -88,6 +89,12 @@ func play_flourish() -> void:
 	_flourish_t = FLOURISH_DUR
 	_still_t = 0.0
 
+func set_viseme(viseme_id: int, open_amt: float) -> void:
+	_viseme_open = clampf(open_amt, 0.0, 1.0)
+	if _jaw:
+		var mul := 0.34 if viseme_id == 1 else (0.24 if viseme_id == 2 else 0.20)
+		_jaw.rotation.x = _viseme_open * mul
+
 func set_airborne(vel_y: float, floor_flag: bool, turn_vel: float = 0.0) -> void:
 	if not _on_floor and floor_flag and _air_vy < -3.5:
 		_land_squash = clampf(-_air_vy / 15.0, 0.14, 0.40)
@@ -104,9 +111,9 @@ func set_locomotion(horizontal_speed: float, delta: float) -> void:
 		_speed_amt = 0.0
 		_apply_pose(delta)
 		return
-	_speed_amt = clampf(horizontal_speed / 3.9, 0.0, 1.35)
+	_speed_amt = clampf(horizontal_speed / 3.9, 0.0, 1.85)
 	if _speed_amt > 0.08:
-		_phase += delta * (6.4 + _speed_amt * 4.4)
+		_phase += delta * (6.4 + _speed_amt * 5.2)
 		_still_t = 0.0
 	else:
 		_phase = move_toward(_phase, 0.0, delta * 3.8)
@@ -183,33 +190,35 @@ func _apply_pose(delta: float = 0.016) -> void:
 			_head.rotation = Vector3(0.20 * farc, -0.12 * farc, 0.10 * farc)
 		return
 
-	# Weighty Armored March & Clockwork Idle
+	# Weighty Armored March vs Piston-Driven Locomotive Sprint!
 	var squash := _land_squash * 0.09
-	var swing := sin(_phase) * 0.44 * _speed_amt
+	var run_blend := clampf((_speed_amt - 1.05) / 0.65, 0.0, 1.0)
+	var eff_t := minf(_speed_amt, 1.35)
+	var swing := sin(_phase) * lerpf(0.44, 0.78, run_blend) * eff_t
 	var still_blend := 1.0 - clampf(_speed_amt, 0.0, 1.0)
 
-	_hip.rotation = Vector3(0.0, sin(_phase) * 0.06 * _speed_amt, sin(_phase) * 0.035 * _speed_amt)
-	_hip.position.y = 0.88 - squash + absf(sin(_phase)) * 0.024 * _speed_amt + sin(_idle_t * 2.2) * 0.008 * still_blend
+	_hip.rotation = Vector3(0.0, sin(_phase) * (0.06 + 0.05 * run_blend) * eff_t, sin(_phase) * 0.035 * eff_t)
+	_hip.position.y = 0.88 - squash + absf(sin(_phase)) * lerpf(0.024, 0.058, run_blend) * eff_t + sin(_idle_t * 2.2) * 0.008 * still_blend
 	_torso.rotation = Vector3(
-		-0.09 * clampf(_speed_amt - 0.2, 0.0, 1.0) + _land_squash * 0.14,
-		-sin(_phase) * 0.07 * _speed_amt,
+		lerpf(-0.08 * clampf(_speed_amt - 0.2, 0.0, 1.0), -0.24, run_blend) + _land_squash * 0.14,
+		-sin(_phase) * (0.07 + 0.05 * run_blend) * eff_t,
 		- _turn_rate * 0.018
 	)
 
 	_leg_l.rotation = Vector3(swing - _land_squash * 0.25, 0.0, 0.0)
 	_leg_r.rotation = Vector3(-swing - _land_squash * 0.25, 0.0, 0.0)
-	_set_calf(_leg_l, maxf(-swing, 0.0) * 0.68 + 0.04 * _speed_amt + _land_squash * 0.50)
-	_set_calf(_leg_r, maxf(swing, 0.0) * 0.68 + 0.04 * _speed_amt + _land_squash * 0.50)
+	_set_calf(_leg_l, maxf(-swing, 0.0) * lerpf(0.68, 1.15, run_blend) + 0.04 * eff_t + _land_squash * 0.50)
+	_set_calf(_leg_r, maxf(swing, 0.0) * lerpf(0.68, 1.15, run_blend) + 0.04 * eff_t + _land_squash * 0.50)
 
-	_arm_l.rotation = Vector3(-swing * 0.65, 0.0, -0.12)
-	_arm_r.rotation = Vector3(swing * 0.45 - 0.15 * still_blend, 0.0, 0.14)
-	_set_forearm(_arm_l, -0.22 - maxf(-swing, 0.0) * 0.30)
-	_set_forearm(_arm_r, -0.32 - maxf(swing, 0.0) * 0.22)
+	_arm_l.rotation = Vector3(-swing * lerpf(0.65, 1.05, run_blend), 0.0, -0.12)
+	_arm_r.rotation = Vector3(swing * lerpf(0.45, 0.85, run_blend) - 0.15 * still_blend, 0.0, 0.14)
+	_set_forearm(_arm_l, lerpf(-0.22, -0.82, run_blend) - maxf(-swing, 0.0) * 0.30)
+	_set_forearm(_arm_r, lerpf(-0.32, -0.78, run_blend) - maxf(swing, 0.0) * 0.22)
 
 	if _head:
 		_head.rotation = Vector3(sin(_idle_t * 1.1) * 0.03 * still_blend, sin(_idle_t * 0.7) * 0.10 * still_blend - _turn_rate * 0.025, 0.0)
 	if _jaw:
-		_jaw.rotation.x = 0.0
+		_jaw.rotation.x = _viseme_open * 0.28
 	if _sash_tail:
 		_sash_tail.rotation.x = 0.10 + _speed_amt * 0.28 + sin(_idle_t * 2.5) * 0.04
 

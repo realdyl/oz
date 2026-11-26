@@ -36,6 +36,10 @@ func flash_sphere(host: Node3D, pos: Vector3, color: Color, radius: float = 0.55
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, life)
 	tw.tween_callback(mi.queue_free)
 
+func hit_sparks(host: Node3D, pos: Vector3, color: Color = Color(1.0, 0.78, 0.28)) -> void:
+	flash_sphere(host, pos, color, 0.44, 0.16)
+	ring(host, pos, color.lightened(0.22), 1.15, 0.20)
+
 func slash_box(host: Node3D, origin: Vector3, forward: Vector3, color: Color, size := Vector3(0.9, 0.2, 1.1), life: float = 0.14) -> void:
 	var root := _host_root(host)
 	if root == null:
@@ -776,32 +780,129 @@ func silk_cocoon(host: Node3D, target_pos: Vector3) -> void:
 		tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 1.4)
 		tw.tween_callback(ring.queue_free)
 
-func perfume_cloud(host: Node3D, center: Vector3, radius: float = 6.0) -> void:
+func perfume_cloud(host: Node3D, center: Vector3, radius: float = 6.0, forward_dir: Vector3 = Vector3.ZERO) -> void:
 	var root := _host_root(host)
 	if root == null:
 		return
-	# Dual-shell amethyst-violet & rose-pink narcotic mist (arm_02_poppy_atomizer.jpg)
-	for layer_i in range(2):
+	var fwd := forward_dir
+	fwd.y = 0.0
+	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
+	var nozzle_pos := center + Vector3(0, 1.22, 0) + fwd * 0.42
+
+	# 1) High-visibility Atomizer Spray Jet Cone shooting out of Dorothy's crystal bottle!
+	var jet := MeshInstance3D.new()
+	var jcyl := CylinderMesh.new()
+	jcyl.top_radius = 0.04
+	jcyl.bottom_radius = 1.45
+	jcyl.height = 3.8
+	jet.mesh = jcyl
+	var jmat := StandardMaterial3D.new()
+	jmat.albedo_color = Color(0.98, 0.52, 0.90, 0.62)
+	jmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	jmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	jmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	jmat.emission_enabled = true
+	jmat.emission = Color(1.0, 0.48, 0.92)
+	jmat.emission_energy_multiplier = 2.4
+	jet.material_override = jmat
+	root.add_child(jet)
+	jet.global_position = nozzle_pos + fwd * 1.9
+	jet.look_at(nozzle_pos + fwd * 4.5, Vector3.UP)
+	jet.rotate_object_local(Vector3.RIGHT, -PI * 0.5)
+	var jtw := host.get_tree().create_tween()
+	jtw.set_parallel(true)
+	jtw.tween_property(jet, "scale", Vector3(1.45, 1.25, 1.45), 0.45).set_ease(Tween.EASE_OUT)
+	jtw.tween_property(jmat, "albedo_color:a", 0.0, 0.50)
+	jtw.chain().tween_callback(jet.queue_free)
+
+	# 2) Ground Lace-Mandala Ring + Multi-Plume Billowing Rose-Amethyst Mist Vortex + Floating Shimmer Motes!
+	ring(host, center + Vector3(0, 0.12, 0), Color(0.98, 0.46, 0.88), radius * 0.95, 0.65)
+	ring(host, center + Vector3(0, 0.18, 0), Color(0.76, 0.34, 0.98), radius * 0.62, 0.52)
+	label(host, nozzle_pos + Vector3(0, 0.45, 0), "♥ HYPNOTIC PERFUME ♥", Color(1.0, 0.58, 0.92))
+
+	for layer_i in range(3):
 		var cloud := MeshInstance3D.new()
 		var sph := SphereMesh.new()
-		sph.radius = 0.82 if layer_i == 0 else 0.56
-		sph.height = sph.radius * 2.0
+		sph.radius = 0.85 - float(layer_i) * 0.16
+		sph.height = sph.radius * 1.45
 		cloud.mesh = sph
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.68, 0.28, 0.86, 0.38) if layer_i == 0 else Color(0.96, 0.56, 0.82, 0.44)
+		mat.albedo_color = Color(0.72, 0.26, 0.90, 0.34) if (layer_i % 2 == 0) else Color(0.98, 0.52, 0.84, 0.42)
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.emission_enabled = true
-		mat.emission = Color(0.76, 0.32, 0.94) if layer_i == 0 else Color(1.0, 0.60, 0.86)
-		mat.emission_energy_multiplier = 1.65
+		mat.emission = Color(0.82, 0.32, 0.98) if (layer_i % 2 == 0) else Color(1.0, 0.58, 0.88)
+		mat.emission_energy_multiplier = 1.85
 		cloud.material_override = mat
 		root.add_child(cloud)
-		cloud.global_position = center + Vector3(0, 0.8, 0)
+		cloud.global_position = center + Vector3(0, 0.65 + float(layer_i) * 0.25, 0) + fwd * (float(layer_i) * 0.65)
 		var tw := host.get_tree().create_tween()
 		tw.set_parallel(true)
-		tw.tween_property(cloud, "scale", Vector3.ONE * (radius * (1.12 if layer_i == 0 else 0.78)), 0.55).set_ease(Tween.EASE_OUT)
-		tw.tween_property(mat, "albedo_color:a", 0.0, 0.65)
+		tw.tween_property(cloud, "scale", Vector3.ONE * (radius * (1.05 - float(layer_i) * 0.18)), 0.68).set_ease(Tween.EASE_OUT)
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.78)
 		tw.chain().tween_callback(cloud.queue_free)
+
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		for pi in range(12):
+			var mote := MeshInstance3D.new()
+			var ms := SphereMesh.new()
+			ms.radius = randf_range(0.055, 0.105)
+			ms.height = ms.radius * 2.0
+			mote.mesh = ms
+			var mm := StandardMaterial3D.new()
+			mm.albedo_color = Color(1.0, 0.65, 0.94, 0.92) if (pi % 2 == 0) else Color(1.0, 0.86, 0.45, 0.92)
+			mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mm.emission_enabled = true
+			mm.emission = mm.albedo_color
+			mm.emission_energy_multiplier = 2.6
+			mote.material_override = mm
+			root.add_child(mote)
+			var ang := float(pi) / 12.0 * TAU
+			var start_m := nozzle_pos + Vector3(cos(ang) * 0.25, 0.0, sin(ang) * 0.25)
+			var end_m := center + Vector3(cos(ang + 1.2) * (radius * 0.68), randf_range(0.9, 2.2), sin(ang + 1.2) * (radius * 0.68)) + fwd * 1.2
+			mote.global_position = start_m
+			var mtw := host.get_tree().create_tween()
+			mtw.set_parallel(true)
+			mtw.tween_property(mote, "global_position", end_m, 0.82).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			mtw.tween_property(mm, "albedo_color:a", 0.0, 0.82)
+			mtw.chain().tween_callback(mote.queue_free)
+
+## 2026 Radiant Silver-Shoe Heel-Click Starburst & Celestial Ring Cascade!
+func heel_click_burst(host: Node3D, at: Vector3) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var foot_p := at + Vector3(0, 0.22, 0)
+	ring(host, foot_p, Color(0.94, 0.98, 1.0), 3.6, 0.44)
+	ring(host, foot_p + Vector3(0, 0.12, 0), Color(1.0, 0.84, 0.42), 2.3, 0.34)
+	flash_sphere(host, foot_p, Color(0.92, 0.97, 1.0), 0.95, 0.28)
+	label(host, at + Vector3(0, 1.45, 0), "✦ SILVER HEEL-CLICK! ✦", Color(0.94, 0.98, 1.0))
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
+		return
+	for si in range(10):
+		var star := MeshInstance3D.new()
+		var pr := PrismMesh.new()
+		pr.size = Vector3(0.08, 0.22, 0.04)
+		star.mesh = pr
+		var sm := StandardMaterial3D.new()
+		sm.albedo_color = Color(0.95, 0.98, 1.0, 0.95) if (si % 2 == 0) else Color(1.0, 0.86, 0.44, 0.95)
+		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.emission_enabled = true
+		sm.emission = sm.albedo_color
+		sm.emission_energy_multiplier = 2.8
+		star.material_override = sm
+		root.add_child(star)
+		var ang := float(si) / 10.0 * TAU
+		star.global_position = foot_p + Vector3(cos(ang) * 0.25, 0.05, sin(ang) * 0.25)
+		var dest := foot_p + Vector3(cos(ang) * 2.2, randf_range(1.1, 2.4), sin(ang) * 2.2)
+		var tw := host.get_tree().create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(star, "global_position", dest, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(star, "rotation_degrees", Vector3(0, 360, 180), 0.55)
+		tw.tween_property(sm, "albedo_color:a", 0.0, 0.55)
+		tw.chain().tween_callback(star.queue_free)
 
 func gilded_chain(host: Node3D, pos_a: Vector3, pos_b: Vector3) -> void:
 	var root := _host_root(host)

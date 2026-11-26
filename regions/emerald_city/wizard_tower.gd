@@ -11,6 +11,7 @@ const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
 const WorldKit := preload("res://systems/world_kit.gd")
 const OzEncounters := preload("res://systems/oz_encounters.gd")
+const CHINA_SCENE := "res://regions/south/china_country.tscn"
 const GLINDA_SCENE := "res://regions/quadling/glinda_court.tscn"
 enum Beat {
 	APPROACH,
@@ -38,6 +39,8 @@ var _gate_doors: Dictionary = {}
 var _palace_doors: Dictionary = {}
 var _curtain_rig: Dictionary = {}
 var _wizard_spot: OmniLight3D = null
+var _courtyard_balloon: Node3D = null
+var _balloon_sway_t: float = 0.0
 var _projection_dismissed: bool = false
 var gate_pos: Vector3 = Vector3(0, 0.08, -8)
 var door_pos: Vector3 = Vector3(0, 0.08, -38)
@@ -225,6 +228,10 @@ func _build_world() -> void:
 			_add_box(Vector3(float(sx) * 9.5, 6.6, lz), Vector3(0.85, 0.85, 0.85), Color(0.35, 1.0, 0.65), "BoulevardGem")
 	# Phase P8: The Tailor of Vices Ornate Boutique Pavilion on the Emerald Plaza!
 	_build_tailor_of_vices(Vector3(-16.5, 0.08, -20.0))
+	# Phase P10.4: Wizard's Victorian Silk Hot-Air Balloon ("STATE OF OMAHA") moored on East Emerald Launch Dais!
+	_add_box(Vector3(17.5, 0.18, -22.5), Vector3(7.4, 0.36, 7.4), Color(0.18, 0.52, 0.34), "BalloonLaunchDais")
+	_courtyard_balloon = WorldKit.build_hot_air_balloon(self, Vector3(17.5, 4.35, -22.5), false, 1.18)
+	WorldKit.make_world_badge(self, Vector3(17.5, 2.35, -18.4), "✦  OMAHA SILK BALLOON  ·  ROYAL MOORING", Color(0.62, 1.0, 0.78), 9.0)
 	# Continuous climbable approach stairs culminating in a FLUSH Grand Emerald Marble Landing Terrace (ZERO drop-off!)
 	for s in 5:
 		_add_box(Vector3(0, 0.06 + float(s) * 0.14, -28.0 - float(s) * 1.1), Vector3(14.0 - float(s) * 0.3, 0.16, 1.25), Color(0.20, 0.56, 0.36), "ApproachStep")
@@ -388,6 +395,10 @@ func _add_limb(parent: Node3D, pos: Vector3, size: Vector3, col: Color) -> void:
 	mi.position = pos
 
 func _pulse_projection(delta: float) -> void:
+	_balloon_sway_t += delta
+	if _courtyard_balloon and is_instance_valid(_courtyard_balloon):
+		_courtyard_balloon.position.y = 4.35 + sin(_balloon_sway_t * 1.15) * 0.24
+		_courtyard_balloon.rotation.y = sin(_balloon_sway_t * 0.38) * 0.14
 	if _projection_dismissed or wizard_head == null or not wizard_head.visible:
 		return
 	_head_pulse += delta
@@ -612,11 +623,13 @@ func _update_prompt() -> void:
 				hud.set_prompt(p)
 
 func _go_glinda(msg: String) -> void:
+	var target_scene := CHINA_SCENE if ResourceLoader.exists(CHINA_SCENE) else GLINDA_SCENE
+	var target_title := "Southward Road · Fighting Trees & China Country" if target_scene == CHINA_SCENE else "Quadling Country · Glinda's court"
 	var lt := get_node_or_null("/root/LevelTransition")
 	if lt and lt.has_method("go_to"):
-		lt.go_to(GLINDA_SCENE, msg, "Quadling Country · Glinda's court")
+		lt.go_to(target_scene, msg, target_title)
 	else:
-		get_tree().change_scene_to_file(GLINDA_SCENE)
+		get_tree().change_scene_to_file(target_scene)
 
 func _add_emerald_whimsy() -> void:
 	var w := get_node_or_null("/root/Whimsy")

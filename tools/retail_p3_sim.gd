@@ -101,6 +101,37 @@ func _initialize() -> void:
 		m_node.queue_free()
 		await process_frame
 
+	# 4. Verify Carbon P1.4-P12.4 New Levels (Kalidah Wilds & Dainty China Country), Balloon & Icons
+	for icon_p in [
+		"res://assets/art/icons/shop/dorothy_heels.png",
+		"res://assets/art/icons/shop/dorothy_slippers.png",
+		"res://assets/art/icons/shop/dorothy_fishnets.png",
+		"res://assets/art/icons/shop/dorothy_thong_lingerie.png",
+		"res://assets/art/icons/arm_heel_click.png",
+	]:
+		if not ResourceLoader.exists(icon_p):
+			_fail("missing painted shop/ability icon: " + icon_p)
+	print("SHOP_AND_ABILITY_ICONS_OK")
+
+	for new_lvl in [
+		["res://regions/wilds/kalidah_wilds.tscn", "KalidahBeast_1", "FallenPineBridge"],
+		["res://regions/south/china_country.tscn", "ChinaPrincess", "GiantForestSpider"],
+	]:
+		var l_pk: PackedScene = load(new_lvl[0])
+		if l_pk == null:
+			_fail("failed to load " + str(new_lvl[0]))
+		else:
+			var l_nd := l_pk.instantiate()
+			root.add_child(l_nd)
+			for _f in range(6):
+				await process_frame
+			if l_nd.find_child(new_lvl[1], true, false) == null or l_nd.find_child(new_lvl[2], true, false) == null:
+				_fail("missing landmark %s/%s in %s" % [new_lvl[1], new_lvl[2], new_lvl[0]])
+			else:
+				print("NEW_LEVEL_OK ", new_lvl[0].get_file())
+			l_nd.queue_free()
+			await process_frame
+
 	if _failures.is_empty():
 		print("RETAIL_P3_ALL_OK")
 		quit(0)

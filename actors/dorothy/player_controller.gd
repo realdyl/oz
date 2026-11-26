@@ -39,8 +39,8 @@ var follow_target: Node3D = null
 var parked: bool = false
 var park_pos: Vector3 = Vector3.ZERO
 
-# Phase P7: 3-Hit Combo, Rated-M Kinky Armaments (C cast · Z/X swap) & Rapture/Hysteria Mode (H)
-const ARMAMENT_NAMES := ["Lace Whip", "Silk Bindings", "Hypnotic Perfume", "Gilded Chain"]
+# Phase P7 / P1.4: 3-Hit Combo, 5 Selectable Z/X/C Armaments (including Silver Heel-Click!) & Rapture Mode (H)
+const ARMAMENT_NAMES := ["Lace Whip", "Silk Bindings", "Hypnotic Perfume", "Gilded Chain", "Silver Heel-Click"]
 var _armament_idx: int = 0
 var _armament_cd: float = 0.0
 var _combo_step: int = 0
@@ -261,7 +261,7 @@ func _move(delta: float) -> void:
 			wish = wish.normalized()
 			var face := atan2(-wish.x, -wish.z)
 			visual.rotation.y = lerp_angle(visual.rotation.y, face, 12.0 * delta)
-	var cur_speed := move_speed * (1.80 if Input.is_action_pressed("blink") else 1.0)
+	var cur_speed := move_speed * (1.85 if Locomotion.is_sprinting() else 1.0)
 	if _sprint_surge_t > 0.0:
 		# Smooth high-speed sprint burst via move_and_slide() (never a single-frame teleport!)
 		var surge_spd := maxf(blink_distance / 0.10, 34.0)
@@ -462,6 +462,15 @@ func _cycle_armament(dir: int) -> void:
 	if hud and hud.has_method("set_active_armament"):
 		hud.call("set_active_armament", ARMAMENT_NAMES[_armament_idx])
 
+func select_armament_by_name(target_name: String) -> void:
+	for i in range(ARMAMENT_NAMES.size()):
+		if target_name.to_lower() in str(ARMAMENT_NAMES[i]).to_lower():
+			_armament_idx = i
+			var hud := get_tree().get_first_node_in_group("hud")
+			if hud and hud.has_method("set_active_armament"):
+				hud.call("set_active_armament", ARMAMENT_NAMES[_armament_idx])
+			return
+
 func _use_armament() -> void:
 	if _armament_cd > 0.0:
 		return
@@ -529,8 +538,11 @@ func _use_armament() -> void:
 				sm.add_desire(5, "Silk Bindings")
 			else:
 				CombatFx.silk_cocoon(self, global_position - visual.global_transform.basis.z * 2.5)
-		2: # Hypnotic Perfume — enamors foes AND perfumes nearby vases & whimsies for 2× bonus payout (without breaking them)!
-			CombatFx.perfume_cloud(self, global_position, 6.8)
+		2: # Hypnotic Perfume — directional crystal atomizer spray cone + swirling rose-amethyst mist!
+			var fwd_p := -visual.global_transform.basis.z
+			fwd_p.y = 0.0
+			fwd_p = fwd_p.normalized() if fwd_p.length() > 0.01 else Vector3.FORWARD
+			CombatFx.perfume_cloud(self, global_position, 6.8, fwd_p)
 			var charmed := 0
 			for foe in enemies:
 				if foe.global_position.distance_to(global_position) <= 7.0 and foe.has_method("apply_enamored"):
@@ -562,6 +574,27 @@ func _use_armament() -> void:
 					sm.add_desire(6, "Gilded Chain Tether")
 			else:
 				CombatFx.label(self, global_position, "Need 2 Foes to Chain", Color(1.0, 0.85, 0.35))
+		4: # Silver Heel-Click — Graceful aerial heel-tap starburst! Triggers Road Home pad in Glinda's Court OR staggers/heals anywhere!
+			_armament_cd = 0.62
+			if is_on_floor():
+				velocity.y = 4.6
+			if body and body.has_method("play_heel_click"):
+				body.call("play_heel_click")
+			if CombatFx.has_method("heel_click_burst"):
+				CombatFx.heel_click_burst(self, global_position)
+			else:
+				CombatFx.ring(self, global_position, Color(0.88, 0.94, 1.0), 2.8, 0.42)
+			var afx_hc := get_node_or_null("/root/AudioFx")
+			if afx_hc and afx_hc.has_method("play"):
+				afx_hc.play("buy", -4.0)
+			# Stagger nearby foes with radiant silver-shoe shockwave!
+			for foe_hc in _find_live_enemies(4.6):
+				if foe_hc.has_method("take_damage"):
+					foe_hc.take_damage(8, global_position, {"knockback": 7.5})
+			# Notify active scene (e.g., Glinda's Court Road Home Pad 3× Heel Click!)
+			var cur_sc := get_tree().current_scene
+			if cur_sc and cur_sc.has_method("on_dorothy_heel_click"):
+				cur_sc.call("on_dorothy_heel_click", self)
 
 func _try_rapture_mode() -> void:
 	if _rapture_t > 0.0:

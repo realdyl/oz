@@ -31,13 +31,25 @@ const TYPE_CPS := 75.0
 const OzThemeFactory := preload("res://ui/theme/oz_theme_factory.gd")
 const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 const CircleShader := preload("res://ui/shaders/circle_medallion.gdshader")
+const WorldKit := preload("res://systems/world_kit.gd")
 var _ornate_frame: Control = null
 var _portrait_mat: ShaderMaterial = null
 var _bar_top: ColorRect = null
 var _bar_bot: ColorRect = null
 
+# Real-Time Phoneme/Viseme Lip-Sync & ElevenLabs Voice-Clone Ready Audio Engine!
+var _voice_player: AudioStreamPlayer = null
+var _lip_speaker_node: Node3D = null
+var _lip_text: String = ""
+var _lip_elapsed: float = 0.0
+var _lip_duration: float = 0.0
+var _lip_active: bool = false
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_voice_player = AudioStreamPlayer.new()
+	_voice_player.name = "ElevenLabsVoicePlayer"
+	add_child(_voice_player)
 	_build()
 	_hide()
 	_pick_voice()
@@ -251,6 +263,7 @@ func _process(delta: float) -> void:
 		if _hint_lbl and not _is_headless():
 			var pulse := 0.72 + 0.28 * sin(Time.get_ticks_msec() * 0.006)
 			_hint_wrap.modulate.a = pulse
+	_tick_viseme_lip_sync(delta)
 
 func _pick_voice() -> void:
 	_tts_voice = ""
@@ -311,7 +324,132 @@ func say(speaker: String, text: String, also_tts: bool = true, hold: float = 0.0
 		tw.tween_property(_panel, "modulate:a", 1.0, 0.16)
 
 	if also_tts and tts_enabled:
-		speak_tts("%s. %s" % [speaker, text])
+		_start_voice_and_lipsync(speaker, text)
+	else:
+		_start_lipsync_only(speaker, text)
+
+func _resolve_speaker_3d(speaker: String) -> Node3D:
+	var party := get_node_or_null("/root/Party")
+	var s := speaker.to_lower()
+	if party:
+		if "dorothy" in s:
+			var db = party.call("member_body", &"dorothy") if party.has_method("member_body") else null
+			if db is Node3D: return db as Node3D
+		elif "scarecrow" in s:
+			var sb = party.call("member_body", &"scarecrow") if party.has_method("member_body") else null
+			if sb is Node3D: return sb as Node3D
+		elif "tin" in s:
+			var tb = party.call("member_body", &"tinman") if party.has_method("member_body") else null
+			if tb is Node3D: return tb as Node3D
+		elif "lion" in s:
+			var lb = party.call("member_body", &"lion") if party.has_method("member_body") else null
+			if lb is Node3D: return lb as Node3D
+	var scene := get_tree().current_scene if get_tree() else null
+	if scene:
+		if "dorothy" in s:
+			var pl := scene.find_child("Player", true, false) as Node3D
+			if pl: return pl
+		for pair in [
+			["locasta", "Locasta"], ["glinda", "Glinda"], ["em", "AuntEm"], ["em", "Aunt Em"],
+			["henry", "UncleHenry"], ["henry", "Uncle Henry"], ["wizard", "WizardBody"],
+			["oz", "WizardProjection"], ["witch", "WitchOfTheWest"],
+			["scarecrow", "Scarecrow"], ["tin", "TinMan"], ["lion", "Lion"],
+		]:
+			if str(pair[0]) in s:
+				var found := scene.find_child(str(pair[1]), true, false) as Node3D
+				if found:
+					return found
+	if party and "active_dialogue_speaker" in party and party.active_dialogue_speaker is Node3D:
+		return party.active_dialogue_speaker as Node3D
+	return null
+
+func _reset_current_speaker_mouth() -> void:
+	if _lip_speaker_node and is_instance_valid(_lip_speaker_node):
+		WorldKit.apply_viseme_to_actor(_lip_speaker_node, 0, 0.0)
+	_lip_active = false
+
+## ElevenLabs Voice-Clone Hook (`res://assets/audio/voices/<char>/<hash>.mp3|.ogg|.wav`) + OS TTS + Real-Time Viseme Lip-Sync!
+func _start_voice_and_lipsync(speaker: String, text: String) -> void:
+	_reset_current_speaker_mouth()
+	_lip_speaker_node = _resolve_speaker_3d(speaker)
+	_lip_text = text.strip_edges()
+	_lip_elapsed = 0.0
+	var word_cnt := maxi(2, _lip_text.split(" ", false).size())
+	_lip_duration = clampf(float(word_cnt) / 2.75, 0.85, 9.5)
+	_lip_active = (_lip_speaker_node != null and not _is_headless())
+
+	# 1) Try pre-rendered ElevenLabs voice clone file first (`res://assets/audio/voices/<speaker_key>/<hash>.ogg|.mp3`)
+	var char_slug := speaker.to_lower().replace(" ", "_")
+	var line_hash := str(absi(_lip_text.hash()))
+	for ext in ["ogg", "mp3", "wav"]:
+		var vpath := "res://assets/audio/voices/%s/%s.%s" % [char_slug, line_hash, ext]
+		if ResourceLoader.exists(vpath) and _voice_player:
+			var stream := ResourceLoader.load(vpath) as AudioStream
+			if stream:
+				stop_tts()
+				_voice_player.stream = stream
+				_voice_player.play()
+				if stream.get_length() > 0.1:
+					_lip_duration = stream.get_length()
+				return
+	# 2) Fallback to live OS TTS (speak ONLY the clean dialogue text — not the speaker prefix — so mouth timing matches!)
+	speak_tts(text)
+
+func _start_lipsync_only(speaker: String, text: String) -> void:
+	_reset_current_speaker_mouth()
+	_lip_speaker_node = _resolve_speaker_3d(speaker)
+	_lip_text = text.strip_edges()
+	_lip_elapsed = 0.0
+	var word_cnt := maxi(2, _lip_text.split(" ", false).size())
+	_lip_duration = clampf(float(word_cnt) / 2.9, 0.8, 8.0)
+	_lip_active = (_lip_speaker_node != null and not _is_headless())
+
+func _tick_viseme_lip_sync(delta: float) -> void:
+	if not _lip_active or _lip_speaker_node == null or not is_instance_valid(_lip_speaker_node):
+		return
+	_lip_elapsed += delta
+	var tts_still_going := false
+	if DisplayServer.has_method("tts_is_speaking") and tts_enabled:
+		tts_still_going = DisplayServer.tts_is_speaking()
+	var voice_clip_going := (_voice_player != null and _voice_player.playing)
+	var within_est := (_lip_elapsed < _lip_duration)
+	if not voice_clip_going and not tts_still_going and not within_est:
+		_reset_current_speaker_mouth()
+		return
+	# If OS TTS finished early (after min 0.45s startup window), close mouth cleanly right on time!
+	if _lip_elapsed > 0.45 and tts_enabled and DisplayServer.has_method("tts_is_speaking") and not tts_still_going and not voice_clip_going:
+		if _lip_elapsed > _lip_duration * 0.72:
+			_reset_current_speaker_mouth()
+			return
+
+	var total_chars := maxi(1, _lip_text.length())
+	var u := clampf(_lip_elapsed / maxf(0.4, _lip_duration), 0.0, 0.999)
+	var idx := clampi(int(u * float(total_chars)), 0, total_chars - 1)
+	var ch := _lip_text.substr(idx, 1).to_lower()
+	var next_ch := _lip_text.substr(mini(idx + 1, total_chars - 1), 1).to_lower()
+
+	# Map live English characters/digraphs to human visemes (0=Closed, 1=AH, 2=OO, 3=EE, 4=MID)
+	var viseme := 4
+	var env := 0.45 + 0.55 * absf(sin(_lip_elapsed * 13.5))
+	if ch in [" ", ",", ".", "—", "-", ";", ":", "!", "?"]:
+		viseme = 0
+		env = 0.0
+	elif ch in ["m", "b", "p", "f", "v"]:
+		viseme = 0
+		env = 0.06
+	elif (ch == "o" and next_ch == "o") or ch in ["o", "u", "w", "q"]:
+		viseme = 2 # Rounded "OO" / "OH"
+		env = clampf(env * 1.15, 0.35, 1.0)
+	elif ch in ["a"]:
+		viseme = 1 # Wide open "AH"
+		env = clampf(env * 1.22, 0.42, 1.0)
+	elif ch in ["e", "i", "y", "s", "z"]:
+		viseme = 3 # Wide smile "EE" / "IH"
+		env = clampf(env * 0.95, 0.30, 0.92)
+	else:
+		viseme = 4
+		env = clampf(env * 0.82, 0.22, 0.80)
+	WorldKit.apply_viseme_to_actor(_lip_speaker_node, viseme, env)
 
 func say_line(full_line: String, also_tts: bool = true) -> void:
 	var speaker := "Voice"
@@ -333,6 +471,9 @@ func set_cinema_letterbox(on: bool) -> void:
 	tw.tween_property(_bar_bot, "offset_top", -target_h, 0.28)
 
 func clear() -> void:
+	_reset_current_speaker_mouth()
+	if _voice_player and _voice_player.playing:
+		_voice_player.stop()
 	_hide()
 	stop_tts()
 	set_cinema_letterbox(false)

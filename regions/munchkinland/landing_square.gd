@@ -12,6 +12,7 @@ const TREE_SCRIPT := preload("res://actors/enemies/living_tree.gd")
 const WorldKit := preload("res://systems/world_kit.gd")
 const OzEncounters := preload("res://systems/oz_encounters.gd")
 const WEST_SCENE := "res://regions/winkie/west_castle.tscn"
+const KALIDAH_SCENE := "res://regions/wilds/kalidah_wilds.tscn"
 const POPPY_SCENE := "res://regions/poppy/poppy_road.tscn"
 const EMERALD_SCENE := "res://regions/emerald_city/wizard_tower.tscn"
 
@@ -1919,11 +1920,13 @@ func _collect_whimsy(area: Area3D) -> void:
 	)
 
 func _go_poppy_road() -> void:
+	var next_scene := KALIDAH_SCENE if ResourceLoader.exists(KALIDAH_SCENE) else POPPY_SCENE
+	var next_title := "The Kalidah Wilds · Great Chasms" if next_scene == KALIDAH_SCENE else "The Deadly Poppy Field"
 	var lt := get_node_or_null("/root/LevelTransition")
 	if lt and lt.has_method("go_to"):
-		lt.go_to(POPPY_SCENE, "The hourglass turns — the poppy field…", "The Deadly Poppy Field")
+		lt.go_to(next_scene, "The hourglass turns — into the Kalidah wilds…", next_title)
 	else:
-		get_tree().change_scene_to_file(POPPY_SCENE)
+		get_tree().change_scene_to_file(next_scene)
 
 func _go_west_castle() -> void:
 	var lt := get_node_or_null("/root/LevelTransition")
@@ -1950,7 +1953,7 @@ func _update_proximity_prompt() -> void:
 		else:
 			hud.set_prompt("E  —  Enter %s" % title)
 	elif _near_west_gate:
-		hud.set_prompt("E  —  Take the Yellow Brick Road into the Deadly Poppy Field")
+		hud.set_prompt("E  —  Take the Yellow Brick Road into the Kalidah Wilds (Ch. VII)")
 	elif _near_whimsy != null and not _near_whimsy.get_meta("taken"):
 		hud.set_prompt("E  —  %s (+whimsy)" % str(_near_whimsy.get_meta("title")))
 	elif _near_locasta and not locasta_done:

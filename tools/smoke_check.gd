@@ -5,9 +5,11 @@ func _initialize() -> void:
 	for path in [
 		"res://regions/kansas/farmyard.tscn",
 		"res://regions/munchkinland/landing_square.tscn",
+		"res://regions/wilds/kalidah_wilds.tscn",
 		"res://regions/poppy/poppy_road.tscn",
 		"res://regions/winkie/west_castle.tscn",
 		"res://regions/emerald_city/wizard_tower.tscn",
+		"res://regions/south/china_country.tscn",
 		"res://regions/quadling/glinda_court.tscn",
 		"res://regions/kansas/homecoming.tscn",
 	]:
