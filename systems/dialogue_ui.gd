@@ -243,11 +243,29 @@ func _detect_kansas_mode() -> bool:
 		return bool(hud.get("kansas_mode"))
 	return false
 
+func _is_menu_or_title_blocking() -> bool:
+	var tree := get_tree()
+	if tree == null:
+		return false
+	if tree.paused:
+		return true
+	if tree.current_scene and "title_screen" in tree.current_scene.scene_file_path.to_lower():
+		return true
+	var hud := tree.get_first_node_in_group("hud")
+	if hud:
+		for prop in ["shop_menu", "grimoire_menu", "pause_menu"]:
+			var m = hud.get(prop)
+			if m is CanvasLayer and is_instance_valid(m) and (m as CanvasLayer).visible:
+				return true
+	return false
+
 func _process(delta: float) -> void:
-	# Automatically tuck dialogue behind/hidden whenever any full-screen menu pauses the game!
+	# Strictly hide dialogue whenever on Title Screen or while Pause / Settings / Shop / Grimoire is open!
 	if _box:
-		var paused := get_tree() != null and get_tree().paused
-		_box.visible = _should_show and not paused
+		var blocked := _is_menu_or_title_blocking()
+		if blocked and get_tree() != null and get_tree().current_scene and "title_screen" in get_tree().current_scene.scene_file_path.to_lower():
+			_should_show = false
+		_box.visible = _should_show and not blocked
 	if _visible_t > 0.0:
 		_visible_t = maxf(_visible_t - delta, 0.0)
 	if _box and _box.visible:
@@ -526,6 +544,10 @@ func _update_speaker_portrait(speaker: String) -> void:
 		key = "wizard"
 	elif "witch" in s or "west" in s:
 		key = "wicked_witch"
+	elif "china" in s or "princess" in s:
+		key = "china_princess"
+	elif "mouse" in s or "queen" in s:
+		key = "mouse_queen"
 	if key == "":
 		_portrait_frame.visible = false
 		return

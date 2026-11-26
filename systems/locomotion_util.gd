@@ -9,17 +9,87 @@ const STEP_COOLDOWN_MS := 110
 const DOUBLE_TAP_WINDOW_MS := 340
 
 var double_tap_sprinting: bool = false
-var _last_fwd_tap_ms: int = -9999
+var _last_dir_tap_ms: Dictionary = {
+	"move_forward": -9999,
+	"move_backward": -9999,
+	"move_left": -9999,
+	"move_right": -9999,
+}
+
+func _ready() -> void:
+	_register_gamepad_bindings()
+
+## Registers unified modern Gamepad bindings (PlayStation DualSense, Xbox Series X|S, Nintendo Switch Pro)
+## across all core movement, combat, superpower, party-swap, and menu actions!
+func _register_gamepad_bindings() -> void:
+	# Analog Left Stick -> 360° Movement
+	_add_joy_axis("move_forward", JOY_AXIS_LEFT_Y, -1.0)
+	_add_joy_axis("move_backward", JOY_AXIS_LEFT_Y, 1.0)
+	_add_joy_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
+	_add_joy_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
+	# Face Buttons (Unified SDL GameController layout: PS5 Cross/Square/Circle/Triangle · Xbox A/X/B/Y · Switch B/Y/A/X)
+	_add_joy_btn("blink", JOY_BUTTON_A)          # South: Jump / Silver Blink (Space)
+	_add_joy_btn("kick", JOY_BUTTON_X)           # West: Primary Combat Kit (F)
+	_add_joy_btn("interact", JOY_BUTTON_B)       # East: Interact / Talk (E)
+	# Extra Superpowers (Z / X / C) -> L1 / R1 cycle · Triangle/Y or R2 cast!
+	_ensure_action("ability_prev")
+	_ensure_action("ability_next")
+	_ensure_action("ability_cast")
+	_add_joy_btn("ability_prev", JOY_BUTTON_LEFT_SHOULDER)
+	_add_joy_btn("ability_next", JOY_BUTTON_RIGHT_SHOULDER)
+	_add_joy_btn("ability_cast", JOY_BUTTON_Y)
+	_add_joy_axis("ability_cast", JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	# Party Lead Swap -> D-Pad Left / Right
+	_add_joy_btn("switch_next", JOY_BUTTON_DPAD_RIGHT)
+	_ensure_action("switch_prev")
+	_add_joy_btn("switch_prev", JOY_BUTTON_DPAD_LEFT)
+	# Menus & Utility -> Start (Pause), D-Pad Up (Shop), D-Pad Down (Grimoire), Select/Back (Green Spectacles), L3 (Sprint Toggle)
+	_add_joy_btn("ui_cancel", JOY_BUTTON_START)
+	_ensure_action("sprint_toggle")
+	_add_joy_btn("sprint_toggle", JOY_BUTTON_LEFT_STICK)
+	_ensure_action("open_shop")
+	_add_joy_btn("open_shop", JOY_BUTTON_DPAD_UP)
+	_ensure_action("open_grimoire")
+	_add_joy_btn("open_grimoire", JOY_BUTTON_DPAD_DOWN)
+	_ensure_action("toggle_spectacles")
+	_add_joy_btn("toggle_spectacles", JOY_BUTTON_BACK)
+
+func _ensure_action(act: StringName) -> void:
+	if not InputMap.has_action(act):
+		InputMap.add_action(act, 0.25)
+
+func _add_joy_btn(act: StringName, btn: JoyButton) -> void:
+	if not InputMap.has_action(act):
+		return
+	for ev in InputMap.action_get_events(act):
+		if ev is InputEventJoypadButton and (ev as InputEventJoypadButton).button_index == btn:
+			return
+	var jb := InputEventJoypadButton.new()
+	jb.button_index = btn
+	InputMap.action_add_event(act, jb)
+
+func _add_joy_axis(act: StringName, axis: JoyAxis, axis_val: float) -> void:
+	if not InputMap.has_action(act):
+		return
+	for ev in InputMap.action_get_events(act):
+		if ev is InputEventJoypadMotion and (ev as InputEventJoypadMotion).axis == axis and signf((ev as InputEventJoypadMotion).axis_value) == signf(axis_val):
+			return
+	var jm := InputEventJoypadMotion.new()
+	jm.axis = axis
+	jm.axis_value = axis_val
+	InputMap.action_add_event(act, jm)
 
 func _process(_delta: float) -> void:
-	if Input.is_action_just_pressed("move_forward"):
-		var now := Time.get_ticks_msec()
-		if now - _last_fwd_tap_ms <= DOUBLE_TAP_WINDOW_MS:
-			double_tap_sprinting = true
-			var hud := get_tree().get_first_node_in_group("hud") if get_tree() else null
-			if hud and hud.has_method("show_toast"):
-				hud.call("show_toast", "✦ SPRINTING (Double-Tap ↑)", 1.2)
-		_last_fwd_tap_ms = now
+	# Omnidirectional Double-Tap Sprint: double-tap Up, Down, Left, or Right (Arrows or WASD) to sprint!
+	var now := Time.get_ticks_msec()
+	for dir_act in ["move_forward", "move_backward", "move_left", "move_right"]:
+		if Input.is_action_just_pressed(dir_act):
+			var last_ms: int = int(_last_dir_tap_ms.get(dir_act, -9999))
+			if now - last_ms <= DOUBLE_TAP_WINDOW_MS:
+				double_tap_sprinting = true
+			_last_dir_tap_ms[dir_act] = now
+	if InputMap.has_action("sprint_toggle") and Input.is_action_just_pressed("sprint_toggle"):
+		double_tap_sprinting = not double_tap_sprinting
 	if double_tap_sprinting:
 		var mv := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 		if mv.length() < 0.08:

@@ -21,7 +21,7 @@ var kit_lock: float = 0.0
 var _prev_vis_yaw: float = 0.0
 var _armament_idx: int = 0
 var _armament_cd: float = 0.0
-const SCARECROW_ARMS := ["Murder of Crows", "Straw Decoy", "Lantern Spark", "Harvest Gust"]
+const SCARECROW_ARMS := ["Straw Decoy", "Lantern Spark", "Harvest Gust", "Patchwork Tether"]
 
 @onready var visual: Node3D = $Visual
 @onready var body: Node3D = $Visual/Body
@@ -249,26 +249,32 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		elif kc == KEY_C and _armament_cd <= 0.0:
 			_use_scarecrow_armament()
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not leading:
+		return
+	if event.is_action_pressed("ability_prev"):
+		get_viewport().set_input_as_handled()
+		_armament_idx = (_armament_idx + SCARECROW_ARMS.size() - 1) % SCARECROW_ARMS.size()
+		var h1 := get_tree().get_first_node_in_group("hud")
+		if h1 and h1.has_method("set_active_armament"): h1.call("set_active_armament", SCARECROW_ARMS[_armament_idx])
+	elif event.is_action_pressed("ability_next"):
+		get_viewport().set_input_as_handled()
+		_armament_idx = (_armament_idx + 1) % SCARECROW_ARMS.size()
+		var h2 := get_tree().get_first_node_in_group("hud")
+		if h2 and h2.has_method("set_active_armament"): h2.call("set_active_armament", SCARECROW_ARMS[_armament_idx])
+	elif event.is_action_pressed("ability_cast") and _armament_cd <= 0.0:
+		get_viewport().set_input_as_handled()
+		_use_scarecrow_armament()
+
 func _use_scarecrow_armament() -> void:
 	_armament_cd = 0.85
-	if body and body.has_method("play_caw"):
-		body.call("play_caw")
+	if body and body.has_method("play_flourish"):
+		body.call("play_flourish")
 	var fwd := -visual.global_transform.basis.z
 	fwd.y = 0.0
 	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
 	match _armament_idx:
-		0: # Murder of Crows — wide raven cone that shatters vases & confuses foes!
-			if CombatFx.has_method("crow_storm"):
-				CombatFx.crow_storm(self, global_position + fwd * 2.2, 4.2)
-			CombatFx.label(self, global_position + Vector3(0, 1.4, 0), "✦ MURDER OF CROWS!", Color(0.86, 0.62, 1.0))
-			for dp in get_tree().get_nodes_in_group("destructibles"):
-				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 6.5 and dp.has_method("take_damage"):
-					dp.call("take_damage", 16, global_position, {})
-			for e in get_tree().get_nodes_in_group("enemies"):
-				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 6.5:
-					if e.has_method("apply_confuse"): e.call("apply_confuse", 3.6)
-					if e.has_method("take_damage"): e.call("take_damage", 12, global_position, {"knockback": 4.5})
-		1: # Straw Decoy — golden chaff effigy burst + 2× gilding on nearby vases!
+		0: # Straw Decoy — golden chaff effigy burst + 2× gilding on nearby vases & whimsies!
 			CombatFx.ring(self, global_position + fwd * 2.0, Color(0.98, 0.84, 0.36), 3.6, 0.55)
 			CombatFx.flash_sphere(self, global_position + fwd * 2.0 + Vector3(0, 0.8, 0), Color(0.96, 0.80, 0.32), 0.85, 0.45)
 			CombatFx.label(self, global_position + fwd * 2.0 + Vector3(0, 1.5, 0), "✦ STRAW DECOY!", Color(1.0, 0.88, 0.40))
@@ -278,22 +284,31 @@ func _use_scarecrow_armament() -> void:
 			for e in get_tree().get_nodes_in_group("enemies"):
 				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 7.0:
 					if e.has_method("apply_confuse"): e.call("apply_confuse", 4.2)
-		2: # Lantern Spark — blinding golden flash!
+		1: # Lantern Spark — blinding golden solar flash!
 			CombatFx.flash_sphere(self, global_position + Vector3(0, 1.2, 0), Color(1.0, 0.90, 0.44), 2.4, 0.32)
 			CombatFx.ring(self, global_position, Color(1.0, 0.82, 0.30), 4.8, 0.36)
 			CombatFx.label(self, global_position + Vector3(0, 1.5, 0), "✦ LANTERN SPARK!", Color(1.0, 0.92, 0.48))
 			for e in get_tree().get_nodes_in_group("enemies"):
 				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 5.5:
 					if e.has_method("apply_bind"): e.call("apply_bind", 2.5)
-		3: # Harvest Gust — autumn whirlwind knockback + shatters vases!
-			CombatFx.ring(self, global_position, Color(0.95, 0.62, 0.22), 5.2, 0.42)
+		2: # Harvest Gust — autumn whirlwind knockback + shatters vases & multi-whimsy sweep!
+			CombatFx.ring(self, global_position, Color(0.95, 0.62, 0.22), 5.6, 0.42)
 			CombatFx.label(self, global_position + Vector3(0, 1.4, 0), "✦ HARVEST GUST!", Color(1.0, 0.72, 0.28))
+			var wh_s := get_node_or_null("/root/Whimsy")
+			if wh_s and wh_s.has_method("smash_collect_near"):
+				wh_s.call("smash_collect_near", global_position, fwd, 6.2, self)
 			for dp in get_tree().get_nodes_in_group("destructibles"):
-				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 5.5 and dp.has_method("take_damage"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 5.8 and dp.has_method("take_damage"):
 					dp.call("take_damage", 15, global_position, {})
 			for e in get_tree().get_nodes_in_group("enemies"):
-				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 5.5:
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 5.8:
 					if e.has_method("take_damage"): e.call("take_damage", 9, global_position, {"knockback": 12.0})
+		3: # Patchwork Tether — woven burlap twine snaring up to 3 foes in place!
+			CombatFx.ring(self, global_position + fwd * 2.5, Color(0.84, 0.66, 0.36), 4.4, 0.40)
+			CombatFx.label(self, global_position + Vector3(0, 1.4, 0), "✦ PATCHWORK TETHER!", Color(0.95, 0.80, 0.48))
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 7.5:
+					if e.has_method("apply_bind"): e.call("apply_bind", 3.4)
 
 func _anim(delta: float) -> void:
 	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)

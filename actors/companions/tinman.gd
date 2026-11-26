@@ -22,7 +22,7 @@ var _prev_vis_yaw: float = 0.0
 var _armament_idx: int = 0
 var _armament_cd: float = 0.0
 var _steam_boost_t: float = 0.0
-const TIN_ARMS := ["Timber Shockwave", "Oil-Slick Slide", "Steam Overdrive", "Heart-Chime Ward"]
+const TIN_ARMS := ["Oil-Slick Slide", "Steam Overdrive", "Heart-Chime Ward", "Magnetic Gear-Pull"]
 
 @onready var visual: Node3D = $Visual
 @onready var body: Node3D = $Visual/Body
@@ -245,23 +245,30 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		elif kc == KEY_C and _armament_cd <= 0.0:
 			_use_tin_armament()
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not leading:
+		return
+	if event.is_action_pressed("ability_prev"):
+		get_viewport().set_input_as_handled()
+		_armament_idx = (_armament_idx + TIN_ARMS.size() - 1) % TIN_ARMS.size()
+		var h1 := get_tree().get_first_node_in_group("hud")
+		if h1 and h1.has_method("set_active_armament"): h1.call("set_active_armament", TIN_ARMS[_armament_idx])
+	elif event.is_action_pressed("ability_next"):
+		get_viewport().set_input_as_handled()
+		_armament_idx = (_armament_idx + 1) % TIN_ARMS.size()
+		var h2 := get_tree().get_first_node_in_group("hud")
+		if h2 and h2.has_method("set_active_armament"): h2.call("set_active_armament", TIN_ARMS[_armament_idx])
+	elif event.is_action_pressed("ability_cast") and _armament_cd <= 0.0:
+		get_viewport().set_input_as_handled()
+		_use_tin_armament()
+
 func _use_tin_armament() -> void:
 	_armament_cd = 0.85
 	var fwd := -visual.global_transform.basis.z
 	fwd.y = 0.0
 	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
 	match _armament_idx:
-		0: # Timber Shockwave — armor-breaking steel wave that shatters vases & sunders shackles!
-			if body and body.has_method("play_axe_swing"): body.call("play_axe_swing", 1)
-			CombatFx.ring(self, global_position + fwd * 2.5, Color(0.76, 0.90, 1.0), 4.6, 0.36)
-			CombatFx.label(self, global_position + Vector3(0, 1.5, 0), "✦ TIMBER SHOCKWAVE!", Color(0.82, 0.94, 1.0))
-			for dp in get_tree().get_nodes_in_group("destructibles"):
-				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 6.8 and dp.has_method("take_damage"):
-					dp.call("take_damage", 24, global_position, {"armor_break": true})
-			for e in get_tree().get_nodes_in_group("enemies"):
-				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position + fwd * 2.4) <= 4.5:
-					if e.has_method("take_damage"): e.call("take_damage", 20, global_position, {"armor_break": true, "knockback": 9.5})
-		1: # Oil-Slick Slide — forward skate surge + trips foes!
+		0: # Oil-Slick Slide — forward skate surge + trips foes!
 			velocity.x = fwd.x * 16.0
 			velocity.z = fwd.z * 16.0
 			CombatFx.ring(self, global_position, Color(0.95, 0.76, 0.28), 2.8, 0.35)
@@ -269,11 +276,11 @@ func _use_tin_armament() -> void:
 			for e in get_tree().get_nodes_in_group("enemies"):
 				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 3.8:
 					if e.has_method("apply_bind"): e.call("apply_bind", 2.4)
-		2: # Steam Overdrive — pressurized white steam burst + speed boost!
+		1: # Steam Overdrive — pressurized white steam burst + speed boost!
 			_steam_boost_t = 5.0
 			CombatFx.flash_sphere(self, global_position + Vector3(0, 1.2, 0), Color(0.92, 0.96, 1.0), 1.8, 0.35)
 			CombatFx.label(self, global_position + Vector3(0, 1.6, 0), "✦ STEAM OVERDRIVE!", Color(0.94, 0.98, 1.0))
-		3: # Heart-Chime Ward — ruby clockwork heart pulse (+1 HP heal & gilds nearby vases)!
+		2: # Heart-Chime Ward — ruby clockwork heart pulse (+1 HP heal & gilds nearby vases)!
 			if body and body.has_method("play_flourish"): body.call("play_flourish")
 			var sm_h := get_node_or_null("/root/SaveManager")
 			if sm_h:
@@ -284,6 +291,18 @@ func _use_tin_armament() -> void:
 					dp.call("apply_perfume_bonus")
 			CombatFx.ring(self, global_position + Vector3(0, 1.0, 0), Color(1.0, 0.24, 0.42), 3.8, 0.45)
 			CombatFx.label(self, global_position + Vector3(0, 1.6, 0), "♥ HEART-CHIME WARD!", Color(1.0, 0.38, 0.56))
+		3: # Magnetic Gear-Pull — clockwork pulse yanking armored foes & whimsies toward Tin Man!
+			CombatFx.ring(self, global_position, Color(0.76, 0.90, 1.0), 5.8, 0.42)
+			CombatFx.label(self, global_position + Vector3(0, 1.5, 0), "✦ MAGNETIC GEAR-PULL!", Color(0.82, 0.94, 1.0))
+			var wh_t := get_node_or_null("/root/Whimsy")
+			if wh_t and wh_t.has_method("smash_collect_near"):
+				wh_t.call("smash_collect_near", global_position, fwd, 6.4, self)
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 6.4 and dp.has_method("take_damage"):
+					dp.call("take_damage", 20, global_position, {"armor_break": true})
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Node3D and is_instance_valid(e) and not e.is_in_group("enemies_dead") and (e as Node3D).global_position.distance_to(global_position) <= 7.5:
+					if e.has_method("apply_bind"): e.call("apply_bind", 2.0)
 
 func _anim(delta: float) -> void:
 	var yaw_diff := angle_difference(_prev_vis_yaw, visual.rotation.y)

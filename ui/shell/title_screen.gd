@@ -45,6 +45,12 @@ var _t: float = 0.0
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	get_tree().paused = false
+	var dui := get_node_or_null("/root/DialogueUI")
+	if dui and dui.has_method("clear"):
+		dui.call("clear")
+	var p := get_node_or_null("/root/Party")
+	if p and p.has_method("exit_dialogue_shot"):
+		p.call("exit_dialogue_shot")
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_init_embers()
@@ -193,12 +199,20 @@ func _build_ui() -> void:
 	btn_stack.add_theme_constant_override("separation", 10)
 	_main_col.add_child(btn_stack)
 
+	var can_resume := sm_ng != null and bool(sm_ng.get("resume_active"))
+	var b_resume := _make_plaque_btn("▶  RESUME CURRENT GAME", true, func():
+		if sm_ng and sm_ng.has_method("resume_live_session"):
+			sm_ng.call("resume_live_session")
+	)
+	b_resume.visible = can_resume
+	btn_stack.add_child(b_resume)
+
 	var has_save := sm_ng != null and sm_ng.has_method("has_any_save") and bool(sm_ng.call("has_any_save"))
-	var b_cont := _make_plaque_btn("CONTINUE", true, _on_continue)
+	var b_cont := _make_plaque_btn("CONTINUE SAVED SLOT", (not can_resume) and has_save, _on_continue)
 	b_cont.visible = has_save
 	btn_stack.add_child(b_cont)
 
-	var b_new := _make_plaque_btn("NEW JOURNEY", not has_save, _on_new_journey)
+	var b_new := _make_plaque_btn("NEW JOURNEY", (not can_resume) and (not has_save), _on_new_journey)
 	btn_stack.add_child(b_new)
 
 	var b_chap := _make_plaque_btn("CHAPTER SELECT", false, _show_chapters)
@@ -216,7 +230,7 @@ func _build_ui() -> void:
 	var b_quit := _make_plaque_btn("QUIT", false, func(): get_tree().quit())
 	btn_stack.add_child(b_quit)
 
-	_active_btn = b_cont if has_save else b_new
+	_active_btn = b_resume if can_resume else (b_cont if has_save else b_new)
 	if DisplayServer.get_name() not in ["headless", "Dummy"]:
 		_active_btn.call_deferred("grab_focus")
 

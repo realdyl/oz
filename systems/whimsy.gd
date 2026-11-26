@@ -233,10 +233,10 @@ func perfume_near(origin: Vector3, radius: float = 7.5) -> int:
 	return count
 
 func smash_collect_near(origin: Vector3, forward: Vector3, max_dist: float, actor: Node3D) -> int:
-	var count := 0
 	var fwd := forward
 	fwd.y = 0.0
 	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
+	var hits: Array[Area3D] = []
 	for w in get_tree().get_nodes_in_group("whimsies"):
 		if not (w is Area3D) or not is_instance_valid(w):
 			continue
@@ -247,11 +247,19 @@ func smash_collect_near(origin: Vector3, forward: Vector3, max_dist: float, acto
 		delta.y = 0.0
 		var d := delta.length()
 		if d <= max_dist and (d < 2.2 or delta.normalized().dot(fwd) > 0.32):
-			_collect(area, actor)
-			count += 1
-	return count
+			hits.append(area)
+	var multi_mult := 2 if hits.size() >= 2 else 1
+	for area in hits:
+		_collect(area, actor, multi_mult)
+	if hits.size() >= 2:
+		var fx := get_node_or_null("/root/CombatFx")
+		if fx and fx.has_method("label"):
+			fx.call("label", actor, origin + Vector3(0, 1.9, 0), "✦ %d× MULTI-WHIMSY STRIKE · 2× POINTS!" % hits.size(), Color(1.0, 0.88, 0.36))
+		if _hud and _hud.has_method("show_toast"):
+			_hud.call("show_toast", "✦ MULTI-WHIMSY STRIKE (%d in 1 swing) — 2× POINTS!" % hits.size(), 2.8)
+	return hits.size()
 
-func _collect(area: Area3D, actor: Node3D) -> void:
+func _collect(area: Area3D, actor: Node3D, strike_mult: int = 1) -> void:
 	area.set_meta("taken", true)
 	var kind := str(area.get_meta("kind"))
 	var is_perfumed: bool = (area.get_meta("perfumed", false) == true)
@@ -262,24 +270,26 @@ func _collect(area: Area3D, actor: Node3D) -> void:
 			if actor is CharacterBody3D:
 				(actor as CharacterBody3D).velocity.y = 9.5
 			if _hud and _hud.has_method("set_prompt"):
-				_hud.set_prompt("Boing! +%d whimsy" % pts)
+				_hud.set_prompt("Boing! +%d whimsy" % (pts * strike_mult))
 		"giggle":
 			pts = 6
 			if _hud and _hud.has_method("set_prompt"):
-				_hud.set_prompt("*giggle* +%d whimsy" % pts)
+				_hud.set_prompt("*giggle* +%d whimsy" % (pts * strike_mult))
 			var d := get_node_or_null("/root/DialogueUI")
 			if d and d.has_method("say"):
 				d.say("Whimsy", "Hee-hee!", true, 1.2)
 		"chime":
 			pts = 7
 			if _hud and _hud.has_method("set_prompt"):
-				_hud.set_prompt("Ting-a-ling! +%d whimsy" % pts)
+				_hud.set_prompt("Ting-a-ling! +%d whimsy" % (pts * strike_mult))
 		"dance":
 			pts = 10
 			if _hud and _hud.has_method("set_prompt"):
-				_hud.set_prompt("You spin a little. +%d whimsy" % pts)
+				_hud.set_prompt("You spin a little. +%d whimsy" % (pts * strike_mult))
 		_:
 			pts = 5
+	if strike_mult > 1:
+		pts *= strike_mult
 	if is_perfumed:
 		pts *= 2
 		if _hud and _hud.has_method("set_prompt"):

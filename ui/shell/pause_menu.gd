@@ -16,13 +16,15 @@ const PlaqueShader := preload("res://ui/shaders/ui_velvet_plaque.gdshader")
 ## - Embedded Save/Load (Slots 1–3), Chapter Select (Acts I–VII), Settings, Grimoire & Boutique!
 
 const CHAPTERS := [
-	{"title": "Act I · Kansas — The Gale Farm", "scene": "res://regions/kansas/farmyard.tscn"},
-	{"title": "Act II · Munchkinland — Crash Square", "scene": "res://regions/munchkinland/landing_square.tscn"},
-	{"title": "Act III · The Deadly Poppy Field", "scene": "res://regions/poppy/poppy_road.tscn"},
-	{"title": "Act IV · Winkie Country — Iron Keep", "scene": "res://regions/winkie/west_castle.tscn"},
-	{"title": "Act V · The Emerald City — Wizard's Palace", "scene": "res://regions/emerald_city/wizard_tower.tscn"},
-	{"title": "Act VI · Quadling Country — Glinda's Court", "scene": "res://regions/quadling/glinda_court.tscn"},
-	{"title": "Act VII · Kansas — Homecoming", "scene": "res://regions/kansas/homecoming.tscn"},
+	{"title": "Act I · Kansas — The Gale Farm (Ch. I)", "scene": "res://regions/kansas/farmyard.tscn"},
+	{"title": "Act II · Munchkinland — Crash Square (Ch. II–VI)", "scene": "res://regions/munchkinland/landing_square.tscn"},
+	{"title": "Act IIIa · The Kalidah Wilds & Great Chasms (Ch. VII)", "scene": "res://regions/wilds/kalidah_wilds.tscn"},
+	{"title": "Act IIIb · The Deadly Poppy Field (Ch. VIII–IX)", "scene": "res://regions/poppy/poppy_road.tscn"},
+	{"title": "Act IV · Winkie Country — Iron Keep (Ch. XII–XIII)", "scene": "res://regions/winkie/west_castle.tscn"},
+	{"title": "Act V · The Emerald City — Wizard's Palace (Ch. X–XVII)", "scene": "res://regions/emerald_city/wizard_tower.tscn"},
+	{"title": "Act VIa · Fighting Trees & Dainty China Country (Ch. XVIII–XXI)", "scene": "res://regions/south/china_country.tscn"},
+	{"title": "Act VIb · Quadling Country — Glinda's Court (Ch. XXII–XXIII)", "scene": "res://regions/quadling/glinda_court.tscn"},
+	{"title": "Act VII · Kansas — Homecoming (Ch. XXIV)", "scene": "res://regions/kansas/homecoming.tscn"},
 ]
 
 var kansas_mode: bool = false
@@ -534,6 +536,15 @@ func _show_main_card() -> void:
 		_resume_btn.grab_focus()
 
 func _go_title_screen() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and sm.has_method("snapshot_live_resume"):
+		sm.call("snapshot_live_resume")
+	var dui := get_node_or_null("/root/DialogueUI")
+	if dui and dui.has_method("clear"):
+		dui.call("clear")
+	var p := get_node_or_null("/root/Party")
+	if p and p.has_method("exit_dialogue_shot"):
+		p.call("exit_dialogue_shot")
 	close()
 	get_tree().change_scene_to_file("res://ui/shell/title_screen.tscn")
 

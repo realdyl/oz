@@ -39,9 +39,41 @@ var equipped_outfits: Dictionary = {
 }
 var current_scene_path: String = "res://regions/kansas/farmyard.tscn"
 var current_chapter: String = "Act 0 · Kansas — The Gale Farm"
+var resume_active: bool = false
+var resume_scene_path: String = ""
+var resume_chapter: String = ""
+var resume_player_pos: Vector3 = Vector3.ZERO
+var resume_pending_apply: bool = false
 var difficulty: String = "standard" # "story" | "standard" | "nightmare"
 var screen_shake_enabled: bool = true
 var high_contrast_hud: bool = false
+
+func snapshot_live_resume() -> void:
+	var tree := get_tree()
+	if tree == null or tree.current_scene == null:
+		return
+	var sc_path := tree.current_scene.scene_file_path
+	if sc_path == "" or "title_screen" in sc_path:
+		return
+	resume_scene_path = sc_path
+	resume_chapter = current_chapter
+	resume_active = true
+	var p := tree.get_first_node_in_group("player") as Node3D
+	if p and is_instance_valid(p):
+		resume_player_pos = p.global_position
+	else:
+		resume_player_pos = Vector3.ZERO
+
+func resume_live_session() -> void:
+	if not resume_active or resume_scene_path == "":
+		return
+	resume_pending_apply = (resume_player_pos != Vector3.ZERO)
+	get_tree().paused = false
+	var lt := get_node_or_null("/root/LevelTransition")
+	if lt and lt.has_method("go_to"):
+		lt.go_to(resume_scene_path, "Resuming %s…" % resume_chapter, resume_chapter)
+	else:
+		get_tree().change_scene_to_file(resume_scene_path)
 
 func damage_multiplier() -> float:
 	match difficulty:

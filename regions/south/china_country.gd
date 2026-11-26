@@ -18,12 +18,12 @@ const WorldKit := preload("res://systems/world_kit.gd")
 const OzEncounters := preload("res://systems/oz_encounters.gd")
 const GLINDA_SCENE := "res://regions/quadling/glinda_court.tscn"
 
-const PLAY_BOUND_X := 44.0
-const PLAY_BOUND_Z := 78.0
-const SPAWN_POS := Vector3(0.0, 0.08, -66.0)
+const PLAY_BOUND_X := 54.0
+const PLAY_BOUND_Z := 108.0
+const SPAWN_POS := Vector3(0.0, 0.08, -94.0)
 const PRINCESS_POS := Vector3(-4.2, 0.14, 0.0)
-const SPIDER_POS := Vector3(0.0, 0.08, 42.0)
-const GLINDA_GATE := Vector3(0.0, 0.08, 66.0)
+const SPIDER_POS := Vector3(0.0, 0.08, 62.0)
+const GLINDA_GATE := Vector3(0.0, 0.08, 94.0)
 
 enum Beat {
 	FIGHTING_TREES,
@@ -43,7 +43,7 @@ var compass: Label
 var beat: Beat = Beat.FIGHTING_TREES
 
 var _trees_down: int = 0
-var _trees_need: int = 2
+var _trees_need: int = 4
 var _princess_idx: int = 0
 var _princess_done: bool = false
 var _spider_down: bool = false
@@ -212,16 +212,16 @@ func _go_glinda() -> void:
 		get_tree().change_scene_to_file(GLINDA_SCENE)
 
 func _build_world() -> void:
-	# Zone 1: Orchard Meadow (-76..-22) | Zone 2: Glazed Porcelain Floor (-22..+22) | Zone 3: Spider Forest (+22..+76)
-	_add_box(Vector3(0, -0.2, -49.0), Vector3(92, 0.4, 54.0), Color(0.24, 0.42, 0.22), "OrchardGround")
+	# Zone 1: Orchard Meadow (-112..-22) | Zone 2: Glazed Porcelain Floor (-22..+22) | Zone 3: Spider Forest (+22..+112)
+	_add_box(Vector3(0, -0.2, -67.0), Vector3(114, 0.4, 90.0), Color(0.24, 0.42, 0.22), "OrchardGround")
 	_add_porcelain_plaza()
-	_add_box(Vector3(0, -0.2, 49.0), Vector3(92, 0.4, 54.0), Color(0.14, 0.22, 0.16), "ForestGround")
+	_add_box(Vector3(0, -0.2, 67.0), Vector3(114, 0.4, 90.0), Color(0.14, 0.22, 0.16), "ForestGround")
 
 	# Continuous Yellow Brick Road north & south, plus Cobalt-Gold Porcelain Promenade in China Country
-	_add_box(Vector3(0, 0.04, -46.0), Vector3(5.6, 0.08, 46.0), Color(0.94, 0.80, 0.24), "YellowBrickRoad")
-	_add_box(Vector3(0, 0.04, 46.0), Vector3(5.6, 0.08, 46.0), Color(0.94, 0.80, 0.24), "YellowBrickRoadS")
-	WorldKit.dress_ybr_spine(self, -68.0, -24.0, 2.9)
-	WorldKit.dress_ybr_spine(self, 24.0, 66.0, 2.9)
+	_add_box(Vector3(0, 0.04, -60.0), Vector3(5.6, 0.08, 76.0), Color(0.94, 0.80, 0.24), "YellowBrickRoad")
+	_add_box(Vector3(0, 0.04, 60.0), Vector3(5.6, 0.08, 76.0), Color(0.94, 0.80, 0.24), "YellowBrickRoadS")
+	WorldKit.dress_ybr_spine(self, -96.0, -24.0, 2.9)
+	WorldKit.dress_ybr_spine(self, 24.0, 96.0, 2.9)
 
 	# South Quadling Portal Arch -> Glinda's Court!
 	_add_box(GLINDA_GATE + Vector3(0, 0.05, 0), Vector3(7.4, 0.08, 7.4), Color(0.76, 0.20, 0.34), "GlindaGatePad")
@@ -379,7 +379,12 @@ func _spawn_party() -> void:
 		tinman.oil_and_free()
 
 func _spawn_orchard_trees() -> void:
-	for tp in [Vector3(-3.5, 0.0, -40.0), Vector3(3.5, 0.0, -34.0)]:
+	for tp in [
+		Vector3(-3.8, 0.0, -72.0),
+		Vector3(3.8, 0.0, -60.0),
+		Vector3(-4.0, 0.0, -46.0),
+		Vector3(4.0, 0.0, -34.0),
+	]:
 		var tr := StaticBody3D.new()
 		tr.set_script(TREE_SCRIPT)
 		add_child(tr)
@@ -419,9 +424,9 @@ func _spawn_spider_boss() -> void:
 func _make_spider_script() -> GDScript:
 	var s := GDScript.new()
 	s.source_code = """extends CharacterBody3D
-var health: int = 85
+var health: int = 160
 var alive: bool = true
-var bite_cd: float = 1.6
+var bite_cd: float = 1.45
 
 func take_damage(amount: int, src: Vector3, _tags: Dictionary = {}) -> void:
 	if not alive:
@@ -542,12 +547,19 @@ func _add_china_whimsy() -> void:
 	var w := get_node_or_null("/root/Whimsy")
 	if w and w.has_method("setup") and hud:
 		w.call("setup", self, hud, [
-			{"pos": Vector3(-8.0, 0, -52.0), "kind": "bounce", "name": "Orchard mushroom"},
-			{"pos": Vector3(7.5, 0.12, -6.0), "kind": "chime", "name": "Delft teacup chime"},
+			{"pos": Vector3(-8.0, 0, -80.0), "kind": "bounce", "name": "Orchard mushroom"},
+			{"pos": Vector3(-5.8, 0, -77.5), "kind": "giggle", "name": "Apple blossom"},
+			{"pos": Vector3(9.5, 0, -52.0), "kind": "chime", "name": "Oak-bough chime"},
+			{"pos": Vector3(7.5, 0.12, -10.0), "kind": "chime", "name": "Delft teacup chime"},
+			{"pos": Vector3(9.8, 0.12, -7.8), "kind": "dance", "name": "Cobalt ballerina"},
 			{"pos": Vector3(-7.5, 0.12, 8.0), "kind": "dance", "name": "Porcelain shepherdess"},
-			{"pos": Vector3(8.5, 0, 52.0), "kind": "giggle", "name": "Forest lily"},
+			{"pos": Vector3(-11.0, 0.12, 12.0), "kind": "giggle", "name": "Glazed milkmaid"},
+			{"pos": Vector3(8.5, 0, 42.0), "kind": "bounce", "name": "Web-glade cap"},
+			{"pos": Vector3(-8.5, 0, 74.0), "kind": "giggle", "name": "Forest lily"},
+			{"pos": Vector3(-6.2, 0, 76.5), "kind": "chime", "name": "Quadling ruby chime"},
 		], "glinda")
-	for up in [Vector3(-5.8, 0.12, -14.0), Vector3(5.8, 0.12, -14.0), Vector3(-5.8, 0.12, 14.0), Vector3(5.8, 0.12, 14.0)]:
+	OzEncounters.spawn_velvet_sanctum(self, Vector3(20.0, 0.12, 0.0), "sanctum_china", "charm_porcelain_grace", "Velvet Sanctum of Porcelain")
+	for up in [Vector3(-5.8, 0.12, -14.0), Vector3(5.8, 0.12, -14.0), Vector3(-5.8, 0.12, 14.0), Vector3(5.8, 0.12, 14.0), Vector3(-6.5, 0.0, 48.0), Vector3(6.5, 0.0, 78.0)]:
 		WorldKit.spawn_destructible_urn(self, up)
 
 func _ensure_compass() -> void:

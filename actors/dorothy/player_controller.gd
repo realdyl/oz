@@ -70,6 +70,16 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	Party.register(Party.ID_DOROTHY, self, true)
 	set_leading(true)
+	var sm_r := get_node_or_null("/root/SaveManager")
+	if sm_r:
+		if sm_r.has_signal("state_changed") and not sm_r.state_changed.is_connected(_sync_whip_visibility):
+			sm_r.state_changed.connect(_sync_whip_visibility)
+		if bool(sm_r.get("resume_pending_apply")):
+			sm_r.set("resume_pending_apply", false)
+			var rp: Vector3 = sm_r.get("resume_player_pos")
+			if rp != Vector3.ZERO:
+				call_deferred("set_global_position", rp)
+	call_deferred("_sync_whip_visibility")
 
 func set_leading(on: bool) -> void:
 	leading = on
@@ -431,6 +441,23 @@ func _kick() -> void:
 			if sm.has_method("add_desire") and (_combo_step == 3 or _rapture_t > 0.0):
 				sm.add_desire(5 if _combo_step == 3 else 3, "")
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not leading or parked:
+		return
+	if event.is_action_pressed("ability_prev") or event.is_action_pressed("ability_next") or event.is_action_pressed("ability_cast"):
+		get_viewport().set_input_as_handled()
+		if not shoes_claimed:
+			var hud_n := get_tree().get_first_node_in_group("hud")
+			if hud_n and hud_n.has_method("show_toast"):
+				hud_n.call("show_toast", "Claim the Silver Shoes to unlock Dorothy's Armaments!", 2.4)
+			return
+		if event.is_action_pressed("ability_prev"):
+			_cycle_armament(-1)
+		elif event.is_action_pressed("ability_next"):
+			_cycle_armament(1)
+		elif event.is_action_pressed("ability_cast"):
+			_use_armament()
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not leading or parked:
 		return
@@ -456,8 +483,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			CombatFx.ring(self, global_position, Color(0.88, 0.94, 1.0), 1.05, 0.34)
 			get_viewport().set_input_as_handled()
 
+func _sync_whip_visibility() -> void:
+	if body == null or not body.has_method("set_whip_equipped"):
+		return
+	var sm := get_node_or_null("/root/SaveManager")
+	var owns_whip: bool = sm != null and sm.has_method("has_whip_mastery") and bool(sm.call("has_whip_mastery"))
+	body.call("set_whip_equipped", shoes_claimed and owns_whip and _armament_idx == 0)
+
 func _cycle_armament(dir: int) -> void:
 	_armament_idx = (_armament_idx + dir + ARMAMENT_NAMES.size()) % ARMAMENT_NAMES.size()
+	_sync_whip_visibility()
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("set_active_armament"):
 		hud.call("set_active_armament", ARMAMENT_NAMES[_armament_idx])
@@ -466,6 +501,7 @@ func select_armament_by_name(target_name: String) -> void:
 	for i in range(ARMAMENT_NAMES.size()):
 		if target_name.to_lower() in str(ARMAMENT_NAMES[i]).to_lower():
 			_armament_idx = i
+			_sync_whip_visibility()
 			var hud := get_tree().get_first_node_in_group("hud")
 			if hud and hud.has_method("set_active_armament"):
 				hud.call("set_active_armament", ARMAMENT_NAMES[_armament_idx])
@@ -474,11 +510,18 @@ func select_armament_by_name(target_name: String) -> void:
 func _use_armament() -> void:
 	if _armament_cd > 0.0:
 		return
-	_armament_cd = 0.85
-	if body and body.has_method("play_cast"):
-		body.call("play_cast", _armament_idx)
 	var sm := get_node_or_null("/root/SaveManager")
 	var whip_plus: bool = sm != null and sm.has_method("has_whip_mastery") and bool(sm.call("has_whip_mastery"))
+	if _armament_idx == 0 and not whip_plus:
+		var hud_w := get_tree().get_first_node_in_group("hud")
+		if hud_w and hud_w.has_method("show_toast"):
+			hud_w.call("show_toast", "Purchase Lace Whip Mastery in The Tailor of Vices [B] to wield the Whip!", 2.8)
+		_sync_whip_visibility()
+		return
+	_armament_cd = 0.85
+	_sync_whip_visibility()
+	if body and body.has_method("play_cast"):
+		body.call("play_cast", _armament_idx)
 	var enemies := _find_live_enemies(13.5 if (_armament_idx == 0 and whip_plus) else 11.0)
 	match _armament_idx:
 		0: # The Lace Whip — ALWAYS cracks visibly forward; shatters vases & smashes whimsies along the arc; binds & yanks foes!

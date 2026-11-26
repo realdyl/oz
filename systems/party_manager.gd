@@ -275,8 +275,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			arm.rotation_degrees = Vector3(pitch_deg, 0.0, 0.0)
 			_clamp_camera_above_ground(_camera_rig, arm)
 
-	# Lead swap — handle Tab in unhandled_input so UI focus cannot eat it silently
+	# Lead swap — handle Tab & Gamepad D-Pad Left/Right in unhandled_input so UI focus cannot eat it silently
 	if _swap_cd > 0.0:
+		return
+	if event.is_action_pressed("switch_next"):
+		cycle_leader()
+		get_viewport().set_input_as_handled()
+		return
+	if InputMap.has_action("switch_prev") and event.is_action_pressed("switch_prev"):
+		cycle_leader(-1)
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var pk: int = event.physical_keycode
@@ -483,14 +491,14 @@ func _display_name(id: StringName) -> String:
 			return "Toto"
 	return String(id)
 
-func cycle_leader() -> void:
+func cycle_leader(step: int = 1) -> void:
 	# Order matches vault join order once present: Dorothy → Scarecrow → Lion → Tin Man → Toto
 	var order: Array[StringName] = [ID_DOROTHY, ID_SCARECROW, ID_LION, ID_TINMAN, ID_TOTO]
 	var start := order.find(_leader_id)
 	if start < 0:
 		start = 0
 	for i in range(1, order.size() + 1):
-		var cand: StringName = order[(start + i) % order.size()]
+		var cand: StringName = order[posmod(start + i * step, order.size())]
 		if _can_lead(cand):
 			set_leader(cand)
 			return

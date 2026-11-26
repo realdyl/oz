@@ -16,13 +16,13 @@ const WorldKit := preload("res://systems/world_kit.gd")
 const OzEncounters := preload("res://systems/oz_encounters.gd")
 const POPPY_SCENE := "res://regions/poppy/poppy_road.tscn"
 
-const PLAY_BOUND_X := 42.0
-const PLAY_BOUND_Z := 72.0
-const SPAWN_POS := Vector3(0.0, 0.08, -58.0)
-const CHASM1_BRINK := Vector3(0.0, 0.08, -25.0)
-const CHASM1_LAND := Vector3(0.0, 0.08, -11.5)
-const PINE_POS := Vector3(2.8, 0.0, 23.8)
-const POPPY_GATE := Vector3(0.0, 0.08, 58.0)
+const PLAY_BOUND_X := 52.0
+const PLAY_BOUND_Z := 104.0
+const SPAWN_POS := Vector3(0.0, 0.08, -88.0)
+const CHASM1_BRINK := Vector3(0.0, 0.08, -32.0)
+const CHASM1_LAND := Vector3(0.0, 0.08, -17.5)
+const PINE_POS := Vector3(2.8, 0.0, 34.0)
+const POPPY_GATE := Vector3(0.0, 0.08, 90.0)
 
 enum Beat {
 	CHASM_COUNSEL,
@@ -269,26 +269,26 @@ func _go_poppy_road() -> void:
 		get_tree().change_scene_to_file(POPPY_SCENE)
 
 func _build_world() -> void:
-	# Three massive canyon plateaus separated by Two Great Chasms!
-	# North Plateau: z = -76..-24 | Central Kalidah Ridge: z = -13..+24.5 | South Plateau: z = +37.5..+76
-	_add_box(Vector3(0, -0.25, -50.0), Vector3(92, 0.5, 52.0), Color(0.16, 0.28, 0.18), "NorthPlateau")
-	_add_box(Vector3(0, -0.25, 5.75), Vector3(92, 0.5, 37.5), Color(0.18, 0.26, 0.16), "KalidahRidge")
-	_add_box(Vector3(0, -0.25, 56.75), Vector3(92, 0.5, 38.5), Color(0.24, 0.42, 0.24), "SouthPlateau")
+	# Three expansive canyon plateaus separated by Two Great Chasms (~15-min deep exploration!)
+	# North Plateau: z = -108..-31 | Central Kalidah Ridge: z = -19..+35 | South Plateau: z = +48..+108
+	_add_box(Vector3(0, -0.25, -69.5), Vector3(112, 0.5, 77.0), Color(0.16, 0.28, 0.18), "NorthPlateau")
+	_add_box(Vector3(0, -0.25, 8.0), Vector3(112, 0.5, 54.0), Color(0.18, 0.26, 0.16), "KalidahRidge")
+	_add_box(Vector3(0, -0.25, 78.0), Vector3(112, 0.5, 60.0), Color(0.24, 0.42, 0.24), "SouthPlateau")
 
 	# Deep misty abyssal gorge floors beneath Chasm 1 & Chasm 2 (visual depth!)
-	_add_box(Vector3(0, -9.5, -18.5), Vector3(96, 0.5, 13.0), Color(0.05, 0.06, 0.09), "AbyssFloor1")
-	_add_box(Vector3(0, -9.5, 31.0), Vector3(96, 0.5, 14.0), Color(0.05, 0.06, 0.09), "AbyssFloor2")
+	_add_box(Vector3(0, -9.5, -25.0), Vector3(116, 0.5, 14.0), Color(0.05, 0.06, 0.09), "AbyssFloor1")
+	_add_box(Vector3(0, -9.5, 41.5), Vector3(116, 0.5, 15.0), Color(0.05, 0.06, 0.09), "AbyssFloor2")
 
 	# Walkable Gnarled Ancient Root-Arch on far west of Chasm 1 so companions never get stranded!
-	_add_box(Vector3(-8.5, -0.08, -18.5), Vector3(2.8, 0.28, 12.6), Color(0.26, 0.18, 0.12), "AncientRootBridge")
+	_add_box(Vector3(-9.5, -0.08, -25.0), Vector3(2.8, 0.28, 13.6), Color(0.26, 0.18, 0.12), "AncientRootBridge")
 
 	# Yellow Brick Road broken cleanly at both chasms
-	_add_box(Vector3(0, 0.04, -44.5), Vector3(5.6, 0.08, 39.0), Color(0.94, 0.80, 0.24), "YellowBrickRoad")
-	_add_box(Vector3(0, 0.04, 5.5), Vector3(5.6, 0.08, 36.0), Color(0.92, 0.78, 0.22), "YellowBrickRoadMid")
-	_add_box(Vector3(0, 0.04, 52.0), Vector3(5.6, 0.08, 28.0), Color(0.95, 0.82, 0.25), "YellowBrickRoadSouth")
-	WorldKit.dress_ybr_spine(self, -62.0, -26.0, 2.9)
-	WorldKit.dress_ybr_spine(self, -11.0, 22.0, 2.9)
-	WorldKit.dress_ybr_spine(self, 39.0, 62.0, 2.9)
+	_add_box(Vector3(0, 0.04, -63.0), Vector3(5.6, 0.08, 62.0), Color(0.94, 0.80, 0.24), "YellowBrickRoad")
+	_add_box(Vector3(0, 0.04, 8.0), Vector3(5.6, 0.08, 52.0), Color(0.92, 0.78, 0.22), "YellowBrickRoadMid")
+	_add_box(Vector3(0, 0.04, 72.0), Vector3(5.6, 0.08, 48.0), Color(0.95, 0.82, 0.25), "YellowBrickRoadSouth")
+	WorldKit.dress_ybr_spine(self, -90.0, -33.0, 2.9)
+	WorldKit.dress_ybr_spine(self, -17.0, 33.0, 2.9)
+	WorldKit.dress_ybr_spine(self, 49.0, 92.0, 2.9)
 
 	WorldKit.make_world_badge(self, CHASM1_BRINK + Vector3(0, 2.2, 0), "✦  FIRST GREAT CHASM  ·  COUNSEL / LEAP [E]", Color(0.98, 0.84, 0.42), 9.0)
 
@@ -310,7 +310,7 @@ func _build_world() -> void:
 
 	_pine_pivot = Node3D.new()
 	_pine_pivot.name = "GreatChasmPinePivot"
-	_pine_pivot.position = Vector3(0.0, 0.15, 24.0)
+	_pine_pivot.position = Vector3(0.0, 0.15, 34.2)
 	add_child(_pine_pivot)
 	var trunk_mi := MeshInstance3D.new()
 	var t_cyl := CylinderMesh.new()
@@ -344,7 +344,7 @@ func _build_world() -> void:
 	_pine_bridge_body.name = "FallenPineBridge"
 	_pine_bridge_body.collision_layer = 1
 	add_child(_pine_bridge_body)
-	_pine_bridge_body.global_position = Vector3(0.0, -0.02, 31.0)
+	_pine_bridge_body.global_position = Vector3(0.0, -0.02, 41.5)
 	var bcol := CollisionShape3D.new()
 	var bsh := BoxShape3D.new()
 	bsh.size = Vector3(3.8, 0.35, 15.5)
@@ -427,7 +427,12 @@ func _spawn_party() -> void:
 		tinman.oil_and_free()
 
 func _spawn_kalidahs() -> void:
-	var spots := [Vector3(-4.2, 0.08, 4.0), Vector3(4.2, 0.08, 10.5)]
+	var spots := [
+		Vector3(-5.0, 0.08, -2.0),
+		Vector3(5.0, 0.08, 8.0),
+		Vector3(-6.2, 0.08, 18.0),
+		Vector3(6.2, 0.08, 25.0),
+	]
 	for i in range(spots.size()):
 		var kb := CharacterBody3D.new()
 		kb.name = "KalidahBeast_%d" % (i + 1)
@@ -435,6 +440,7 @@ func _spawn_kalidahs() -> void:
 		kb.collision_mask = 1
 		kb.add_to_group("enemies")
 		kb.set_script(_make_kalidah_script())
+		kb.set("health", 85)
 		add_child(kb)
 		kb.global_position = spots[i]
 		_build_kalidah_visual(kb)
@@ -578,13 +584,20 @@ func _add_wilds_whimsy() -> void:
 	var w := get_node_or_null("/root/Whimsy")
 	if w and w.has_method("setup") and hud:
 		w.call("setup", self, hud, [
-			{"pos": Vector3(-7.5, 0, -44), "kind": "bounce", "name": "Mossy cap"},
-			{"pos": Vector3(7.5, 0, -34), "kind": "chime", "name": "Canyon chime"},
-			{"pos": Vector3(-8.5, 0, 6), "kind": "giggle", "name": "Briar bloom"},
-			{"pos": Vector3(7.5, 0, 48), "kind": "dance", "name": "Meadow waltz"},
+			{"pos": Vector3(-7.5, 0, -72), "kind": "bounce", "name": "Mossy cap"},
+			{"pos": Vector3(-5.2, 0, -69.5), "kind": "giggle", "name": "Twin fern bloom"},
+			{"pos": Vector3(8.0, 0, -52), "kind": "chime", "name": "Canyon chime"},
+			{"pos": Vector3(-11.0, 0, -38), "kind": "dance", "name": "Brink waltz"},
+			{"pos": Vector3(-8.5, 0, -6), "kind": "giggle", "name": "Briar bloom"},
+			{"pos": Vector3(8.5, 0, 12), "kind": "bounce", "name": "Ridge toadstool"},
+			{"pos": Vector3(11.0, 0, 14.5), "kind": "chime", "name": "Echo pine chime"},
+			{"pos": Vector3(-9.5, 0, 56), "kind": "dance", "name": "Gorge ribbon"},
+			{"pos": Vector3(7.5, 0, 68), "kind": "bounce", "name": "Poppy-edge cap"},
+			{"pos": Vector3(10.0, 0, 70.5), "kind": "giggle", "name": "Scarlet bud"},
 		], "winkie")
-	OzEncounters.spawn_velvet_sanctum(self, Vector3(-16.0, 0.0, 48.0), "sanctum_kalidah", "charm_silver_spur", "Velvet Sanctum of the Gorge")
-	for up in [Vector3(-5.0, 0, -38), Vector3(5.2, 0, 16), Vector3(-5.2, 0, 46)]:
+	OzEncounters.spawn_velvet_sanctum(self, Vector3(-18.0, 0.0, 66.0), "sanctum_kalidah", "charm_silver_spur", "Velvet Sanctum of the Gorge")
+	OzEncounters.spawn_monument(self, Vector3(16.0, 0.0, -56.0), "chime", "Chasm Watch-Bell", "", Color(0.95, 0.78, 0.36), 20)
+	for up in [Vector3(-5.0, 0, -60), Vector3(5.2, 0, -42), Vector3(-5.2, 0, 2), Vector3(5.2, 0, 22), Vector3(-5.2, 0, 58), Vector3(5.2, 0, 76)]:
 		WorldKit.spawn_destructible_urn(self, up)
 
 func _ensure_compass() -> void:

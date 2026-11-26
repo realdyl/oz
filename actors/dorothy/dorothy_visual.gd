@@ -408,38 +408,48 @@ func _apply_pose(delta: float = 0.016) -> void:
 	if _atomizer_prop and (_cast_t <= 0.0 or _cast_kind != 2):
 		_atomizer_prop.visible = false
 
-	# Hyper-Natural Walk vs Athletic Sprint Biomechanics (Double-Tap ↑ / Space / Shift!)
-	var squash_drop := _land_squash * 0.11
-	var run_blend := clampf((_speed_amt - 1.05) / 0.65, 0.0, 1.0)
-	_hip.rotation.y = sin(_phase) * (0.085 + 0.055 * run_blend) * _speed_amt
-	_torso.rotation.x = lerpf(-0.12 * clampf(_speed_amt - 0.25, 0.0, 1.0), -0.28, run_blend) + _land_squash * 0.18
-	_torso.rotation.y = -sin(_phase) * (0.095 + 0.065 * run_blend) * _speed_amt
-	_torso.rotation.z = sin(_phase) * 0.052 * _speed_amt - _turn_rate * 0.028
+	# 2026 Humanized Naturalistic Walk vs Athletic Sprint Biomechanics (Double-Tap Any Direction / L3 / Shift)
+	var squash_drop := _land_squash * 0.10
+	var run_blend := smoothstep(0.95, 1.55, _speed_amt)
+	var spd_norm := clampf(_speed_amt, 0.0, 1.25)
+	# Subtle pelvis & ribcage counter-rotation (natural athletic spine torsion)
+	_hip.rotation.y = sin(_phase) * lerpf(0.075, 0.115, run_blend) * spd_norm
+	_hip.rotation.z = sin(_phase) * lerpf(0.025, 0.042, run_blend) * spd_norm
+	_torso.rotation.x = lerpf(-0.06 * clampf(_speed_amt - 0.15, 0.0, 1.0), -0.18, run_blend) + _land_squash * 0.15
+	_torso.rotation.y = -sin(_phase) * lerpf(0.085, 0.13, run_blend) * spd_norm
+	_torso.rotation.z = -sin(_phase) * 0.032 * spd_norm - _turn_rate * 0.026
 
-	var stride_amp := lerpf(0.62, 0.88, run_blend)
-	var swing := sin(_phase) * stride_amp * minf(_speed_amt, 1.35)
-	var swing_a := sin(_phase + PI) * lerpf(0.54, 0.84, run_blend) * minf(_speed_amt, 1.35)
-	# High-knee drive forward + deep sprinter heel-recovery kick-back on trailing leg!
-	_leg_l.rotation.x = swing - _land_squash * 0.35
-	_leg_r.rotation.x = -swing - _land_squash * 0.35
-	var calf_fold_mul := lerpf(0.82, 1.28, run_blend)
-	_set_calf(_leg_l, maxf(-swing, 0.0) * calf_fold_mul + (0.06 + 0.16 * run_blend) * _speed_amt + _land_squash * 0.65)
-	_set_calf(_leg_r, maxf(swing, 0.0) * calf_fold_mul + (0.06 + 0.16 * run_blend) * _speed_amt + _land_squash * 0.65)
+	# Asymmetric natural human gait: driven knee lift + fluid trailing-leg heel recovery (zero stiff pendulum!)
+	var stride_amp := lerpf(0.54, 0.74, run_blend)
+	var ph_l := sin(_phase)
+	var ph_r := -ph_l
+	var drive_l := ph_l * stride_amp * spd_norm
+	var drive_r := ph_r * stride_amp * spd_norm
+	_leg_l.rotation.x = (drive_l * (1.12 if drive_l < 0.0 else 0.88)) - _land_squash * 0.32
+	_leg_r.rotation.x = (drive_r * (1.12 if drive_r < 0.0 else 0.88)) - _land_squash * 0.32
+	# Cushioned footstrike flexion + natural mid-swing knee tuck
+	var knee_l := maxf(ph_l, 0.0) * lerpf(0.58, 0.96, run_blend) * spd_norm + maxf(-ph_l, 0.0) * 0.16 * run_blend + 0.05 * spd_norm
+	var knee_r := maxf(ph_r, 0.0) * lerpf(0.58, 0.96, run_blend) * spd_norm + maxf(-ph_r, 0.0) * 0.16 * run_blend + 0.05 * spd_norm
+	_set_calf(_leg_l, knee_l + _land_squash * 0.58)
+	_set_calf(_leg_r, knee_r + _land_squash * 0.58)
 
-	# Pumping bent sprinter elbows when running vs graceful relaxed swing when walking!
-	_arm_l.rotation.x = -swing_a * lerpf(0.88, 1.15, run_blend) - 0.18 * run_blend
-	_arm_r.rotation.x = swing_a * lerpf(0.88, 1.15, run_blend) - 0.18 * run_blend
-	_arm_l.rotation.z = -0.10 - 0.08 * _speed_amt
-	_arm_r.rotation.z = 0.10 + 0.08 * _speed_amt
-	var elbow_base := lerpf(-0.24, -0.92, run_blend)
-	_set_forearm(_arm_l, elbow_base - maxf(-swing_a, 0.0) * 0.48)
-	_set_forearm(_arm_r, elbow_base - maxf(swing_a, 0.0) * 0.48)
+	# Naturalistic athletic arm drive: relaxed swing when walking, compact ~75° elbow pump when sprinting!
+	var arm_amp := lerpf(0.42, 0.64, run_blend) * spd_norm
+	_arm_l.rotation.x = ph_r * arm_amp - 0.10 * run_blend
+	_arm_r.rotation.x = ph_l * arm_amp - 0.10 * run_blend
+	_arm_l.rotation.z = -0.09 - 0.05 * spd_norm
+	_arm_r.rotation.z = 0.09 + 0.05 * spd_norm
+	var elbow_base := lerpf(-0.20, -0.68, run_blend)
+	_set_forearm(_arm_l, elbow_base - maxf(ph_l, 0.0) * 0.28 * spd_norm)
+	_set_forearm(_arm_r, elbow_base - maxf(ph_r, 0.0) * 0.28 * spd_norm)
 	if run_blend > 0.15:
-		_skirt_flare = maxf(_skirt_flare, 0.24 * run_blend)
+		_skirt_flare = maxf(_skirt_flare, 0.20 * run_blend)
 
+	# Double-frequency center-of-mass float: dips cleanly on footstrike, floats effortlessly at mid-stride!
 	var breath := sin(_idle_t * 2.5) * 0.012
 	var still_blend := 1.0 - clampf(_speed_amt, 0.0, 1.0)
-	_hip.position.y = 0.80 - squash_drop + absf(sin(_phase)) * 0.036 * _speed_amt + breath * still_blend
+	var gait_bob := -cos(_phase * 2.0) * lerpf(0.024, 0.044, run_blend) * spd_norm
+	_hip.position.y = 0.80 - squash_drop + gait_bob + 0.016 * run_blend + breath * still_blend
 	if _head:
 		_head.rotation.y = sin(_idle_t * 0.95) * 0.10 * still_blend - _turn_rate * 0.03
 		_head.rotation.x = sin(_idle_t * 1.45) * 0.035 * still_blend + 0.08 * clampf(_speed_amt - 0.3, 0.0, 1.0)
@@ -1104,9 +1114,16 @@ func _make_arm(
 		_mi(_atomizer_prop, _sphere(0.026, 12, 10), bulb_m, Vector3(0.068, 0.032, 0.0), Vector3(1.25, 0.9, 0.9)) # squeeze bulb
 	return root
 
+func set_whip_equipped(show_whip: bool) -> void:
+	var w := find_child("WhipInHand", true, false) as Node3D
+	if w:
+		w.visible = show_whip
+
 func _build_sculpted_whip(hand: Node3D, trim_metal: Material) -> void:
 	var whip := Node3D.new()
 	whip.name = "WhipInHand"
+	# Hidden by default — ONLY shown when purchased in Boutique AND actively equipped via Z/X!
+	whip.visible = false
 	# Gripped naturally downward from palm so the braided lash drapes smoothly along her right side!
 	whip.position = Vector3(0.008, -0.036, -0.012)
 	whip.rotation_degrees = Vector3(6.0, 0.0, -8.0)

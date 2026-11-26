@@ -261,6 +261,23 @@ func _roar() -> void:
 		if collider.has_method("take_damage"):
 			collider.take_damage(roar_damage, global_position, {"knockback": 11.0})
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not leading or parked:
+		return
+	if event.is_action_pressed("ability_prev"):
+		get_viewport().set_input_as_handled()
+		_armament_idx = (_armament_idx + LION_ARMS.size() - 1) % LION_ARMS.size()
+		var h1 := get_tree().get_first_node_in_group("hud")
+		if h1 and h1.has_method("set_active_armament"): h1.call("set_active_armament", LION_ARMS[_armament_idx])
+	elif event.is_action_pressed("ability_next"):
+		get_viewport().set_input_as_handled()
+		_armament_idx = (_armament_idx + 1) % LION_ARMS.size()
+		var h2 := get_tree().get_first_node_in_group("hud")
+		if h2 and h2.has_method("set_active_armament"): h2.call("set_active_armament", LION_ARMS[_armament_idx])
+	elif event.is_action_pressed("ability_cast") and _armament_cd <= 0.0:
+		get_viewport().set_input_as_handled()
+		_use_lion_armament()
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not leading or parked or not (event is InputEventKey and event.pressed and not event.echo):
 		return
