@@ -209,8 +209,16 @@ func _advance_aunt() -> void:
 	elif hud:
 		hud.set_prompt(line)
 	if p_cam and p_cam.has_method("enter_dialogue_shot") and aunt_em and player:
-		var dor_sp := line.begins_with("Dorothy:") or line.begins_with("Toto:")
-		p_cam.call("enter_dialogue_shot", player if dor_sp else aunt_em, aunt_em if dor_sp else player, dor_sp)
+		if line.begins_with("Toto:"):
+			var toto_n: Node3D = null
+			if p_cam.has_method("get_member") and "ID_TOTO" in p_cam:
+				toto_n = p_cam.call("get_member", p_cam.get("ID_TOTO")) as Node3D
+			if toto_n == null:
+				toto_n = find_child("TotoCompanion", true, false) as Node3D
+			p_cam.call("enter_dialogue_shot", toto_n if toto_n else player, aunt_em, true)
+		else:
+			var dor_sp := line.begins_with("Dorothy:")
+			p_cam.call("enter_dialogue_shot", player if dor_sp else aunt_em, aunt_em if dor_sp else player, dor_sp)
 	if _aunt_line >= AUNT_LINES.size():
 		if p_cam and p_cam.has_method("exit_dialogue_shot"):
 			p_cam.call("exit_dialogue_shot")
@@ -316,18 +324,20 @@ func _spawn_cast() -> void:
 	if player.has_method("set_kansas_locked"):
 		player.set_kansas_locked(true)
 	# PlayHUD automatically spawns the real sculpted, playable 3D Cairn Terrier Toto!
-	# Aunt Em (exact same articulated character visual as L1 Kansas!)
+	# Aunt Em (exact same articulated character visual as L1 Kansas — facing outward +Z toward Dorothy & yard!)
 	aunt_em = CharacterBody3D.new()
 	aunt_em.name = "AuntEm"
 	add_child(aunt_em)
 	aunt_em.global_position = AUNT_POS
+	aunt_em.rotation_degrees.y = 180.0
 	WorldKit.build_kansas_farmer(aunt_em, true)
 	WorldKit.make_world_badge(aunt_em, Vector3(0, 2.25, 0), "✦  Aunt Em", Color(0.94, 0.94, 0.98), 12.0)
-	# Uncle Henry on the yard beside Aunt Em!
+	# Uncle Henry on the yard beside Aunt Em, also facing outward toward the yard!
 	uncle_henry = CharacterBody3D.new()
 	uncle_henry.name = "UncleHenry"
 	add_child(uncle_henry)
 	uncle_henry.global_position = UNCLE_POS
+	uncle_henry.rotation_degrees.y = 180.0
 	WorldKit.build_kansas_farmer(uncle_henry, false)
 	WorldKit.make_world_badge(uncle_henry, Vector3(0, 2.25, 0), "✦  Uncle Henry", Color(0.94, 0.94, 0.98), 12.0)
 	# Soft whimsy — grey prairie only

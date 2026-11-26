@@ -218,6 +218,18 @@ const BESTIARY_CATALOG := [
 		"threat": "Illusionist · Volumetric Hologram & Brass Gears",
 		"lore": "A terrified Omaha balloonist hiding behind crimson velvet drapes and a geared voice-horn, trading false miracles for absolute devotion."
 	},
+	{
+		"name": "Kalidah Shadow-Beast",
+		"region": "The Kalidah Wilds",
+		"threat": "Predator · Bear Torso, Sabre-Tiger Fangs & Razor Claws",
+		"lore": "Monstrous chimeras stalking the misty chasms between Munchkinland and the Poppy Field (Baum Ch. VII). Use Lion's Courage Leap and Tin Man's pine bridge to outmaneuver the pack."
+	},
+	{
+		"name": "Giant Forest Spider",
+		"region": "Dark Forest South of China Country",
+		"threat": "Boss · Elephant-Sized Chitin Arachnid",
+		"lore": "Terror of the southern forest beasts (Baum Ch. XXI). Slaying this eight-legged nightmare crowns the Cowardly Lion King of the Forest Beasts."
+	},
 ]
 
 const COMPANION_CATALOG := [

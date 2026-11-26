@@ -457,6 +457,10 @@ func _refresh_tab() -> void:
 						b_port = "res://assets/art/portraits/living_tree.png"
 					elif "monkey" in fn:
 						b_port = "res://assets/art/portraits/winged_monkey.png"
+					elif "kalidah" in fn:
+						b_port = "res://assets/art/portraits/kalidah_beast.png"
+					elif "spider" in fn:
+						b_port = "res://assets/art/portraits/giant_spider.png"
 					_entries.append({
 						"icon": "scarecrow_obsidian",
 						"portrait": b_port,

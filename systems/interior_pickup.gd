@@ -27,7 +27,7 @@ func _process(delta: float) -> void:
 		_spin_node.position.y = 0.95 + sin(_t * 2.8) * 0.12
 
 func _on_body_entered(body: Node3D) -> void:
-	if _collected:
+	if _collected or not is_visible_in_tree():
 		return
 	if not (body.is_in_group("player") or body.is_in_group("companions")):
 		return

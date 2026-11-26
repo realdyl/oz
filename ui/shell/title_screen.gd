@@ -19,11 +19,11 @@ const GrimoireMenuScript := preload("res://ui/grimoire_menu.gd")
 const CHAPTERS := [
 	{"title": "Act I · Kansas — The Gale Farm (Ch. I)", "scene": "res://regions/kansas/farmyard.tscn", "art": "res://assets/art/scenes/title_kansas_cyclone.jpg"},
 	{"title": "Act II · Munchkinland — Crash Square (Ch. II–VI)", "scene": "res://regions/munchkinland/landing_square.tscn", "art": "res://assets/art/scenes/munchkinland.jpg"},
-	{"title": "Act IIIa · The Kalidah Wilds & Great Chasms (Ch. VII)", "scene": "res://regions/wilds/kalidah_wilds.tscn", "art": "res://assets/art/scenes/poppy_field.jpg"},
+	{"title": "Act IIIa · The Kalidah Wilds & Great Chasms (Ch. VII)", "scene": "res://regions/wilds/kalidah_wilds.tscn", "art": "res://assets/art/scenes/kalidah_wilds.jpg"},
 	{"title": "Act IIIb · The Deadly Poppy Field (Ch. VIII–IX)", "scene": "res://regions/poppy/poppy_road.tscn", "art": "res://assets/art/scenes/poppy_field.jpg"},
 	{"title": "Act IV · Winkie Country — Iron Keep (Ch. XII–XIII)", "scene": "res://regions/winkie/west_castle.tscn", "art": "res://assets/art/scenes/winkie_castle.jpg"},
 	{"title": "Act V · The Emerald City — Wizard's Palace (Ch. X–XVII)", "scene": "res://regions/emerald_city/wizard_tower.tscn", "art": "res://assets/art/scenes/emerald_city.jpg"},
-	{"title": "Act VIa · Fighting Trees & Dainty China Country (Ch. XVIII–XXI)", "scene": "res://regions/south/china_country.tscn", "art": "res://assets/art/scenes/glinda_court.jpg"},
+	{"title": "Act VIa · Fighting Trees & Dainty China Country (Ch. XVIII–XXI)", "scene": "res://regions/south/china_country.tscn", "art": "res://assets/art/scenes/china_country.jpg"},
 	{"title": "Act VIb · Quadling Country — Glinda's Court (Ch. XXII–XXIII)", "scene": "res://regions/quadling/glinda_court.tscn", "art": "res://assets/art/scenes/glinda_court.jpg"},
 	{"title": "Act VII · Kansas — Homecoming (Ch. XXIV)", "scene": "res://regions/kansas/homecoming.tscn", "art": "res://assets/art/scenes/kansas_homecoming.jpg"},
 ]

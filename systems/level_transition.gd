@@ -281,12 +281,16 @@ func _pick_backdrop_for(title: String) -> Texture2D:
 		res_path = "res://assets/art/scenes/kansas_calm.jpg"
 	elif "munchkin" in lt or "landing" in lt:
 		res_path = "res://assets/art/scenes/munchkinland.jpg"
+	elif "kalidah" in lt or "wilds" in lt or "chasm" in lt:
+		res_path = "res://assets/art/scenes/kalidah_wilds.jpg"
 	elif "poppy" in lt or "meadow" in lt:
 		res_path = "res://assets/art/scenes/poppy_field.jpg"
 	elif "winkie" in lt or "west" in lt or "castle" in lt or "witch" in lt:
 		res_path = "res://assets/art/scenes/winkie_castle.jpg"
 	elif "emerald" in lt or "wizard" in lt or "palace" in lt:
 		res_path = "res://assets/art/scenes/emerald_city.jpg"
+	elif "china" in lt or "porcelain" in lt or "spider" in lt or "fighting" in lt:
+		res_path = "res://assets/art/scenes/china_country.jpg"
 	elif "glinda" in lt or "quadling" in lt or "south" in lt or "court" in lt:
 		res_path = "res://assets/art/scenes/glinda_court.jpg"
 	if ResourceLoader.exists(res_path):
