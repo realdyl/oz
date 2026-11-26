@@ -188,6 +188,8 @@ func _spawn(at: Vector3, kind: String, title: String) -> void:
 	area.set_meta("kind", kind)
 	area.set_meta("title", title)
 	area.set_meta("taken", false)
+	area.set_meta("perfumed", false)
+	area.add_to_group("whimsies")
 	var col := CollisionShape3D.new()
 	var sph := SphereShape3D.new()
 	sph.radius = 1.6
@@ -214,9 +216,45 @@ func _spawn(at: Vector3, kind: String, title: String) -> void:
 			_near = null
 	)
 
+func perfume_near(origin: Vector3, radius: float = 7.5) -> int:
+	var count := 0
+	for w in get_tree().get_nodes_in_group("whimsies"):
+		if not (w is Area3D) or not is_instance_valid(w):
+			continue
+		var area := w as Area3D
+		if area.get_meta("taken") == true or area.get_meta("perfumed") == true:
+			continue
+		if area.global_position.distance_to(origin) <= radius:
+			area.set_meta("perfumed", true)
+			count += 1
+			var fx := get_node_or_null("/root/CombatFx")
+			if fx and fx.has_method("label"):
+				fx.call("label", area, area.global_position + Vector3(0, 1.35, 0), "♥ PERFUMED · 2× WHIMSY!", Color(0.98, 0.52, 0.94))
+	return count
+
+func smash_collect_near(origin: Vector3, forward: Vector3, max_dist: float, actor: Node3D) -> int:
+	var count := 0
+	var fwd := forward
+	fwd.y = 0.0
+	fwd = fwd.normalized() if fwd.length() > 0.05 else Vector3.FORWARD
+	for w in get_tree().get_nodes_in_group("whimsies"):
+		if not (w is Area3D) or not is_instance_valid(w):
+			continue
+		var area := w as Area3D
+		if area.get_meta("taken") == true:
+			continue
+		var delta := area.global_position - origin
+		delta.y = 0.0
+		var d := delta.length()
+		if d <= max_dist and (d < 2.2 or delta.normalized().dot(fwd) > 0.32):
+			_collect(area, actor)
+			count += 1
+	return count
+
 func _collect(area: Area3D, actor: Node3D) -> void:
 	area.set_meta("taken", true)
 	var kind := str(area.get_meta("kind"))
+	var is_perfumed: bool = (area.get_meta("perfumed", false) == true)
 	var pts := 5
 	match kind:
 		"bounce":
@@ -242,6 +280,10 @@ func _collect(area: Area3D, actor: Node3D) -> void:
 				_hud.set_prompt("You spin a little. +%d whimsy" % pts)
 		_:
 			pts = 5
+	if is_perfumed:
+		pts *= 2
+		if _hud and _hud.has_method("set_prompt"):
+			_hud.set_prompt("♥ Perfumed Bonus! +%d whimsy (2×!)" % pts)
 	var old_tier := _blessing_tier()
 	points += pts
 	_refresh()

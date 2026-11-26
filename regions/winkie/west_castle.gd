@@ -10,6 +10,7 @@ const OzEncounters := preload("res://systems/oz_encounters.gd")
 const PLAYER_SCENE := preload("res://actors/dorothy/player.tscn")
 const HUD_SCENE := preload("res://ui/play_hud.tscn")
 const PUPPET_SCENE := preload("res://actors/enemies/puppet_munchkin.tscn")
+const WINGED_MONKEY_SCRIPT := preload("res://actors/enemies/winged_monkey.gd")
 const SCARECROW_SCENE := preload("res://actors/companions/scarecrow.tscn")
 const LION_SCENE := preload("res://actors/companions/lion.tscn")
 const TINMAN_SCENE := preload("res://actors/companions/tinman.tscn")
@@ -39,7 +40,7 @@ var cistern: Node3D
 var bucket: Area3D
 var beat: Beat = Beat.ENTER
 var court_kills: int = 0
-var court_need: int = 4
+var court_need: int = 5
 var west_hp: int = 120
 var west_grounded: bool = false
 var has_water: bool = false
@@ -290,19 +291,33 @@ func _spawn_party() -> void:
 				party.call("set_present", id, true)
 
 func _spawn_court_guards() -> void:
-	var bearings := [0.4, 1.6, 3.0, 4.6]
-	for i in bearings.size():
-		var pup: CharacterBody3D = PUPPET_SCENE.instantiate()
-		add_child(pup)
-		pup.tint = Color(0.35, 0.32, 0.38)
-		pup.set_meta("wave", "winkie")
-		if pup.has_method("set_play_bounds"):
-			pup.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
-		var rally := Vector3(0, 0.08, 8)
-		if pup.has_method("march_from_afar"):
-			pup.march_from_afar(rally, bearings[i], 16.0 + float(i), 4.0 + float(i) * 0.8, 1.9)
-		else:
-			pup.global_position = rally + Vector3(sin(bearings[i]) * 14.0, 0.08, cos(bearings[i]) * 14.0)
+	# 1) 2 Armored Lollipop Guild Marshals guarding the Wicked Witch's Iron Courtyard!
+	var marshal_spots := [Vector3(-6.5, 0.08, 4.0), Vector3(6.5, 0.08, 4.0)]
+	for mi_idx in marshal_spots.size():
+		var mar: CharacterBody3D = PUPPET_SCENE.instantiate()
+		mar.name = "LollipopGuildMarshal_%d" % (mi_idx + 1)
+		mar.tint = Color(0.62, 0.12, 0.16) # crimson & gunmetal Marshal armor
+		mar.armored = true
+		mar.health = 60
+		mar.scale = Vector3(1.28, 1.28, 1.28)
+		mar.set_meta("wave", "winkie")
+		add_child(mar)
+		if mar.has_method("set_play_bounds"):
+			mar.set_play_bounds(PLAY_BOUND_X, PLAY_BOUND_Z)
+		mar.global_position = marshal_spots[mi_idx]
+
+	# 2) 3 Swooping Winged Monkeys (Sky-Stalkers) patrolling overhead!
+	var monkey_anchors := [Vector3(-8.0, 0.0, -4.0), Vector3(8.0, 0.0, -4.0), Vector3(0.0, 0.0, 2.0)]
+	for mk_i in monkey_anchors.size():
+		var wm := CharacterBody3D.new()
+		wm.name = "WingedMonkey_%d" % (mk_i + 1)
+		wm.set_script(WINGED_MONKEY_SCRIPT)
+		wm.set_meta("wave", "winkie")
+		add_child(wm)
+		if wm.has_method("set_play_bounds"):
+			wm.call("set_play_bounds", PLAY_BOUND_X, PLAY_BOUND_Z)
+		if wm.has_method("setup_patrol"):
+			wm.call("setup_patrol", monkey_anchors[mk_i], 8.5 + float(mk_i) * 1.5, 2.5 + float(mk_i) * 0.45)
 
 func _spawn_west() -> void:
 	west = CharacterBody3D.new()

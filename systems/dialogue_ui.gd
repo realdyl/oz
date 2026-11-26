@@ -33,6 +33,8 @@ const OrnateFrame := preload("res://ui/widgets/ornate_frame.gd")
 const CircleShader := preload("res://ui/shaders/circle_medallion.gdshader")
 var _ornate_frame: Control = null
 var _portrait_mat: ShaderMaterial = null
+var _bar_top: ColorRect = null
+var _bar_bot: ColorRect = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -52,6 +54,23 @@ func _build() -> void:
 	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_box)
+
+	# Sleek Spyro-style Cinema Letterbox Bars (tween in during interactive NPC dialogue scenes!)
+	_bar_top = ColorRect.new()
+	_bar_top.color = Color(0.03, 0.015, 0.045, 0.94)
+	_bar_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_bar_top.offset_top = 0.0
+	_bar_top.offset_bottom = 0.0
+	_bar_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_bar_top)
+
+	_bar_bot = ColorRect.new()
+	_bar_bot.color = Color(0.03, 0.015, 0.045, 0.94)
+	_bar_bot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_bar_bot.offset_top = 0.0
+	_bar_bot.offset_bottom = 0.0
+	_bar_bot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_bar_bot)
 
 	# Center container at bottom so card has refined modern margins on 720p and 1080p+
 	var anchor := Control.new()
@@ -305,9 +324,18 @@ func say_line(full_line: String, also_tts: bool = true) -> void:
 			body = body.trim_prefix("\"").trim_suffix("\"")
 	say(speaker, body, also_tts)
 
+func set_cinema_letterbox(on: bool) -> void:
+	if _bar_top == null or _bar_bot == null or _is_headless():
+		return
+	var target_h := 44.0 if on else 0.0
+	var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_bar_top, "offset_bottom", target_h, 0.28)
+	tw.tween_property(_bar_bot, "offset_top", -target_h, 0.28)
+
 func clear() -> void:
 	_hide()
 	stop_tts()
+	set_cinema_letterbox(false)
 
 func _hide() -> void:
 	_should_show = false

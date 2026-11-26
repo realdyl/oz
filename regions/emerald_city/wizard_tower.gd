@@ -461,10 +461,27 @@ func _spawn_party() -> void:
 		tinman.oil_and_free()
 
 func _advance_audience() -> void:
+	var p_cam := get_node_or_null("/root/Party")
 	if _audience_line >= _audience_lines.size():
+		if p_cam and p_cam.has_method("exit_dialogue_shot"):
+			p_cam.call("exit_dialogue_shot")
 		_set_beat(Beat.CURTAIN)
 		return
-	_say(_audience_lines[_audience_line])
+	var line := _audience_lines[_audience_line]
+	_say(line)
+	if p_cam and p_cam.has_method("enter_dialogue_shot") and wizard_head and player:
+		var sp_n: Node3D = wizard_head
+		var ls_n: Node3D = player
+		var rev := false
+		if line.begins_with("Dorothy:"):
+			sp_n = player; ls_n = wizard_head; rev = true
+		elif line.begins_with("Scarecrow:") and scarecrow:
+			sp_n = scarecrow; ls_n = wizard_head; rev = true
+		elif line.begins_with("Tin Man:") and tinman:
+			sp_n = tinman; ls_n = wizard_head; rev = true
+		elif line.begins_with("Lion:") and lion:
+			sp_n = lion; ls_n = wizard_head; rev = true
+		p_cam.call("enter_dialogue_shot", sp_n, ls_n, rev)
 	_audience_line += 1
 	if _audience_line >= _audience_lines.size():
 		hud.set_objective("The companions see through him — walk to the red curtain and pull it (E).")

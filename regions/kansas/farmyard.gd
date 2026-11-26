@@ -922,13 +922,20 @@ func _talk_aunt() -> void:
 			if shutter:
 				_retarget_marker(shutter.global_position + Vector3(0, 1.4, 0))
 		return
+	var line_a: String = AUNT_LINES[_aunt_line]
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say_line"):
-		d.say_line(AUNT_LINES[_aunt_line], true)
+		d.say_line(line_a, true)
 	else:
-		_dlg("Aunt Em", AUNT_LINES[_aunt_line])
+		_dlg("Aunt Em", line_a)
+	var p_cam := get_node_or_null("/root/Party")
+	if p_cam and p_cam.has_method("enter_dialogue_shot") and player and aunt_em:
+		var dor_sp := line_a.begins_with("Dorothy:")
+		p_cam.call("enter_dialogue_shot", player if dor_sp else aunt_em, aunt_em if dor_sp else player, dor_sp)
 	_aunt_line += 1
 	if _aunt_line >= AUNT_LINES.size():
+		if p_cam and p_cam.has_method("exit_dialogue_shot"):
+			p_cam.call("exit_dialogue_shot")
 		aunt_talked = true
 		phase = Phase.NEED_SHUTTER
 		hud.set_objective("Latch the glowing shutter on the farmhouse wall (E) — or check the storm cellar.")

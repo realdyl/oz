@@ -1018,6 +1018,10 @@ func _advance_locasta_talk() -> void:
 	var dui := get_node_or_null("/root/DialogueUI")
 	if dui and dui.has_method("say_line"):
 		dui.say_line(line, true)
+	var p_cam := get_node_or_null("/root/Party")
+	if p_cam and p_cam.has_method("enter_dialogue_shot") and player and locasta:
+		var dorothy_speaking := line.begins_with("Dorothy:")
+		p_cam.call("enter_dialogue_shot", player if dorothy_speaking else locasta, locasta if dorothy_speaking else player, dorothy_speaking)
 	_locasta_line += 1
 	if _locasta_line >= _locasta_lines.size():
 		hud.set_objective("Press E again to say farewell — then claim the Silver Shoes.")
@@ -1029,6 +1033,9 @@ func _finish_locasta_greet() -> void:
 		return
 	locasta_done = true
 	_near_locasta = false
+	var p_cam_exit := get_node_or_null("/root/Party")
+	if p_cam_exit and p_cam_exit.has_method("exit_dialogue_shot"):
+		p_cam_exit.call("exit_dialogue_shot")
 	var farewell := "Locasta: \"The road is yours. I keep the North.\""
 	hud.set_prompt(farewell)
 	var dui := get_node_or_null("/root/DialogueUI")

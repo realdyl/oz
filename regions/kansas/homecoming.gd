@@ -190,7 +190,10 @@ func _set_phase(next: Phase) -> void:
 				d.say("Narrator", "Oz is far. The companions remain in their gifts. Dorothy has the prairie — and Toto — and the road she walked.", true, 5.0)
 
 func _advance_aunt() -> void:
+	var p_cam := get_node_or_null("/root/Party")
 	if _aunt_line >= AUNT_LINES.size():
+		if p_cam and p_cam.has_method("exit_dialogue_shot"):
+			p_cam.call("exit_dialogue_shot")
 		_set_phase(Phase.WALK_HOME)
 		return
 	var line: String = AUNT_LINES[_aunt_line]
@@ -200,7 +203,12 @@ func _advance_aunt() -> void:
 		d.say_line(line, true)
 	elif hud:
 		hud.set_prompt(line)
+	if p_cam and p_cam.has_method("enter_dialogue_shot") and aunt_em and player:
+		var dor_sp := line.begins_with("Dorothy:") or line.begins_with("Toto:")
+		p_cam.call("enter_dialogue_shot", player if dor_sp else aunt_em, aunt_em if dor_sp else player, dor_sp)
 	if _aunt_line >= AUNT_LINES.size():
+		if p_cam and p_cam.has_method("exit_dialogue_shot"):
+			p_cam.call("exit_dialogue_shot")
 		_set_phase(Phase.WALK_HOME)
 
 func _finish(msg: String) -> void:

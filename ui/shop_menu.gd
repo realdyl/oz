@@ -544,7 +544,27 @@ func _rebuild_preview_actor(tint: Color, item_id: String = "") -> void:
 			actor.set("cowering", false)
 		var sm_p := get_node_or_null("/root/SaveManager")
 		var d_eq := str(sm_p.equipped_outfits.get("dorothy", "dorothy_gingham")) if sm_p else "dorothy_gingham"
-		actor.set("outfit_id", d_eq if _active_char == "charms" else resolved_id)
+		var fw_eq := str(sm_p.equipped_footwear) if sm_p else "dorothy_heels"
+		var ho_eq := str(sm_p.equipped_hosiery) if sm_p else "dorothy_fishnets"
+		if preview_char == "dorothy":
+			if resolved_id in ["dorothy_heels", "dorothy_slippers"]:
+				actor.set("outfit_id", d_eq)
+				actor.set("footwear_id", resolved_id)
+				actor.set("hosiery_id", ho_eq)
+			elif resolved_id in ["dorothy_fishnets", "dorothy_thong_lingerie"]:
+				actor.set("outfit_id", d_eq)
+				actor.set("footwear_id", fw_eq)
+				actor.set("hosiery_id", resolved_id)
+			elif resolved_id == "dorothy_whip_plus":
+				actor.set("outfit_id", d_eq)
+				actor.set("footwear_id", fw_eq)
+				actor.set("hosiery_id", ho_eq)
+			else:
+				actor.set("outfit_id", d_eq if _active_char == "charms" else resolved_id)
+				actor.set("footwear_id", fw_eq)
+				actor.set("hosiery_id", ho_eq)
+		else:
+			actor.set("outfit_id", d_eq if _active_char == "charms" else resolved_id)
 	_turntable.add_child(actor)
 	_preview_actor = actor
 	if _active_char == "charms":
@@ -565,6 +585,8 @@ func _rebuild_preview_actor(tint: Color, item_id: String = "") -> void:
 		halo.material_override = hm
 		halo.position = Vector3(0, 0.14, 0)
 		actor.add_child(halo)
+		return
+	if preview_char == "dorothy":
 		return
 	if _preview_actor.has_method("set_outfit"):
 		_preview_actor.call("set_outfit", resolved_id)
@@ -604,7 +626,8 @@ func _update_detail_panel(it: Dictionary) -> void:
 	if _pip_power_lbl:
 		_pip_power_lbl.text = " +%d%%" % ((pow_pips - 4) * 5) if pow_pips > 4 else " BASE"
 
-	if iid == equipped_id:
+	var is_eq_detail: bool = sm != null and sm.has_method("is_item_equipped") and bool(sm.call("is_item_equipped", _active_char, iid))
+	if is_eq_detail or iid == equipped_id:
 		_detail_cost.text = "✦ CURRENTLY EQUIPPED"
 		_buy_btn.text = "✓ EQUIPPED"
 		_buy_btn.disabled = true
@@ -654,7 +677,7 @@ func _refresh() -> void:
 
 	for it in items:
 		var iid: String = str(it["id"])
-		var is_eq: bool = (iid == equipped_id)
+		var is_eq: bool = (sm != null and sm.has_method("is_item_equipped") and bool(sm.call("is_item_equipped", _active_char, iid))) or (iid == equipped_id)
 		var is_sel: bool = (iid == _selected_item_id)
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(182, 134)

@@ -26,7 +26,9 @@ var completed_quests: Array[String] = []
 var velvet_road_unlocked: bool = false
 var velvet_road_active: bool = false
 var emerald_spectacles_on: bool = false
-var owned_items: Array[String] = ["dorothy_gingham", "scarecrow_classic", "tinman_classic", "lion_classic", "toto_classic"]
+var owned_items: Array[String] = ["dorothy_gingham", "dorothy_heels", "dorothy_fishnets", "scarecrow_classic", "tinman_classic", "lion_classic", "toto_classic"]
+var equipped_footwear: String = "dorothy_heels"
+var equipped_hosiery: String = "dorothy_fishnets"
 var equipped_outfits: Dictionary = {
 	"dorothy": "dorothy_gingham",
 	"scarecrow": "scarecrow_classic",
@@ -55,7 +57,11 @@ const SHOP_CATALOG := {
 		{"id": "dorothy_gingham", "name": "Prairie Gingham", "cost": 0, "perk": "Classic blue-and-white gingham.", "tint": Color(0.24, 0.42, 0.86)},
 		{"id": "dorothy_velvet", "name": "Velvet Corset Couture", "cost": 25, "perk": "+25% Allure gain · Crimson-obsidian silk gown.", "tint": Color(0.68, 0.08, 0.24)},
 		{"id": "dorothy_sovereign", "name": "Silver-Lace Sovereign", "cost": 45, "perk": "+40% Allure & faster Blink · Silver-violet couture.", "tint": Color(0.66, 0.54, 0.88)},
-		{"id": "dorothy_whip_plus", "name": "Lace Whip Mastery (Weapon)", "cost": 30, "perk": "Upgrades Lace Whip pull & +8 bonus lash damage.", "tint": Color(0.95, 0.18, 0.42)},
+		{"id": "dorothy_heels", "slot": "footwear", "name": "Silver Stiletto Heels", "cost": 0, "perk": "Footwear · Sculpted high-arch silver stilettos with ruby sole & +10% Kick.", "tint": Color(0.90, 0.94, 1.0)},
+		{"id": "dorothy_slippers", "slot": "footwear", "name": "Silver Enchanted Slippers", "cost": 15, "perk": "Footwear · Baum-canon low-arched pointed Silver Slippers with filigree clasp.", "tint": Color(0.84, 0.92, 0.98)},
+		{"id": "dorothy_fishnets", "slot": "hosiery", "name": "Velvet Lace Fishnets", "cost": 0, "perk": "Hosiery · Diamond-lattice black silk fishnet stockings & lace garters.", "tint": Color(0.18, 0.12, 0.20)},
+		{"id": "dorothy_thong_lingerie", "slot": "hosiery", "name": "Crimson Thong & Fishnets", "cost": 25, "perk": "Hosiery · +20% Allure · High-waisted crimson-silk thong, gold garters & fishnets.", "tint": Color(0.82, 0.10, 0.28)},
+		{"id": "dorothy_whip_plus", "slot": "weapon", "name": "Lace Whip Mastery (Weapon)", "cost": 30, "perk": "Upgrades Lace Whip pull & +8 bonus lash damage.", "tint": Color(0.95, 0.18, 0.42)},
 	],
 	"scarecrow": [
 		{"id": "scarecrow_classic", "name": "Cornfield Straw", "cost": 0, "perk": "Classic patched burlap tunic.", "tint": Color(0.72, 0.56, 0.34)},
@@ -324,11 +330,24 @@ func unlock_velvet_road() -> void:
 
 func get_allure_multiplier() -> float:
 	var eq_d := str(equipped_outfits.get("dorothy", "dorothy_gingham"))
+	var mult := 1.0
 	if eq_d == "dorothy_sovereign":
-		return 1.40
-	if eq_d == "dorothy_velvet":
-		return 1.25
-	return 1.0
+		mult = 1.40
+	elif eq_d == "dorothy_velvet":
+		mult = 1.25
+	if equipped_hosiery == "dorothy_thong_lingerie":
+		mult += 0.20
+	return mult
+
+func is_item_equipped(char_id: String, item_id: String) -> bool:
+	if char_id == "dorothy":
+		if item_id in ["dorothy_heels", "dorothy_slippers"]:
+			return equipped_footwear == item_id
+		if item_id in ["dorothy_fishnets", "dorothy_thong_lingerie"]:
+			return equipped_hosiery == item_id
+		if item_id == "dorothy_whip_plus":
+			return item_id in owned_items
+	return str(equipped_outfits.get(char_id, "")) == item_id
 
 func has_whip_mastery() -> bool:
 	return ("dorothy_whip_plus" in owned_items) or (str(equipped_outfits.get("dorothy", "")) == "dorothy_whip_plus")
@@ -499,10 +518,19 @@ func buy_and_equip(char_id: String, item_id: String) -> bool:
 			return false
 		desire_fragments -= cost
 		owned_items.append(item_id)
-	equipped_outfits[char_id] = item_id
+	var slot_kind := str(item.get("slot", ""))
+	if char_id == "dorothy" and slot_kind == "footwear":
+		equipped_footwear = item_id
+	elif char_id == "dorothy" and slot_kind == "hosiery":
+		equipped_hosiery = item_id
+	elif char_id == "dorothy" and slot_kind == "weapon":
+		pass # weapon mastery persists alongside current dress!
+	else:
+		equipped_outfits[char_id] = item_id
 	_sync_max_hp_from_charm()
 	if char_id != "charms":
-		apply_outfit_to_world(char_id, item.get("tint", Color.WHITE), item_id)
+		var dress_id := str(equipped_outfits.get(char_id, item_id))
+		apply_outfit_to_world(char_id, item.get("tint", Color.WHITE), dress_id)
 	state_changed.emit()
 	return true
 

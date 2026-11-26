@@ -606,34 +606,147 @@ func whip_lash(host: Node3D, from: Vector3, to: Vector3) -> void:
 	var root := _host_root(host)
 	if root == null:
 		return
-	var diff := to - from
-	var dist := maxf(diff.length(), 0.4)
-	var beam := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.045
-	cyl.bottom_radius = 0.065
-	cyl.height = dist
-	beam.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.74, 0.10, 0.24, 0.94) # braided burgundy-crimson silk (arm_01_crimson_whip.jpg)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.emission_enabled = true
-	mat.emission = Color(0.96, 0.16, 0.34)
-	mat.emission_energy_multiplier = 2.6
-	beam.material_override = mat
-	root.add_child(beam)
-	var mid := (from + to) * 0.5 + Vector3(0, 0.85, 0)
-	beam.global_position = mid
-	if diff.length() > 0.05:
-		beam.look_at(to + Vector3(0, 0.85, 0), Vector3.UP)
-		beam.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	var start_p := from
+	var end_p := to
+	var diff := end_p - start_p
+	var dist := maxf(diff.length(), 0.5)
+	var dir := diff.normalized()
+	var right_v := dir.cross(Vector3.UP)
+	if right_v.length() < 0.05:
+		right_v = Vector3.RIGHT
+	else:
+		right_v = right_v.normalized()
+	var up_v := right_v.cross(dir).normalized()
+
+	# 2026 Multi-Segment Travelling S-Wave Braided Crimson & Gold Whip Lash!
+	var seg_count := 12
+	var seg_len := (dist / float(seg_count)) * 1.18
+	var lash_mat := StandardMaterial3D.new()
+	lash_mat.albedo_color = Color(0.84, 0.08, 0.24, 0.96)
+	lash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	lash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	lash_mat.emission_enabled = true
+	lash_mat.emission = Color(1.0, 0.16, 0.36)
+	lash_mat.emission_energy_multiplier = 2.8
+
+	var gold_mat := StandardMaterial3D.new()
+	gold_mat.albedo_color = Color(1.0, 0.84, 0.38, 0.92)
+	gold_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gold_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gold_mat.emission_enabled = true
+	gold_mat.emission = Color(1.0, 0.82, 0.34)
+	gold_mat.emission_energy_multiplier = 2.4
+
+	var holder := Node3D.new()
+	holder.name = "WhipLashWave"
+	root.add_child(holder)
+
+	var segs: Array[MeshInstance3D] = []
+	for i in range(seg_count):
+		var t0 := float(i) / float(seg_count)
+		var t1 := float(i + 1) / float(seg_count)
+		var tm := (t0 + t1) * 0.5
+		var amp := sin(tm * PI) * minf(0.55, dist * 0.11)
+		var p0 := start_p.lerp(end_p, t0) + right_v * (sin(t0 * PI * 2.2) * amp) + up_v * (sin(t0 * PI * 1.4) * amp * 0.45)
+		var p1 := start_p.lerp(end_p, t1) + right_v * (sin(t1 * PI * 2.2) * amp) + up_v * (sin(t1 * PI * 1.4) * amp * 0.45)
+		var mi := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = lerpf(0.042, 0.009, t1)
+		cyl.bottom_radius = lerpf(0.048, 0.012, t0)
+		cyl.height = maxf(p0.distance_to(p1), seg_len * 0.6)
+		cyl.radial_segments = 8
+		mi.mesh = cyl
+		mi.material_override = gold_mat if (i == seg_count - 1) else lash_mat
+		holder.add_child(mi)
+		mi.global_position = (p0 + p1) * 0.5
+		if p0.distance_to(p1) > 0.01:
+			mi.look_at(p1, Vector3.UP)
+			mi.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+		segs.append(mi)
+
+	# Animate wave snapping taut then dissolving with supersonic tip crack!
 	var tw := host.get_tree().create_tween()
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.28)
-	tw.tween_callback(beam.queue_free)
-	# Faceted ruby-crystal tip impact burst + golden filigree spark
-	flash_sphere(host, to + Vector3(0, 0.85, 0), Color(1.0, 0.12, 0.26), 0.58, 0.24)
-	flash_sphere(host, to + Vector3(0, 0.85, 0), Color(0.98, 0.78, 0.34), 0.32, 0.16)
+	tw.set_parallel(true)
+	for i in range(segs.size()):
+		var t_mid := (float(i) + 0.5) / float(segs.size())
+		var straight_p := start_p.lerp(end_p, t_mid)
+		tw.tween_property(segs[i], "global_position", straight_p, 0.11).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(lash_mat, "albedo_color:a", 0.0, 0.22)
+	tw.parallel().tween_property(gold_mat, "albedo_color:a", 0.0, 0.20)
+	tw.chain().tween_callback(holder.queue_free)
+
+	# Supersonic white-gold sonic crack ring + faceted ruby crystal spark shower at whip tip!
+	ring(host, end_p, Color(1.0, 0.90, 0.55), 1.35, 0.24)
+	flash_sphere(host, end_p, Color(1.0, 0.14, 0.34), 0.62, 0.22)
+	flash_sphere(host, end_p, Color(1.0, 0.88, 0.44), 0.36, 0.14)
+	if DisplayServer.get_name() not in ["headless", "Dummy"]:
+		for si in range(7):
+			var sp := MeshInstance3D.new()
+			var sb := BoxMesh.new()
+			sb.size = Vector3(0.04, 0.04, 0.16)
+			sp.mesh = sb
+			sp.material_override = gold_mat if (si % 2 == 0) else lash_mat
+			root.add_child(sp)
+			sp.global_position = end_p
+			var ang := float(si) / 7.0 * TAU
+			var out_v := (right_v * cos(ang) + up_v * sin(ang) + dir * 0.45).normalized() * randf_range(0.9, 1.8)
+			var stw := host.get_tree().create_tween()
+			stw.set_parallel(true)
+			stw.tween_property(sp, "global_position", end_p + out_v, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			stw.tween_property(sp, "scale", Vector3.ONE * 0.05, 0.28)
+			stw.chain().tween_callback(sp.queue_free)
+
+## 2026 3D Porcelain & Gold-Rim Vase Shatter Burst (10-12 tumbling ballistic shards!)
+func shatter_porcelain(host: Node3D, at: Vector3, hit_dir: Vector3, perfumed: bool = false) -> void:
+	var root := _host_root(host)
+	if root == null:
+		return
+	var ring_col := Color(0.94, 0.42, 0.88) if perfumed else Color(1.0, 0.84, 0.38)
+	ring(host, at + Vector3(0, 0.25, 0), ring_col, 1.45, 0.32)
+	flash_sphere(host, at + Vector3(0, 0.55, 0), ring_col, 0.72, 0.22)
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
+		return
+	var base_dir := hit_dir
+	base_dir.y = 0.0
+	base_dir = base_dir.normalized() if base_dir.length() > 0.05 else Vector3.FORWARD
+	var palette := [
+		Color(0.95, 0.91, 0.93), # ivory porcelain
+		Color(0.74, 0.90, 0.84), # pastel mint glaze
+		Color(0.95, 0.78, 0.32), # gilded scalloped rim
+		Color(0.92, 0.54, 0.68), # blush rose medallion
+	]
+	if perfumed:
+		palette.append(Color(0.92, 0.42, 0.90))
+	for i in range(11):
+		var shard := MeshInstance3D.new()
+		var pm := PrismMesh.new()
+		pm.size = Vector3(randf_range(0.11, 0.21), randf_range(0.12, 0.24), randf_range(0.03, 0.06))
+		shard.mesh = pm
+		var sm := StandardMaterial3D.new()
+		var c: Color = palette[i % palette.size()]
+		sm.albedo_color = c
+		sm.roughness = 0.22
+		sm.metallic = 0.65 if (i % 4 == 2) else 0.12
+		if perfumed:
+			sm.emission_enabled = true
+			sm.emission = Color(0.85, 0.35, 0.88)
+			sm.emission_energy_multiplier = 0.65
+		shard.material_override = sm
+		root.add_child(shard)
+		var start_p := at + Vector3(randf_range(-0.18, 0.18), randf_range(0.25, 0.82), randf_range(-0.18, 0.18))
+		shard.global_position = start_p
+		var ang := float(i) / 11.0 * TAU + randf_range(-0.25, 0.25)
+		var spread := (Vector3(cos(ang), 0.0, sin(ang)) + base_dir * 0.65).normalized() * randf_range(1.1, 2.5)
+		var apex_p := start_p + spread * 0.48 + Vector3(0, randf_range(0.85, 1.55), 0)
+		var land_p := Vector3(start_p.x + spread.x, maxf(0.04, at.y + 0.04), start_p.z + spread.z)
+		var spin := Vector3(randf_range(-420, 420), randf_range(-420, 420), randf_range(-420, 420))
+		var tw := host.get_tree().create_tween()
+		tw.tween_property(shard, "global_position", apex_p, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(shard, "rotation_degrees", spin * 0.5, 0.24)
+		tw.tween_property(shard, "global_position", land_p, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(shard, "rotation_degrees", spin, 0.28)
+		tw.tween_property(shard, "scale", Vector3.ONE * 0.02, 0.35).set_delay(0.35)
+		tw.tween_callback(shard.queue_free)
 
 func silk_cocoon(host: Node3D, target_pos: Vector3) -> void:
 	var root := _host_root(host)

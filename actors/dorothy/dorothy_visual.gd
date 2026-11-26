@@ -13,6 +13,8 @@ const WorldKit := preload("res://systems/world_kit.gd")
 @export var show_silver_shoes: bool = false
 @export var mature_silhouette: bool = true
 @export var outfit_id: String = "dorothy_gingham"
+@export var footwear_id: String = "dorothy_heels"
+@export var hosiery_id: String = "dorothy_fishnets"
 
 static var _gingham_shader: Shader = null
 static var _velvet_shader: Shader = null
@@ -278,13 +280,28 @@ func _apply_pose(delta: float = 0.016) -> void:
 		var carc := sin(cu * PI)
 		_hip.position.y = 0.80 + carc * 0.04
 		if _cast_kind == 0:
-			# Lace Whip: wind-up then sharp forward snap with right arm
-			var snap := sin(clampf(cu * 1.4, 0.0, 1.0) * PI)
-			_hip.rotation.y = lerpf(0.42, -0.48, smoothstep(0.15, 0.65, cu)) * carc
-			_torso.rotation = Vector3(-0.18 * snap, 0.28 * snap, 0.0)
-			_arm_r.rotation = Vector3(lerpf(0.85, -1.65, smoothstep(0.12, 0.55, cu)) * carc, 0.0, 0.35 * carc)
-			_set_forearm(_arm_r, -0.20 * (1.0 - snap))
-			_arm_l.rotation = Vector3(0.42 * carc, 0.0, -0.38 * carc)
+			# 2026 2-stage athletic Lace Whip Crack: deep coil wind-up → explosive forward lash snap + follow-through!
+			if cu < 0.30:
+				var w := smoothstep(0.0, 0.30, cu)
+				_hip.position.y = 0.80 - w * 0.035
+				_hip.rotation.y = 0.56 * w
+				_torso.rotation = Vector3(0.14 * w, 0.42 * w, -0.14 * w)
+				_arm_r.rotation = Vector3(1.18 * w, -0.25 * w, 0.62 * w)
+				_set_forearm(_arm_r, -0.95 * w)
+				_arm_l.rotation = Vector3(-0.45 * w, 0.0, -0.52 * w)
+			else:
+				var s := smoothstep(0.30, 0.62, cu)
+				var recover := 1.0 - smoothstep(0.72, 1.0, cu)
+				var snap_v := s * recover
+				_hip.position.y = 0.80 + sin(s * PI) * 0.055
+				_hip.rotation.y = lerpf(0.56, -0.64, s) * recover
+				_torso.rotation = Vector3(-0.28 * snap_v, -0.44 * snap_v, 0.16 * snap_v)
+				_arm_r.rotation = Vector3(lerpf(1.18, -1.85, s) * recover, 0.30 * snap_v, lerpf(0.62, -0.22, s) * recover)
+				_set_forearm(_arm_r, lerpf(-0.95, 0.08, s) * recover)
+				_arm_l.rotation = Vector3(0.55 * snap_v, 0.0, -0.62 * snap_v)
+				_leg_r.rotation = Vector3(-0.24 * snap_v, 0.0, 0.08 * snap_v)
+				_leg_l.rotation = Vector3(0.28 * snap_v, 0.0, -0.06 * snap_v)
+			_skirt_flare = maxf(_skirt_flare, 0.38 * carc)
 		elif _cast_kind == 2:
 			# Hypnotic Perfume: graceful 360° ballerina pirouette
 			_hip.rotation.y = cu * TAU
@@ -604,8 +621,26 @@ func _build() -> void:
 	var hip_w := 0.195 if mature_silhouette else 0.165
 	var waist_w := 0.116 if mature_silhouette else 0.136
 
-	# Pelvis / upper hip yoke
+	# Pelvis / upper hip yoke + Couture Hosiery / Crimson Silk Thong & Garter Ensemble beneath skirt!
 	_mi(_hip, _cyl(waist_w * 1.12, hip_w, 0.15, 28), main_fabric, Vector3(0, -0.02, 0))
+	if not is_kansas_plain and not greyscale:
+		var sm_h := get_node_or_null("/root/SaveManager")
+		var active_hosiery := hosiery_id
+		if sm_h and active_hosiery == "dorothy_fishnets" and str(sm_h.equipped_hosiery) != "":
+			active_hosiery = str(sm_h.equipped_hosiery)
+		var is_thong := (active_hosiery == "dorothy_thong_lingerie")
+		var lingerie_m := _mat(Color(0.68, 0.06, 0.18), 0.34, 0.12) if is_thong else _mat(Color(0.10, 0.08, 0.14), 0.52, 0.05)
+		# Contoured pelvis base (skin) + sleek crimson-silk thong V-front, slender hip-straps & T-back
+		_mi(_hip, _sphere(0.145, 20, 14), skin, Vector3(0, -0.095, 0.0), Vector3(1.12, 0.84, 0.88))
+		_mi(_hip, _torus(0.145, 0.156, 22), lingerie_m, Vector3(0, -0.055, 0.0), Vector3(1.10, 0.55, 0.86)) # slender waist/hip band
+		_mi(_hip, _sphere(0.082, 16, 12), lingerie_m, Vector3(0, -0.115, -0.068), Vector3(0.92, 0.88, 0.52)) # front V-panel
+		_mi(_hip, _capsule(0.014, 0.115, 10), lingerie_m, Vector3(0, -0.125, 0.055), Vector3.ONE, Vector3(58, 0, 0)) # sleek back thong strap
+		if is_thong:
+			# Antique-gold garter clasps + delicate crimson silk garter ribbons descending to each thigh
+			for gx in [-1.0, 1.0]:
+				var gf := float(gx)
+				_mi(_hip, _torus(0.011, 0.017, 10), trim_metal, Vector3(gf * 0.105, -0.08, -0.075), Vector3.ONE, Vector3(0, gf * 25.0, 0))
+				_mi(_hip, _capsule(0.006, 0.135, 8), lingerie_m, Vector3(gf * 0.102, -0.155, -0.068))
 
 	# Dynamic Skirt Pivot (flares & sways smoothly with motion!)
 	_skirt_piv = Node3D.new()
@@ -971,31 +1006,93 @@ func _make_arm(
 		var fl: float = finger_lens[fi]
 		_mi(hand, _capsule(0.0052, fl, 8), skin, Vector3(fx, -0.034 - fl * 0.32, -0.003), Vector3.ONE, Vector3(10, 0, 0))
 
-	# Held Signature Lace Whip in Dorothy's right hand (whenever in Oz / couture mode!)
+	# Held 2026 Sculpted Continuous Braided Bullwhip in Dorothy's right hand (ZERO floating segments!)
 	if not left and not is_kansas_plain and not greyscale:
-		var whip := Node3D.new()
-		whip.name = "WhipInHand"
-		whip.position = Vector3(0.0, -0.030, -0.015)
-		whip.rotation_degrees = Vector3(72.0, 0.0, -8.0)
-		hand.add_child(whip)
-		var hilt_m := _mat(Color(0.24, 0.05, 0.10), 0.38, 0.15)
-		var lash_m := _mat(Color(0.76, 0.08, 0.24), 0.28, 0.18, Color(0.55, 0.05, 0.16), 0.55)
-		var ruby_m := _mat(Color(1.0, 0.18, 0.38), 0.12, 0.30, Color(1.0, 0.22, 0.42), 1.8)
-		# Engraved brass & velvet grip + rose pommel + knuckle collar
-		_mi(whip, _cyl(0.014, 0.011, 0.17, 12), hilt_m, Vector3(0, 0.04, 0))
-		_mi(whip, _sphere(0.018, 10, 8), trim_metal, Vector3(0, -0.045, 0))
-		_mi(whip, _torus(0.014, 0.022, 12), trim_metal, Vector3(0, 0.125, 0))
-		# Sculpted curving crimson-silk braided whip lash trailing down from the hilt
-		for si in range(7):
-			var t := float(si) / 6.0
-			var rad := lerpf(0.011, 0.0035, t)
-			var wy := 0.15 + t * 0.46
-			var wz := -sin(t * PI * 1.15) * 0.14
-			var wx := cos(t * PI * 0.9) * 0.045
-			_mi(whip, _capsule(rad, 0.095, 8), lash_m, Vector3(wx, wy, wz), Vector3.ONE, Vector3(-22.0 * (1.0 - t * 0.6), 0, 12.0 * sin(t * PI)))
-		# Glowing ruby crystal tip
-		_mi(whip, _sphere(0.014, 10, 8), ruby_m, Vector3(-0.04, 0.62, 0.02))
+		_build_sculpted_whip(hand, trim_metal)
 	return root
+
+func _build_sculpted_whip(hand: Node3D, trim_metal: Material) -> void:
+	var whip := Node3D.new()
+	whip.name = "WhipInHand"
+	# Gripped naturally downward from palm so the braided lash drapes smoothly along her right side!
+	whip.position = Vector3(0.008, -0.036, -0.012)
+	whip.rotation_degrees = Vector3(6.0, 0.0, -8.0)
+	hand.add_child(whip)
+
+	var grip_m := _mat(Color(0.22, 0.04, 0.09), 0.36, 0.16)
+	var lash_m := _mat(Color(0.58, 0.06, 0.18), 0.30, 0.22, Color(0.36, 0.03, 0.10), 0.38)
+	var ruby_m := _mat(Color(1.0, 0.16, 0.36), 0.10, 0.35, Color(1.0, 0.22, 0.42), 2.0)
+
+	# 1) Turned velvet-wrapped handle + spiral brass filigree rings + rose pommel + bolster knot
+	_mi(whip, _cyl(0.012, 0.015, 0.18, 14), grip_m, Vector3(0, -0.04, 0))
+	_mi(whip, _sphere(0.019, 12, 10), trim_metal, Vector3(0, 0.055, 0)) # rose pommel above grip
+	for bi in range(4):
+		_mi(whip, _torus(0.012, 0.0165, 12), trim_metal, Vector3(0, 0.025 - float(bi) * 0.042, 0))
+	_mi(whip, _torus(0.014, 0.023, 14), trim_metal, Vector3(0, -0.132, 0)) # Turk's-head bolster knot
+
+	# 2) Continuous 26-segment SurfaceTool tapered braided whip thong (smooth natural hanging S-coil!)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segs := 26
+	var sides := 10
+	var pts: Array[Vector3] = []
+	var rads: Array[float] = []
+	for i in range(segs + 1):
+		var t := float(i) / float(segs)
+		# Graceful hanging loop draping down and slightly curving forward/outward beside her skirt
+		var y := -0.135 - t * 0.46 + sin(t * PI * 1.65) * 0.045
+		var x := 0.045 * sin(t * PI * 1.35) + 0.032 * t
+		var z := -0.055 * sin(t * PI * 1.8) + 0.025 * (1.0 - cos(t * PI))
+		pts.append(Vector3(x, y, z))
+		rads.append(lerpf(0.0135, 0.0032, pow(t, 0.85)))
+
+	var rings_v: Array = []
+	for i in range(segs + 1):
+		var p: Vector3 = pts[i]
+		var tang: Vector3
+		if i == 0:
+			tang = (pts[1] - pts[0]).normalized()
+		elif i == segs:
+			tang = (pts[segs] - pts[segs - 1]).normalized()
+		else:
+			tang = (pts[i + 1] - pts[i - 1]).normalized()
+		var up_ref := Vector3.FORWARD if absf(tang.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT
+		var side_a := tang.cross(up_ref).normalized()
+		var side_b := tang.cross(side_a).normalized()
+		var r: float = rads[i]
+		var ring: Array[Vector3] = []
+		for s in range(sides):
+			var ang := float(s) / float(sides) * TAU
+			var nrm := (side_a * cos(ang) + side_b * sin(ang)).normalized()
+			ring.append(p + nrm * r)
+		rings_v.append(ring)
+
+	for i in range(segs):
+		var r0: Array = rings_v[i]
+		var r1: Array = rings_v[i + 1]
+		for s in range(sides):
+			var sn := (s + 1) % sides
+			var v00: Vector3 = r0[s]
+			var v01: Vector3 = r0[sn]
+			var v10: Vector3 = r1[s]
+			var v11: Vector3 = r1[sn]
+			st.add_vertex(v00)
+			st.add_vertex(v01)
+			st.add_vertex(v11)
+			st.add_vertex(v00)
+			st.add_vertex(v11)
+			st.add_vertex(v10)
+	st.generate_normals()
+	var lash_mi := MeshInstance3D.new()
+	lash_mi.name = "BraidedWhipLash"
+	lash_mi.mesh = st.commit()
+	lash_mi.material_override = lash_m
+	whip.add_child(lash_mi)
+
+	# 3) Crimson silk cracker tassel + glowing faceted ruby crystal tip at exact end of continuous lash
+	var tip_p: Vector3 = pts[segs]
+	_mi(whip, _cyl(0.004, 0.001, 0.055, 8), trim_metal, tip_p + Vector3(0, -0.025, 0))
+	_mi(whip, _sphere(0.011, 10, 8), ruby_m, tip_p + Vector3(0, -0.055, 0))
 
 func _make_leg(
 	parent: Node3D,
@@ -1039,22 +1136,32 @@ func _make_leg(
 		for li in range(3):
 			_mi(shoe, _capsule(0.004, 0.042, 6), trim_metal, Vector3(0, 0.02 + float(li) * 0.028, -0.044), Vector3.ONE, Vector3(0, 0, 90))
 	else:
-		# Canonical Sculpted Silver Shoes / Victorian Heeled Silver Boots (char_05 & char_03!)
-		if active_outfit == "dorothy_velvet":
-			# High lace-up silver boot shaft!
-			_mi(shoe, _cyl(0.044, 0.041, 0.145, 20), shoe_mat, Vector3(0, 0.055, 0))
-			for li in range(4):
-				_mi(shoe, _capsule(0.004, 0.038, 6), trim_metal, Vector3(0, 0.015 + float(li) * 0.028, -0.042), Vector3.ONE, Vector3(0, 0, 90))
+		# Canonical Sculpted Silver Slippers vs High-Arch Silver Stiletto Heels (Selectable in Boutique!)
+		var sm_fw := get_node_or_null("/root/SaveManager")
+		var active_fw := footwear_id
+		if sm_fw and active_fw == "dorothy_heels" and str(sm_fw.equipped_footwear) != "":
+			active_fw = str(sm_fw.equipped_footwear)
+		if active_fw == "dorothy_slippers":
+			# Baum-Canon Low-Arched Pointed Silver Enchanted Slippers with scalloped vamp & filigree bow clasp
+			_mi(shoe, _sphere(0.048, 20, 14), shoe_mat, Vector3(0, -0.032, -0.056), Vector3(0.90, 0.48, 1.92), Vector3(4, 0, 0))
+			_mi(shoe, _sphere(0.039, 16, 12), shoe_mat, Vector3(0, -0.018, 0.024), Vector3(0.92, 0.62, 1.08))
+			_mi(shoe, _cyl(0.028, 0.026, 0.024, 14), shoe_mat, Vector3(0, -0.044, 0.026)) # subtle low fairytale slipper heel
+			_mi(shoe, _torus(0.014, 0.022, 14), trim_metal, Vector3(0, -0.008, -0.048), Vector3(1.22, 0.85, 0.55), Vector3(72, 0, 0))
 		else:
-			# Delicate arched silver instep Mary-Jane / Louis strap
-			_mi(shoe, _torus(0.034, 0.042, 18), shoe_mat, Vector3(0, 0.016, -0.015), Vector3(0.95, 0.65, 1.15), Vector3(24, 0, 0))
-		# Sleek pointed silver toe vamp & arched sole
-		_mi(shoe, _sphere(0.048, 20, 14), shoe_mat, Vector3(0, -0.022, -0.062), Vector3(0.88, 0.56, 1.88), Vector3(14, 0, 0))
-		_mi(shoe, _sphere(0.038, 16, 12), shoe_mat, Vector3(0, 0.002, 0.026), Vector3(0.92, 0.85, 1.05)) # heel cup
-		# Sculpted curved Louis / stiletto silver heel!
-		_mi(shoe, _cyl(0.020, 0.009, 0.095, 16), shoe_mat, Vector3(0, -0.032, 0.038), Vector3.ONE, Vector3(-8, 0, 0))
-		# Ornate engraved filigree instep buckle (char_05 inset!)
-		_mi(shoe, _torus(0.013, 0.020, 14), trim_metal, Vector3(0, 0.012, -0.048), Vector3(1.15, 0.85, 0.55), Vector3(68, 0, 0))
+			# High-Arch Sculpted Silver Stiletto Heels (with optional Velvet Lace-Up Boot shaft + ruby sole!)
+			if active_outfit == "dorothy_velvet":
+				_mi(shoe, _cyl(0.044, 0.041, 0.145, 20), shoe_mat, Vector3(0, 0.055, 0))
+				for li in range(4):
+					_mi(shoe, _capsule(0.004, 0.038, 6), trim_metal, Vector3(0, 0.015 + float(li) * 0.028, -0.042), Vector3.ONE, Vector3(0, 0, 90))
+			else:
+				_mi(shoe, _torus(0.034, 0.041, 18), shoe_mat, Vector3(0, 0.028, -0.006), Vector3(0.96, 0.55, 1.05), Vector3(14, 0, 0)) # slender ankle strap
+				_mi(shoe, _torus(0.034, 0.042, 18), shoe_mat, Vector3(0, 0.012, -0.018), Vector3(0.95, 0.65, 1.15), Vector3(24, 0, 0))
+			_mi(shoe, _sphere(0.048, 20, 14), shoe_mat, Vector3(0, -0.022, -0.062), Vector3(0.88, 0.56, 1.88), Vector3(16, 0, 0))
+			_mi(shoe, _sphere(0.038, 16, 12), shoe_mat, Vector3(0, 0.006, 0.026), Vector3(0.92, 0.85, 1.05))
+			# Tall sculpted 11cm stiletto spike + crimson-lacquered sole accent
+			_mi(shoe, _cyl(0.018, 0.0065, 0.115, 16), shoe_mat, Vector3(0, -0.042, 0.038), Vector3.ONE, Vector3(-6, 0, 0))
+			_mi(shoe, _sphere(0.042, 14, 10), _mat(Color(0.76, 0.06, 0.18), 0.18, 0.25), Vector3(0, -0.036, -0.052), Vector3(0.78, 0.22, 1.65), Vector3(16, 0, 0))
+			_mi(shoe, _torus(0.013, 0.020, 14), trim_metal, Vector3(0, 0.012, -0.048), Vector3(1.15, 0.85, 0.55), Vector3(68, 0, 0))
 
 	return root
 

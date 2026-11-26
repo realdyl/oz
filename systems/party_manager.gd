@@ -23,6 +23,14 @@ var looking: bool = false
 var mouse_sensitivity: float = 0.0028
 var last_fail: String = ""
 
+# Spyro: Year of the Dragon-style Cinematic Dialogue Shot / Reverse-Shot Camera
+var _dlg_active: bool = false
+var _dlg_cam: Camera3D = null
+var _dlg_prev_cam: Camera3D = null
+var _dlg_target_pos: Vector3 = Vector3.ZERO
+var _dlg_target_look: Vector3 = Vector3.ZERO
+var _dlg_sway_t: float = 0.0
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -35,6 +43,68 @@ func reset_party() -> void:
 	_swap_cd = 0.0
 	_camera_rig = null
 	last_fail = ""
+	exit_dialogue_shot()
+
+## Spyro-style cinematic shot / reverse-shot dialogue camera (consistent 180-degree axis framing!)
+func enter_dialogue_shot(speaker_node: Node3D, listener_node: Node3D, is_reverse: bool = false) -> void:
+	if DisplayServer.get_name() in ["headless", "Dummy"]:
+		return
+	if speaker_node == null or not is_instance_valid(speaker_node):
+		return
+	var scene_root := get_tree().current_scene
+	if scene_root == null:
+		return
+	var sp := speaker_node.global_position
+	var lp := listener_node.global_position if (listener_node and is_instance_valid(listener_node)) else (sp + Vector3(0, 0, 2.8))
+	var axis := sp - lp
+	axis.y = 0.0
+	var dist := axis.length()
+	var dir := axis.normalized() if dist > 0.15 else Vector3.FORWARD
+	# Consistent screen-direction perpendicular (keeps left/right orientation grounded like Spyro!)
+	var side := Vector3(-dir.z, 0.0, dir.x) * (-1.0 if is_reverse else 1.0)
+	var cam_back := clampf(dist * 0.72 + 1.25, 2.2, 4.4)
+	var cam_side := clampf(dist * 0.42 + 0.95, 1.35, 2.4)
+	_dlg_target_pos = lp - dir * (cam_back - dist * 0.5) + side * cam_side + Vector3(0.0, 1.52, 0.0)
+	_dlg_target_pos.y = maxf(_dlg_target_pos.y, minf(sp.y, lp.y) + 1.15)
+	_dlg_target_look = sp.lerp(lp, 0.24) + Vector3(0.0, 1.24, 0.0)
+
+	# Gently turn listener's visual toward speaker for natural eye contact
+	if listener_node and is_instance_valid(listener_node):
+		var lvis := listener_node.get_node_or_null("Visual") as Node3D
+		if lvis and dist > 0.2:
+			lvis.rotation.y = atan2(-dir.x, -dir.z)
+
+	if _dlg_cam == null or not is_instance_valid(_dlg_cam):
+		var vp := get_viewport()
+		if vp:
+			_dlg_prev_cam = vp.get_camera_3d()
+		_dlg_cam = Camera3D.new()
+		_dlg_cam.name = "SpyroDialogueCamera"
+		_dlg_cam.fov = 44.0
+		_dlg_cam.near = 0.1
+		_dlg_cam.far = 420.0
+		scene_root.add_child(_dlg_cam)
+		if _dlg_prev_cam and is_instance_valid(_dlg_prev_cam):
+			_dlg_cam.global_transform = _dlg_prev_cam.global_transform
+		else:
+			_dlg_cam.global_position = _dlg_target_pos
+		_dlg_cam.current = true
+	_dlg_active = true
+	var dui := get_node_or_null("/root/DialogueUI")
+	if dui and dui.has_method("set_cinema_letterbox"):
+		dui.call("set_cinema_letterbox", true)
+
+func exit_dialogue_shot() -> void:
+	_dlg_active = false
+	if _dlg_prev_cam and is_instance_valid(_dlg_prev_cam):
+		_dlg_prev_cam.current = true
+	_dlg_prev_cam = null
+	if _dlg_cam and is_instance_valid(_dlg_cam):
+		_dlg_cam.queue_free()
+	_dlg_cam = null
+	var dui := get_node_or_null("/root/DialogueUI")
+	if dui and dui.has_method("set_cinema_letterbox"):
+		dui.call("set_cinema_letterbox", false)
 
 const CAM_PITCH_MIN_DEG := -64.0
 const CAM_PITCH_MAX_DEG := 17.5
@@ -92,6 +162,13 @@ func _clamp_camera_above_ground(rig: Node3D, arm: SpringArm3D) -> void:
 
 func _process(delta: float) -> void:
 	_swap_cd = maxf(_swap_cd - delta, 0.0)
+	if _dlg_active and _dlg_cam and is_instance_valid(_dlg_cam):
+		_dlg_sway_t += delta
+		var sway := Vector3(sin(_dlg_sway_t * 1.15) * 0.045, cos(_dlg_sway_t * 0.85) * 0.025, 0.0)
+		_dlg_cam.global_position = _dlg_cam.global_position.lerp(_dlg_target_pos + sway, clampf(delta * 6.5, 0.0, 1.0))
+		if _dlg_cam.global_position.distance_to(_dlg_target_look) > 0.15:
+			_dlg_cam.look_at(_dlg_target_look, Vector3.UP)
+		return
 	if _camera_rig and is_instance_valid(_camera_rig):
 		var arm := _camera_rig.find_child("SpringArm3D", true, false) as SpringArm3D
 		var orbit := 0.0

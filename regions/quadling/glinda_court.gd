@@ -318,7 +318,10 @@ func _add_glinda_whimsy() -> void:
 		WorldKit.spawn_destructible_urn(self, up)
 
 func _advance_glinda() -> void:
+	var p_cam := get_node_or_null("/root/Party")
 	if _glinda_line >= _glinda_lines.size():
+		if p_cam and p_cam.has_method("exit_dialogue_shot"):
+			p_cam.call("exit_dialogue_shot")
 		_set_beat(Beat.REVEAL)
 		return
 	var line: String = _glinda_lines[_glinda_line]
@@ -328,7 +331,22 @@ func _advance_glinda() -> void:
 		d.say_line(line, true)
 	elif hud:
 		hud.set_prompt(line)
+	if p_cam and p_cam.has_method("enter_dialogue_shot") and glinda and player:
+		var sp_node: Node3D = glinda
+		var ls_node: Node3D = player
+		var rev := false
+		if line.begins_with("Dorothy:"):
+			sp_node = player; ls_node = glinda; rev = true
+		elif line.begins_with("Scarecrow:") and scarecrow:
+			sp_node = scarecrow; ls_node = glinda; rev = true
+		elif line.begins_with("Tin Man:") and tinman:
+			sp_node = tinman; ls_node = glinda; rev = true
+		elif line.begins_with("Lion:") and lion:
+			sp_node = lion; ls_node = glinda; rev = true
+		p_cam.call("enter_dialogue_shot", sp_node, ls_node, rev)
 	if _glinda_line >= _glinda_lines.size():
+		if p_cam and p_cam.has_method("exit_dialogue_shot"):
+			p_cam.call("exit_dialogue_shot")
 		_set_beat(Beat.REVEAL)
 
 func _set_beat(next: Beat) -> void:

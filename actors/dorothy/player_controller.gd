@@ -472,23 +472,38 @@ func _use_armament() -> void:
 	var whip_plus: bool = sm != null and sm.has_method("has_whip_mastery") and bool(sm.call("has_whip_mastery"))
 	var enemies := _find_live_enemies(13.5 if (_armament_idx == 0 and whip_plus) else 11.0)
 	match _armament_idx:
-		0: # The Lace Whip — ALWAYS cracks visibly forward; binds & yanks target if in range!
+		0: # The Lace Whip — ALWAYS cracks visibly forward; shatters vases & smashes whimsies along the arc; binds & yanks foes!
 			var fwd_w := -visual.global_transform.basis.z
 			fwd_w.y = 0.0
 			fwd_w = fwd_w.normalized() if fwd_w.length() > 0.01 else Vector3.FORWARD
 			var hand_origin := global_position + Vector3(0, 1.05, 0) + visual.global_transform.basis.x * 0.24
+			var whip_range := 9.5 if whip_plus else 7.5
 			var afx_w := get_node_or_null("/root/AudioFx")
 			if afx_w and afx_w.has_method("play"):
 				afx_w.play("whip", -4.0)
+			# Shatter any destructible porcelain vases in the whip's forward cone!
+			var smashed_urn: Node3D = null
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and dp.has_method("take_damage"):
+					var dv := (dp as Node3D).global_position - global_position
+					dv.y = 0.0
+					var dd := dv.length()
+					if dd <= whip_range and (dd < 2.2 or dv.normalized().dot(fwd_w) > 0.42):
+						smashed_urn = dp as Node3D
+						dp.call("take_damage", 20, global_position, {"whip": true})
+						break
+			# Trigger smashable whimsies along the whip arc too!
+			var wh_sys := get_node_or_null("/root/Whimsy")
+			if wh_sys and wh_sys.has_method("smash_collect_near"):
+				wh_sys.call("smash_collect_near", global_position, fwd_w, whip_range, self)
 			if enemies.is_empty():
-				var tip_pos := hand_origin + fwd_w * (9.5 if whip_plus else 7.5)
+				var tip_pos := (smashed_urn.global_position + Vector3(0, 0.55, 0)) if smashed_urn != null else (hand_origin + fwd_w * whip_range)
 				CombatFx.whip_lash(self, hand_origin, tip_pos)
-				CombatFx.flash_sphere(self, tip_pos, Color(1.0, 0.28, 0.56), 0.52, 0.18)
-				CombatFx.label(self, tip_pos + Vector3(0, 0.4, 0), "✦ CRACK!", Color(1.0, 0.35, 0.62))
+				if smashed_urn == null:
+					CombatFx.label(self, tip_pos + Vector3(0, 0.4, 0), "✦ CRACK!", Color(1.0, 0.35, 0.62))
 				return
 			var foe: Node3D = enemies[0]
 			CombatFx.whip_lash(self, hand_origin, foe.global_position + Vector3(0, 0.85, 0))
-			CombatFx.flash_sphere(self, foe.global_position + Vector3(0, 0.9, 0), Color(1.0, 0.26, 0.54), 0.55, 0.18)
 			var pull_pos := global_position + (foe.global_position - global_position).normalized() * 1.65
 			pull_pos.y = foe.global_position.y
 			var tw := create_tween()
@@ -500,27 +515,41 @@ func _use_armament() -> void:
 				foe.take_damage(w_dmg, global_position, {"knockback": 0.5})
 			if sm and sm.has_method("add_desire"):
 				sm.add_desire(5, "Lace Whip Bind")
-		1: # Silk Bindings — cocoon up to 3 nearby enemies!
+		1: # Silk Bindings — cocoon up to 3 nearby enemies & gild nearby vases/whimsies for 2× rewards!
 			var hit_any := false
 			for i in range(mini(3, enemies.size())):
 				var foe: Node3D = enemies[i]
 				if foe.global_position.distance_to(global_position) <= 8.5 and foe.has_method("apply_bind"):
 					foe.call("apply_bind", 3.5)
 					hit_any = true
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 7.5 and dp.has_method("apply_perfume_bonus"):
+					dp.call("apply_perfume_bonus")
 			if hit_any and sm and sm.has_method("add_desire"):
 				sm.add_desire(5, "Silk Bindings")
 			else:
 				CombatFx.silk_cocoon(self, global_position - visual.global_transform.basis.z * 2.5)
-		2: # Hypnotic Perfume — rose-violet pheromone aura enamors all foes within 7m!
+		2: # Hypnotic Perfume — enamors foes AND perfumes nearby vases & whimsies for 2× bonus payout (without breaking them)!
 			CombatFx.perfume_cloud(self, global_position, 6.8)
 			var charmed := 0
 			for foe in enemies:
 				if foe.global_position.distance_to(global_position) <= 7.0 and foe.has_method("apply_enamored"):
 					foe.call("apply_enamored", 5.0)
 					charmed += 1
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 7.5 and dp.has_method("apply_perfume_bonus"):
+					dp.call("apply_perfume_bonus")
+			var wh_p := get_node_or_null("/root/Whimsy")
+			if wh_p and wh_p.has_method("perfume_near"):
+				wh_p.call("perfume_near", global_position, 7.5)
 			if charmed > 0 and sm and sm.has_method("add_desire"):
 				sm.add_desire(5 * charmed, "Hypnotic Perfume")
-		3: # The Gilded Chain — tether 2 nearest foes so damage mirrors 75%!
+		3: # The Gilded Chain — tether 2 nearest foes so damage mirrors 75% (or shatter nearby urn if alone)!
+			for dp in get_tree().get_nodes_in_group("destructibles"):
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 6.5 and dp.has_method("take_damage"):
+					CombatFx.gilded_chain(self, global_position + Vector3(0, 1.0, 0), (dp as Node3D).global_position + Vector3(0, 0.5, 0))
+					dp.call("take_damage", 20, global_position, {"chain": true})
+					break
 			if enemies.size() >= 2:
 				var a: Node3D = enemies[0]
 				var b: Node3D = enemies[1]
