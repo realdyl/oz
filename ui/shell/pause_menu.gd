@@ -413,14 +413,21 @@ func _build_ui() -> void:
 	cvb.add_child(chdr)
 	var c_scroll := ScrollContainer.new()
 	c_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	c_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	cvb.add_child(c_scroll)
 	var clist := VBoxContainer.new()
 	clist.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	clist.add_theme_constant_override("separation", 8)
 	c_scroll.add_child(clist)
+	var MarqueeBtn := preload("res://ui/widgets/marquee_button.gd")
 	for ch in CHAPTERS:
 		var ch_ref: Dictionary = ch
-		var cb_btn := _make_gothic_btn("◈   %s" % str(ch["title"]), false, 40.0, func():
+		var cb_btn := MarqueeBtn.new()
+		cb_btn.custom_minimum_size = Vector2(0, 40.0)
+		cb_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		OzThemeFactory.style_gothic_plaque_button(cb_btn, false, kansas_mode, 14)
+		cb_btn.setup_marquee("◈   %s" % str(ch["title"]), 14, Color(0.95, 0.90, 0.78))
+		cb_btn.pressed.connect(func():
 			close()
 			var lt := get_node_or_null("/root/LevelTransition")
 			if lt and lt.has_method("go_to"):
@@ -428,7 +435,6 @@ func _build_ui() -> void:
 			else:
 				get_tree().change_scene_to_file(str(ch_ref["scene"]))
 		)
-		cb_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		clist.add_child(cb_btn)
 	var cback := _make_gothic_btn("◀   BACK TO PAUSE MENU", false, 44.0, _show_main_card)
 	cvb.add_child(cback)

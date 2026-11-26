@@ -223,6 +223,7 @@ func _build_ui() -> void:
 
 	var left_scroll := ScrollContainer.new()
 	left_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_vb.add_child(left_scroll)
 	_left_list = VBoxContainer.new()
 	_left_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -288,12 +289,18 @@ func _build_ui() -> void:
 
 	right_vb.add_child(HSeparator.new())
 
+	var body_scroll := ScrollContainer.new()
+	body_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	right_vb.add_child(body_scroll)
+
 	_right_body = Label.new()
+	_right_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_right_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_right_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_right_body.add_theme_font_size_override("font_size", 13)
 	_right_body.add_theme_color_override("font_color", Color(0.937, 0.878, 0.761))
-	right_vb.add_child(_right_body)
+	body_scroll.add_child(_right_body)
 
 	_equip_curio_btn = Button.new()
 	_equip_curio_btn.visible = false
@@ -323,7 +330,9 @@ func _build_ui() -> void:
 
 func _make_page_panel(is_left: bool) -> PanelContainer:
 	var pc := PanelContainer.new()
-	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pc.custom_minimum_size = Vector2(452, 586)
+	pc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	pc.clip_contents = true
 	var st := StyleBoxFlat.new()
 	st.bg_color = Color(0.165, 0.098, 0.198, 0.99)
 	st.border_color = Color(0.769, 0.620, 0.353, 0.72)

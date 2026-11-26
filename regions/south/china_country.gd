@@ -377,6 +377,9 @@ func _spawn_party() -> void:
 	tinman.global_position = SPAWN_POS + Vector3(0.0, 0.0, -3.4)
 	if tinman.has_method("oil_and_free"):
 		tinman.oil_and_free()
+	var party_f := get_node_or_null("/root/Party")
+	if party_f and party_f.has_method("face_all_forward"):
+		party_f.call_deferred("face_all_forward", PI)
 
 func _spawn_orchard_trees() -> void:
 	for tp in [
@@ -427,6 +430,16 @@ func _make_spider_script() -> GDScript:
 var health: int = 160
 var alive: bool = true
 var bite_cd: float = 1.45
+var bind_t: float = 0.0
+var _chain_partner: Node3D = null
+var _chain_t: float = 0.0
+
+func apply_bind(dur: float) -> void:
+	bind_t = maxf(bind_t, dur)
+
+func set_chain_partner(p: Node3D, dur: float) -> void:
+	_chain_partner = p
+	_chain_t = dur
 
 func take_damage(amount: int, src: Vector3, _tags: Dictionary = {}) -> void:
 	if not alive:

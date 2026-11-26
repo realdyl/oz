@@ -76,6 +76,26 @@ var _zzz_timer: float = 0.0
 var _loading_lion: bool = false
 var _waking_dorothy: bool = false
 var _waking_lion: bool = false
+var _flesh_switch_done: bool = false
+
+func _switch_once_to_immune_lead() -> void:
+	if _flesh_switch_done:
+		return
+	_flesh_switch_done = true
+	var party := get_node_or_null("/root/Party")
+	if party == null or not party.has_method("set_leader"):
+		return
+	var lid: StringName = _lead_id()
+	if lid == &"scarecrow" or lid == &"tinman":
+		return
+	var choices: Array[StringName] = [&"scarecrow", &"tinman"]
+	var chosen: StringName = choices[randi() % choices.size()]
+	if not bool(party.call("set_leader", chosen)):
+		chosen = &"tinman" if chosen == &"scarecrow" else &"scarecrow"
+		party.call("set_leader", chosen)
+	var nice := "Scarecrow" if chosen == &"scarecrow" else "Tin Man"
+	if hud and hud.has_method("show_toast"):
+		hud.call("show_toast", "Dorothy & the Lion succumb to the poppies — %s takes the Lead!" % nice, 3.5)
 var _clear_air_ring: Node3D = null
 
 func _enter_tree() -> void:
@@ -273,32 +293,22 @@ func _drop_dorothy_asleep() -> void:
 		player.call("set_sleeping", true)
 	if not lion_asleep and not lion_safe:
 		_drop_lion_asleep()
-	if hud and hud.has_method("show_toast"):
-		hud.call("show_toast", "Dorothy & the Lion succumb to the poppies — Scarecrow takes the Lead!", 3.5)
 	var d := get_node_or_null("/root/DialogueUI")
 	if d and d.has_method("say"):
 		d.say("Narrator", "Dorothy and the Lion collapse gently into the scarlet poppies. Scarecrow and Tin Man feel nothing — walk SOUTH for Clear Air.", true, 5.0)
 	_set_beat(Beat.FLESH_DOWN)
 	_set_beat(Beat.GET_CLEAR_AIR)
-	# Smooth visual fall-asleep transition (0.85s) before handing Lead to Scarecrow (instant in headless sim!)
+	# Smooth visual fall-asleep transition (0.75s) before handing Lead ONCE to a random immune companion!
 	if DisplayServer.get_name() in ["headless", "Dummy"]:
-		var party := get_node_or_null("/root/Party")
-		if party and party.has_method("set_leader"):
-			party.call("set_leader", &"scarecrow")
+		_switch_once_to_immune_lead()
 	else:
 		var vis := player.get_node_or_null("Visual") as Node3D if player else null
 		if vis:
 			var stw := create_tween()
 			stw.tween_property(vis, "rotation_degrees:x", 82.0, 0.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			stw.tween_callback(func():
-				var party := get_node_or_null("/root/Party")
-				if party and party.has_method("set_leader"):
-					party.call("set_leader", &"scarecrow")
-			)
+			stw.tween_callback(_switch_once_to_immune_lead)
 		else:
-			var party := get_node_or_null("/root/Party")
-			if party and party.has_method("set_leader"):
-				party.call("set_leader", &"scarecrow")
+			_switch_once_to_immune_lead()
 
 func _drop_lion_asleep() -> void:
 	if lion_asleep or lion_safe:
@@ -313,12 +323,9 @@ func _drop_lion_asleep() -> void:
 			lion.global_position = lion_meadow
 		if lion.has_method("set_sleeping"):
 			lion.call("set_sleeping", true)
-	var party := get_node_or_null("/root/Party")
-	if party and party.has_method("set_leader"):
-		var lid: StringName = _lead_id()
-		if lid == &"lion" or lid == &"dorothy":
-			if not party.call("set_leader", &"tinman"):
-				party.call("set_leader", &"scarecrow")
+	# Only switch here if Lion was the active Lead while Dorothy is still awake; never double-switch!
+	if _lead_id() == &"lion" and not dorothy_asleep:
+		_switch_once_to_immune_lead()
 
 func _collect_clear_air() -> void:
 	if clear_air_got or not dorothy_asleep:
@@ -703,6 +710,9 @@ func _spawn_party() -> void:
 	tinman.global_position = YBR_SPAWN + Vector3(0, 0, 3.2)
 	if tinman.has_method("oil_and_free"):
 		tinman.oil_and_free()
+	var party_f := get_node_or_null("/root/Party")
+	if party_f and party_f.has_method("face_all_forward"):
+		party_f.call_deferred("face_all_forward", PI)
 
 func _spawn_set_pieces() -> void:
 	clear_air = StaticBody3D.new()

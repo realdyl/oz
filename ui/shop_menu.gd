@@ -217,10 +217,11 @@ func _build_ui() -> void:
 	plaque.add_child(_char_plaque_lbl)
 
 	# ========================================================================
-	# RIGHT 60%: Boutique Header + Tabs + 2x3 Gilded Grid + Pip Detail Box
+	# RIGHT 60%: Boutique Header + Tabs + 2x3 Gilded Grid + Fixed-Size Pip Detail Box
 	# ========================================================================
 	var right_col := VBoxContainer.new()
-	right_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_col.custom_minimum_size = Vector2(614, 560)
+	right_col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	right_col.add_theme_constant_override("separation", 10)
 	split.add_child(right_col)
 
@@ -269,9 +270,10 @@ func _build_ui() -> void:
 		tabs.add_child(b)
 		_tab_buttons.append(b)
 
-	# 2x3 Gilded Square Medallion Grid
+	# 2x3 Gilded Square Medallion Grid (strict vertical-only scroll so width never shifts!)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	right_col.add_child(scroll)
 
 	_grid = GridContainer.new()
@@ -281,8 +283,10 @@ func _build_ui() -> void:
 	_grid.add_theme_constant_override("v_separation", 10)
 	scroll.add_child(_grid)
 
-	# Bottom Selected Item Detail Box + Segmented Gold Pip Bars + BUY & EQUIP CTA
+	# Bottom Selected Item Detail Box — ROCK-SOLID FIXED SIZE (zero expand/contract on hover or click!)
 	var detail_panel := PanelContainer.new()
+	detail_panel.custom_minimum_size = Vector2(614, 162)
+	detail_panel.clip_contents = true
 	var dp_st := StyleBoxFlat.new()
 	dp_st.bg_color = Color(0.115, 0.065, 0.145, 0.96)
 	dp_st.border_color = Color(0.769, 0.620, 0.353, 0.85)
@@ -290,8 +294,8 @@ func _build_ui() -> void:
 	dp_st.set_corner_radius_all(6)
 	dp_st.content_margin_left = 22
 	dp_st.content_margin_right = 22
-	dp_st.content_margin_top = 16
-	dp_st.content_margin_bottom = 16
+	dp_st.content_margin_top = 14
+	dp_st.content_margin_bottom = 14
 	detail_panel.add_theme_stylebox_override("panel", dp_st)
 	var dp_frame := OrnateFrame.new()
 	dp_frame.outer_pad = 6.0
@@ -306,16 +310,24 @@ func _build_ui() -> void:
 	detail_panel.add_child(detail_hb)
 
 	var stats_col := VBoxContainer.new()
+	stats_col.custom_minimum_size = Vector2(368, 128)
 	stats_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_col.clip_contents = true
 	stats_col.add_theme_constant_override("separation", 4)
 	detail_hb.add_child(stats_col)
 
 	_detail_title = Label.new()
+	_detail_title.custom_minimum_size = Vector2(360, 22)
+	_detail_title.clip_text = true
+	_detail_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_detail_title.add_theme_font_size_override("font_size", 15)
 	_detail_title.add_theme_color_override("font_color", Color(0.937, 0.878, 0.761))
 	stats_col.add_child(_detail_title)
 
 	_detail_perk = Label.new()
+	_detail_perk.custom_minimum_size = Vector2(360, 34)
+	_detail_perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_perk.clip_text = true
 	_detail_perk.add_theme_font_size_override("font_size", 11)
 	_detail_perk.add_theme_color_override("font_color", Color(0.722, 0.659, 0.604))
 	stats_col.add_child(_detail_perk)

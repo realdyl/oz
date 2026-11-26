@@ -348,19 +348,21 @@ func _build_chapters_modal(center: CenterContainer) -> void:
 
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vb.add_child(sc)
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 8)
 	sc.add_child(list)
 
+	var MarqueeBtn := preload("res://ui/widgets/marquee_button.gd")
 	for ch in CHAPTERS:
 		var ch_ref: Dictionary = ch
-		var b := Button.new()
-		b.text = "◈   %s" % str(ch["title"])
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var b := MarqueeBtn.new()
 		b.custom_minimum_size = Vector2(0, 44)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		OzThemeFactory.style_gothic_plaque_button(b, false, false, 14)
+		b.setup_marquee("◈   %s" % str(ch["title"]), 14, Color(0.95, 0.90, 0.78))
 		b.pressed.connect(func(): _launch_scene(str(ch_ref["scene"]), str(ch_ref["title"])))
 		list.add_child(b)
 

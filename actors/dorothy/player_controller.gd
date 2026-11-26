@@ -599,24 +599,52 @@ func _use_armament() -> void:
 				wh_p.call("perfume_near", global_position, 7.5)
 			if charmed > 0 and sm and sm.has_method("add_desire"):
 				sm.add_desire(5 * charmed, "Hypnotic Perfume")
-		3: # The Gilded Chain — tether 2 nearest foes so damage mirrors 75% (or shatter nearby urn if alone)!
+		3: # The Gilded Chain — works on ALL adversaries (2+ foes = Twin-Tether; 1 foe = Defensive Anchor-Shackle; 0 foes = Chain Sweep)!
+			var fwd_c := -visual.global_transform.basis.z
+			fwd_c.y = 0.0
+			fwd_c = fwd_c.normalized() if fwd_c.length() > 0.01 else Vector3.FORWARD
+			var hand_c := global_position + Vector3(0, 1.0, 0) + visual.global_transform.basis.x * 0.20
 			for dp in get_tree().get_nodes_in_group("destructibles"):
-				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 6.5 and dp.has_method("take_damage"):
-					CombatFx.gilded_chain(self, global_position + Vector3(0, 1.0, 0), (dp as Node3D).global_position + Vector3(0, 0.5, 0))
+				if dp is Node3D and is_instance_valid(dp) and (dp as Node3D).global_position.distance_to(global_position) <= 7.5 and dp.has_method("take_damage"):
+					CombatFx.gilded_chain(self, hand_c, (dp as Node3D).global_position + Vector3(0, 0.5, 0))
 					dp.call("take_damage", 20, global_position, {"chain": true})
 					break
-			if enemies.size() >= 2:
-				var a: Node3D = enemies[0]
-				var b: Node3D = enemies[1]
-				CombatFx.gilded_chain(self, a.global_position, b.global_position)
+			var wh_c := get_node_or_null("/root/Whimsy")
+			if wh_c and wh_c.has_method("smash_collect_near"):
+				wh_c.call("smash_collect_near", global_position, fwd_c, 8.5, self)
+			var chain_foes := _find_live_enemies(15.0)
+			if chain_foes.size() >= 2:
+				var a: Node3D = chain_foes[0]
+				var b: Node3D = chain_foes[1]
+				CombatFx.gilded_chain(self, a.global_position + Vector3(0, 0.9, 0), b.global_position + Vector3(0, 0.9, 0))
 				if a.has_method("set_chain_partner"):
 					a.call("set_chain_partner", b, 8.0)
 				if b.has_method("set_chain_partner"):
 					b.call("set_chain_partner", a, 8.0)
+				if a.has_method("apply_bind"):
+					a.call("apply_bind", 2.6)
+				if b.has_method("apply_bind"):
+					b.call("apply_bind", 2.6)
+				if a.has_method("take_damage"):
+					a.call("take_damage", 14, global_position, {"chain": true})
+				if b.has_method("take_damage"):
+					b.call("take_damage", 14, global_position, {"chain": true})
+				CombatFx.label(self, global_position + Vector3(0, 1.6, 0), "✦ TWIN CHAIN TETHER!", Color(1.0, 0.86, 0.36))
 				if sm and sm.has_method("add_desire"):
 					sm.add_desire(6, "Gilded Chain Tether")
+			elif chain_foes.size() == 1:
+				var solo: Node3D = chain_foes[0]
+				CombatFx.gilded_chain(self, hand_c, solo.global_position + Vector3(0, 0.95, 0))
+				if solo.has_method("apply_bind"):
+					solo.call("apply_bind", 3.2)
+				if solo.has_method("take_damage"):
+					solo.call("take_damage", 18, global_position, {"chain": true, "knockback": 4.5})
+				CombatFx.label(self, solo.global_position + Vector3(0, 1.8, 0), "✦ CHAIN SHACKLED!", Color(1.0, 0.86, 0.36))
+				if sm and sm.has_method("add_desire"):
+					sm.add_desire(5, "Gilded Chain Shackle")
 			else:
-				CombatFx.label(self, global_position, "Need 2 Foes to Chain", Color(1.0, 0.85, 0.35))
+				CombatFx.gilded_chain(self, hand_c, hand_c + fwd_c * 8.0)
+				CombatFx.label(self, hand_c + fwd_c * 3.5 + Vector3(0, 0.6, 0), "✦ GILDED CHAIN SWEEP!", Color(1.0, 0.86, 0.36))
 		4: # Silver Heel-Click — Graceful aerial heel-tap starburst! Triggers Road Home pad in Glinda's Court OR staggers/heals anywhere!
 			_armament_cd = 0.62
 			if is_on_floor():

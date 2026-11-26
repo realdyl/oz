@@ -326,6 +326,19 @@ func register(id: StringName, body: CharacterBody3D, unlocked: bool = false) -> 
 	if _leader_id == id:
 		_apply_leader()
 
+## Aligns the 360° camera rig AND every party member's Visual to face forward along a level's Yellow Brick Road!
+## Use yaw_rad = PI for levels running South (+Z), or 0.0 for levels running North (-Z).
+func face_all_forward(yaw_rad: float) -> void:
+	if _camera_rig and is_instance_valid(_camera_rig):
+		_camera_rig.rotation.y = yaw_rad
+	for b in _members.values():
+		if b is Node3D and is_instance_valid(b):
+			var vis := (b as Node3D).get_node_or_null("Visual") as Node3D
+			if vis:
+				vis.rotation.y = yaw_rad
+			if "_yaw" in b:
+				b.set("_yaw", yaw_rad)
+
 func set_present(id: StringName, on: bool = true) -> void:
 	_present[id] = on
 	unlock_changed.emit(id, is_unlocked(id))

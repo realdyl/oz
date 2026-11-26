@@ -425,6 +425,9 @@ func _spawn_party() -> void:
 	tinman.global_position = SPAWN_POS + Vector3(0.0, 0.0, -3.4)
 	if tinman.has_method("oil_and_free"):
 		tinman.oil_and_free()
+	var party_f := get_node_or_null("/root/Party")
+	if party_f and party_f.has_method("face_all_forward"):
+		party_f.call_deferred("face_all_forward", PI)
 
 func _spawn_kalidahs() -> void:
 	var spots := [
@@ -457,15 +460,27 @@ func _spawn_kalidahs() -> void:
 func _make_kalidah_script() -> GDScript:
 	var s := GDScript.new()
 	s.source_code = """extends CharacterBody3D
-var health: int = 55
+var health: int = 85
 var alive: bool = true
 var attack_cd: float = 1.4
 var gait_t: float = 0.0
+var bind_t: float = 0.0
+var _chain_partner: Node3D = null
+var _chain_t: float = 0.0
 
-func take_damage(amount: int, src: Vector3, _tags: Dictionary = {}) -> void:
+func apply_bind(dur: float) -> void:
+	bind_t = maxf(bind_t, dur)
+
+func set_chain_partner(p: Node3D, dur: float) -> void:
+	_chain_partner = p
+	_chain_t = dur
+
+func take_damage(amount: int, src: Vector3, tags: Dictionary = {}) -> void:
 	if not alive:
 		return
 	health -= maxi(1, amount)
+	if not bool(tags.get("mirrored", false)) and _chain_t > 0.0 and _chain_partner and is_instance_valid(_chain_partner) and _chain_partner.has_method("take_damage"):
+		_chain_partner.call("take_damage", maxi(1, int(float(amount) * 0.75)), src, {"mirrored": true})
 	var fx := get_node_or_null("/root/CombatFx")
 	if fx and fx.has_method("hit_sparks"):
 		fx.call("hit_sparks", self, global_position + Vector3(0, 1.0, 0), Color(1.0, 0.55, 0.20))
